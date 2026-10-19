@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] 整站导出 zip：日志为 .md（frontmatter 含元数据）+ 说说媒体 + manifest
-- [ ] 导出的 zip 可回导
-- [ ] zip 导入 md 日志：默认私密
-- [ ] 批量编辑 @ 名单端点（多选内容→批量追加）
-- [ ] e2e：导出→清库→导入→内容恢复（默认私密）
+- [x] 整站导出 zip：日志为 .md（frontmatter 含元数据）+ 说说媒体 + manifest
+- [x] 导出的 zip 可回导
+- [x] zip 导入 md 日志：默认私密
+- [x] 批量编辑 @ 名单端点（多选内容→批量追加）
+- [x] e2e：导出→清库→导入→内容恢复（默认私密）

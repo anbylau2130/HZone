@@ -74,6 +74,7 @@ app.MapContentEndpoints();
 app.MapCommentEndpoints();
 app.MapInboxEndpoints();
 app.MapMediaEndpoints();
+app.MapExportImportEndpoints();
 app.MapFriendEndpoints();
 app.MapSetupEndpoints();
 app.MapInviteEndpoints();
