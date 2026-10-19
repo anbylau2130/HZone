@@ -3,14 +3,29 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace HZone.Tests.Helpers;
 
-/// <summary>
-/// 进程内起真实 API（HTTP 边界 seam）。每张测试用例一个独立实例。
-/// </summary>
 public sealed class HZoneApiFactory : WebApplicationFactory<Program>
 {
+    public const string JwtKey = "test-only-jwt-key-0123456789abcdef";
+    public const string JwtIssuer = "HZone";
+    public const string JwtAudience = "HZone";
+
+    private readonly string _dataDirectory;
+
+    public HZoneApiFactory()
+    {
+        _dataDirectory = Path.Combine(Path.GetTempPath(), "hzone-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_dataDirectory);
+    }
+
+    public string DataDirectory => _dataDirectory;
+
+    public string DbPath => Path.Combine(_dataDirectory, "hzone.db");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        // 后续 ticket 02 起：数据目录/SQLite 文件/媒体目录重定向到临时路径
+        builder.UseSetting("HZone:Database:ConnectionString", $"Data Source={DbPath}");
+        builder.UseSetting("HZone:DataDirectory", _dataDirectory);
+        builder.UseSetting("HZone:Auth:JwtKey", JwtKey);
     }
 }
