@@ -1,10 +1,23 @@
+using HZone.Core.Entities;
+
 namespace HZone.Api.Endpoints;
 
-public record CreateSayRequest(string Text, List<Guid> RecipientIds);
+public record CreateSayRequest(string Text, List<Guid> RecipientIds, List<Guid>? MediaIds = null);
 
 public record CreateJournalRequest(string Title, string Markdown, List<Guid> RecipientIds);
 
+/// <summary>
+/// 内容编辑：只更新显式提供的字段（null = 不修改）。recipients 修改不在 ticket 06 范围。
+/// </summary>
+public record UpdateContentRequest(
+    string? Text = null,
+    string? Title = null,
+    string? MarkdownBody = null,
+    List<Guid>? MediaIds = null);
+
 public record RecipientResponse(Guid UserId, string Nickname);
+
+public record MediaResponse(Guid Id, string Kind, string Url, string? ThumbUrl, long SizeBytes);
 
 public record ContentResponse(
     Guid Id,
@@ -14,6 +27,23 @@ public record ContentResponse(
     string? Title,
     string? MarkdownBody,
     List<RecipientResponse> Recipients,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    List<MediaResponse>? Media = null);
 
 public sealed record RecipientsResult(List<RecipientResponse> Recipients, string? Error);
+
+/// <summary>
+/// MediaAsset → 响应投影的单一出口，供上传响应与内容响应共用。
+/// </summary>
+public static class MediaResponses
+{
+    public static MediaResponse ToResponse(MediaAsset asset)
+    {
+        return new MediaResponse(
+            asset.Id,
+            asset.Kind.ToString().ToLowerInvariant(),
+            $"/media/{asset.StoredName}",
+            asset.ThumbStoredName is null ? null : $"/media/{asset.ThumbStoredName}",
+            asset.SizeBytes);
+    }
+}

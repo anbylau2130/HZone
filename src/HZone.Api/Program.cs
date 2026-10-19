@@ -25,6 +25,7 @@ builder.Services.AddDbContext<HZoneDbContext>(options => options.UseSqlite(conne
 builder.Services.AddScoped<IContentQuery, ContentQuery>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
+builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -53,6 +54,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapContentEndpoints();
+app.MapMediaEndpoints();
 app.MapFriendEndpoints();
 app.MapSetupEndpoints();
 app.MapInviteEndpoints();
