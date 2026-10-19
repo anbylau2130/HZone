@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 
 using HZone.Api;
 using HZone.Api.Endpoints;
+using HZone.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,7 @@ var jwtAudience = builder.Configuration["HZone:Auth:Audience"] ?? "HZone";
 builder.Services.AddDbContext<HZoneDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddScoped<IContentQuery, ContentQuery>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -52,6 +54,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapContentEndpoints();
 app.MapSetupEndpoints();
+app.MapInviteEndpoints();
+app.MapAuthEndpoints();
 
 app.Run();
 
