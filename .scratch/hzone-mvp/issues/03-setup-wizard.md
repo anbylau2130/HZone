@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] `GET /setup/status` → `{ initialized: false }`
-- [ ] `POST /setup/admin` 创建首个管理员；二次调用 409
-- [ ] 系统配置表落地，可读可写
-- [ ] e2e：初始化后 status 为 true，二次创建 409
+- [x] `GET /setup/status` → `{ initialized: false }`
+- [x] `POST /setup/admin` 创建首个管理员；二次调用 409
+- [x] 系统配置表落地，可读可写
+- [x] e2e：初始化后 status 为 true，二次创建 409

@@ -5,11 +5,15 @@ using HZone.Tests.Helpers;
 
 namespace HZone.Tests;
 
-public class VisibilityTests : IClassFixture<HZoneApiFactory>
+public class VisibilityTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
 {
     private readonly HZoneApiFactory _factory;
 
     public VisibilityTests(HZoneApiFactory factory) => _factory = factory;
+
+    public async Task InitializeAsync() => await _factory.SeedSetupAsync();
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task Private_say_visible_only_to_author()

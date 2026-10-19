@@ -22,6 +22,7 @@ var jwtAudience = builder.Configuration["HZone:Auth:Audience"] ?? "HZone";
 
 builder.Services.AddDbContext<HZoneDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddScoped<IContentQuery, ContentQuery>();
+builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -50,6 +51,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapContentEndpoints();
+app.MapSetupEndpoints();
 
 app.Run();
 

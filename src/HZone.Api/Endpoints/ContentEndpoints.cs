@@ -9,6 +9,19 @@ namespace HZone.Api.Endpoints;
 
 public static class ContentEndpoints
 {
+    private static readonly Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>
+        RequireInitialized = async (context, next) =>
+        {
+            var db = context.HttpContext.RequestServices.GetRequiredService<HZoneDbContext>();
+            if (!await SetupState.IsInitializedAsync(db, context.HttpContext.RequestAborted))
+            {
+                return Results.Problem(statusCode: StatusCodes.Status409Conflict,
+                    title: "instance not initialized");
+            }
+
+            return await next(context);
+        };
+
     public static void MapContentEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/contents/says", [Authorize] async (
@@ -57,7 +70,7 @@ public static class ContentEndpoints
                 null,
                 recipientsResult.Recipients,
                 say.CreatedAt));
-        });
+        }).AddEndpointFilter(RequireInitialized);
 
         app.MapPost("/contents/journals", [Authorize] async (
             CreateJournalRequest request,
@@ -106,7 +119,7 @@ public static class ContentEndpoints
                 journal.MarkdownBody,
                 recipientsResult.Recipients,
                 journal.CreatedAt));
-        });
+        }).AddEndpointFilter(RequireInitialized);
 
         app.MapGet("/contents/{id:guid}", [Authorize] async (
             Guid id,
