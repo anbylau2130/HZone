@@ -63,6 +63,18 @@ public static class ContentEndpoints
                     RecipientUserId = recipient.UserId,
                     AddedAt = now,
                 });
+                // 站内信（ticket 08）：发布即写 Mentioned；自己 @ 自己不产生。
+                if (recipient.UserId != authorId)
+                {
+                    db.InboxMessages.Add(new InboxMessage
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = recipient.UserId,
+                        Type = InboxMessageType.Mentioned,
+                        ContentId = say.Id,
+                        CreatedAt = now,
+                    });
+                }
             }
 
             db.Contents.Add(say);
@@ -106,6 +118,18 @@ public static class ContentEndpoints
                     RecipientUserId = recipient.UserId,
                     AddedAt = now,
                 });
+                // 站内信（ticket 08）：发布即写 Mentioned；自己 @ 自己不产生。
+                if (recipient.UserId != authorId)
+                {
+                    db.InboxMessages.Add(new InboxMessage
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = recipient.UserId,
+                        Type = InboxMessageType.Mentioned,
+                        ContentId = journal.Id,
+                        CreatedAt = now,
+                    });
+                }
             }
 
             db.Contents.Add(journal);
