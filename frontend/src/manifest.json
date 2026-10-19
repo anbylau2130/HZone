@@ -1,0 +1,13 @@
+{
+  "name": "HZone",
+  "appid": "",
+  "description": "私密的定向分享社区",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "vueVersion": "3",
+  "h5": {
+    "title": "HZone",
+    "router": { "mode": "hash" }
+  },
+  "app-plus": {}
+}
