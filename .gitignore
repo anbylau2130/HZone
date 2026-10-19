@@ -1,0 +1,16 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+node_modules/
+dist/
+unpackage/
+*.db
+*.db-shm
+*.db-wal
+data/
+TestResults/
+.omc/
+.claude/
+*.log
