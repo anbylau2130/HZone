@@ -17,6 +17,25 @@
 - **Ticket 10 ✅** 整站 zip 导出/导入 + 批量 @（默认私密导入）（commit 2d06a63，65/65 绿）
 - **Ticket 11 ✅** 管理员配置/用户禁用/邀请开关/ffmpeg 压缩决策单测（commit 6571408，83/83 绿）
 - **Ticket 13 ✅(代码)** 前端内容旅程 13 页面（commit 2c778a8，build 通过；Playwright 旅程在 15 做）
+- **Ticket 14 ✅** 主题系统（预置4套+自定义+对比度校验+本地存储）+设置页+本地化补漏（commit 2d71fd7，build 通过）
+- **Ticket 15 ✅** 整体验收（commit fbdb550）：API e2e 87/87 + Playwright UI 6/6（本地 :5000+:5173，无 Docker）+ acceptance.md 28 条用户故事全覆盖
+- **MVP 完成**（2026-10-20）。验收中发现并跨栈修复 4 个旅程阻断 bug（好友页模板崩溃/@i18n转义/邮件链接路由/launchSettings 端口）。
+- 遗留：主题账号级跨端同步未做（本地存储，acceptance.md 已标注）；UI e2e 仅 H5（按用户要求）
+
+## 一键验收
+
+```bash
+dotnet test                              # 87 API e2e
+cd e2e && npx playwright test            # 6 UI 旅程（自动起 API+H5）
+# 或 ./run-mvp-tests.ps1
+```
+
+## 运行
+
+```bash
+cd src/HZone.Api && dotnet run           # API :5000（首次访问 /setup/status 走向导）
+cd frontend && pnpm dev:h5               # H5 :5173（/api 代理 :5000）
+```
 - Ticket 03~15：待办（依赖顺序见 issues/*.md 的 Blocked by）
 - 前端：uni-app(Vue3) 脚手架已建（frontend/，npm 走 npmmirror，@dcloudio 版本 3.0.0-5020620260917001，vite 5.2.8，vue-i18n+pinia 已装），H5 dev 验证待做
 - 环境注意：
