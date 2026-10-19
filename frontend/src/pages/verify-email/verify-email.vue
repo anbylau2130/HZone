@@ -12,6 +12,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../../stores/auth'
 
@@ -27,6 +28,7 @@ const statusText = computed(() => {
 })
 
 onLoad((query) => {
+  setNavTitle('verifyEmail.title')
   token.value = String(query?.token ?? '')
   verify()
 })

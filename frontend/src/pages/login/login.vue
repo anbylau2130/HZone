@@ -31,6 +31,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '../../stores/auth'
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
+
+onShow(() => {
+  setNavTitle('login.title')
+})
 
 const auth = useAuthStore()
 const email = ref('')

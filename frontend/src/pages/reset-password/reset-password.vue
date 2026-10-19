@@ -16,6 +16,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onLoad } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
 import { useAuthStore } from '../../stores/auth'
 
 const { t } = useI18n()
@@ -26,6 +27,7 @@ const confirmPassword = ref('')
 const loading = ref(false)
 
 onLoad((query) => {
+  setNavTitle('reset.title')
   token.value = String(query?.token ?? '')
 })
 

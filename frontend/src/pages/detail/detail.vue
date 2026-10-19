@@ -60,6 +60,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
 import { useI18n } from 'vue-i18n'
 import MediaGrid from '../../components/MediaGrid.vue'
 import RecipientsBar from '../../components/RecipientsBar.vue'
@@ -92,6 +93,7 @@ const kindLabel = computed(() =>
 )
 
 onLoad((query) => {
+  setNavTitle('detail.title')
   const q = (query ?? {}) as Record<string, string>
   contentId.value = q.id ?? ''
   load()

@@ -15,6 +15,12 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../../stores/auth'
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
+
+onShow(() => {
+  setNavTitle('forgot.title')
+})
 
 const { t } = useI18n()
 const auth = useAuthStore()

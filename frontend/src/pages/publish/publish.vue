@@ -61,6 +61,12 @@ import { useI18n } from 'vue-i18n'
 import FriendPicker from '../../components/FriendPicker.vue'
 import { createSay, createJournal, type FriendInfo } from '../../api/endpoints'
 import { uploadFile } from '../../api/client'
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
+
+onShow(() => {
+  setNavTitle('hub.publish')
+})
 
 const { t } = useI18n()
 

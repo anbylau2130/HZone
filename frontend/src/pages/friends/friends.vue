@@ -49,6 +49,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
 import {
   listFriends,
   listFriendRequests,
@@ -67,6 +69,10 @@ const requests = ref<FriendRequests>({ incoming: [], outgoing: [] })
 const targetUserId = ref('')
 
 onMounted(load)
+
+onShow(() => {
+  setNavTitle('hub.friends')
+})
 
 async function load() {
   const [f, r] = await Promise.all([listFriends(), listFriendRequests()])

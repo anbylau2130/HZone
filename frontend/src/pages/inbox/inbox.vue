@@ -35,6 +35,7 @@
 import { useI18n } from 'vue-i18n'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { usePagination } from '../../composables/usePagination'
+import { setNavTitle } from '../../locale'
 import { listInbox, markInboxRead, type InboxItem } from '../../api/endpoints'
 import { useInboxStore } from '../../stores/inbox'
 import { formatDateTime } from '../../utils/format'
@@ -51,6 +52,7 @@ onLoad(() => {
 
 // 返回本页时刷新列表与红点（列表页也能看到已读变化）
 onShow(() => {
+  setNavTitle('hub.inbox')
   if (items.value.length) {
     pagination.refresh()
   }

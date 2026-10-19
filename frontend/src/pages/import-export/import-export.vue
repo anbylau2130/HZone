@@ -55,6 +55,12 @@ import FriendPicker from '../../components/FriendPicker.vue'
 import { listMyContents, batchRecipients, type ContentItem, type FriendInfo } from '../../api/endpoints'
 import { uploadFile, downloadBlob } from '../../api/client'
 import { formatDateTime } from '../../utils/format'
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
+
+onShow(() => {
+  setNavTitle('hub.importExport')
+})
 
 const { t } = useI18n()
 

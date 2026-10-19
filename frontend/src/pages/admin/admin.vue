@@ -9,6 +9,12 @@
 
 <script setup lang="ts">
 // 占位页：管理后台后端（AdminEndpoints，ticket 11）合入后再补页面。
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
+
+onShow(() => {
+  setNavTitle('admin.title')
+})
 </script>
 
 <style scoped>

@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
 import ContentCard from '../../components/ContentCard.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listUserContents, type ContentItem } from '../../api/endpoints'
@@ -39,6 +40,7 @@ const pagination = usePagination<ContentItem>((offset, limit) =>
 const { items, finished, loadMore } = pagination
 
 onLoad((query) => {
+  setNavTitle('profile.title')
   const q = (query ?? {}) as Record<string, string>
   userId.value = q.userId ?? ''
   nickname.value = q.nickname ? decodeURIComponent(q.nickname) : ''

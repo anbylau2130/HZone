@@ -123,6 +123,7 @@
     "visibleOnly": "Only contents you are allowed to see are shown here"
   },
   "detail": {
+    "title": "Content",
     "recipients": "Visible to",
     "comments": "Comments",
     "commentPlaceholder": "Write a comment…",
@@ -168,5 +169,31 @@
   "admin": {
     "title": "Admin",
     "todo": "Admin backend is not merged yet. This page is a placeholder."
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "mode": "Mode",
+    "modeLight": "Light",
+    "modeDark": "Dark",
+    "presets": "Preset themes",
+    "custom": "Custom colors",
+    "customHint": "Live preview while adjusting; contrast is validated on save",
+    "customH5Only": "Custom colors are available on H5",
+    "colorPrimary": "Primary",
+    "colorBg": "Background",
+    "colorSurface": "Surface",
+    "colorText": "Text",
+    "contrastTextFail": "Text/surface contrast too low (need ≥ 4.5:1)",
+    "contrastPrimaryFail": "Primary/surface contrast too low (need ≥ 3:1)",
+    "contrastFailToast": "Contrast check failed, save blocked",
+    "resetDefault": "Reset to default",
+    "language": "Language"
+  },
+  "theme": {
+    "presetDefault": "Default Blue",
+    "presetWarm": "Warm Orange",
+    "presetGreen": "Eye-care Green",
+    "presetSpace": "Deep Space Purple"
   }
 }

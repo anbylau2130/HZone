@@ -1,5 +1,8 @@
 <template>
   <view class="page">
+    <view class="settings-entry" @click="goSettings">
+      <text class="settings-gear">⚙</text>
+    </view>
     <view class="card">
       <text class="title">HZone</text>
       <text class="greet">{{ $t('home.welcome', { name: displayName }) }}</text>
@@ -63,6 +66,10 @@ function go(url: string) {
   uni.navigateTo({ url })
 }
 
+function goSettings() {
+  uni.navigateTo({ url: '/pages/settings/settings' })
+}
+
 function logout() {
   inbox.stopPolling()
   auth.logout()
@@ -79,6 +86,25 @@ function logout() {
   flex-direction: column;
   gap: 16px;
   box-sizing: border-box;
+  position: relative;
+}
+.settings-entry {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--hz-color-surface);
+  border: 1px solid var(--hz-color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.settings-gear {
+  font-size: 18px;
+  color: var(--hz-color-text-secondary);
+  line-height: 1;
 }
 .card {
   background: var(--hz-color-surface);

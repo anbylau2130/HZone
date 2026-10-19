@@ -33,6 +33,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
 import ContentCard from '../../components/ContentCard.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listReceived, type ContentItem, type KindFilter } from '../../api/endpoints'
@@ -51,6 +52,7 @@ const pagination = usePagination<ContentItem>((offset, limit) =>
 const { items, finished, loadMore } = pagination
 
 onLoad((query) => {
+  setNavTitle('hub.received')
   const q = (query ?? {}) as Record<string, string>
   if (q.kind === 'say' || q.kind === 'journal') {
     kind.value = q.kind

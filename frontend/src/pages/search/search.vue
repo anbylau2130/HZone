@@ -48,6 +48,12 @@ import { ref } from 'vue'
 import ContentCard from '../../components/ContentCard.vue'
 import { usePagination } from '../../composables/usePagination'
 import { searchContents, type ContentItem, type KindFilter } from '../../api/endpoints'
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
+
+onShow(() => {
+  setNavTitle('hub.search')
+})
 
 const kinds: { value: KindFilter; label: string }[] = [
   { value: '', label: 'timeline.filterAll' },

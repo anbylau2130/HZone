@@ -36,6 +36,12 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { listPats, createPat, revokePat, type PatItem } from '../../api/endpoints'
 import { formatDateTime } from '../../utils/format'
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
+
+onShow(() => {
+  setNavTitle('hub.pats')
+})
 
 const { t } = useI18n()
 

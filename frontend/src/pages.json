@@ -16,6 +16,7 @@
     { "path": "pages/search/search", "style": { "navigationBarTitleText": "搜索" } },
     { "path": "pages/pats/pats", "style": { "navigationBarTitleText": "PAT 管理" } },
     { "path": "pages/import-export/import-export", "style": { "navigationBarTitleText": "导入导出" } },
-    { "path": "pages/admin/admin", "style": { "navigationBarTitleText": "管理后台" } }
+    { "path": "pages/admin/admin", "style": { "navigationBarTitleText": "管理后台" } },
+    { "path": "pages/settings/settings", "style": { "navigationBarTitleText": "设置" } }
   ]
 }

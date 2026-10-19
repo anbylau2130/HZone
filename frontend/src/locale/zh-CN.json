@@ -123,6 +123,7 @@
     "visibleOnly": "这里只显示 Ta 发的、你可见的内容"
   },
   "detail": {
+    "title": "内容详情",
     "recipients": "可见名单",
     "comments": "评论",
     "commentPlaceholder": "写评论…",
@@ -168,5 +169,31 @@
   "admin": {
     "title": "管理后台",
     "todo": "后端管理接口尚未合入，此页暂为占位"
+  },
+  "settings": {
+    "title": "设置",
+    "appearance": "外观",
+    "mode": "模式",
+    "modeLight": "浅色",
+    "modeDark": "深色",
+    "presets": "预置主题",
+    "custom": "自定义配色",
+    "customHint": "调整后实时预览，保存时校验对比度",
+    "customH5Only": "自定义配色需在 H5 端使用",
+    "colorPrimary": "主色",
+    "colorBg": "背景",
+    "colorSurface": "卡片",
+    "colorText": "文字",
+    "contrastTextFail": "文字与卡片对比度不足（需 ≥ 4.5:1）",
+    "contrastPrimaryFail": "主色与卡片对比度不足（需 ≥ 3:1）",
+    "contrastFailToast": "对比度不达标，已禁止保存",
+    "resetDefault": "恢复默认",
+    "language": "界面语言"
+  },
+  "theme": {
+    "presetDefault": "默认蓝",
+    "presetWarm": "暖橙",
+    "presetGreen": "护眼绿",
+    "presetSpace": "深空紫"
   }
 }
