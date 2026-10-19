@@ -9,7 +9,8 @@ public enum FriendshipStatus
 public enum InboxMessageType
 {
     Mentioned = 0,
-    Commented = 1
+    Commented = 1,
+    FriendRequest = 2
 }
 
 public enum MediaKind
