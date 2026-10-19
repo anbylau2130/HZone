@@ -8,6 +8,8 @@
 - **Ticket 02 ✅** 领域实体+EF Core+可见名单单一入口+JWT 管线+可见性 e2e（commit 09e9ce2，5/5 绿）
 - **Ticket 03 ✅** 初始化向导+系统配置标记+未初始化 409 防护（commit 675db97，10/10 绿）
 - **Ticket 04 ✅** 邀请码/注册/邮箱验证/登录/密码重置+FileEmailSender（commit 5b67f33，18/18 绿）
+- **Ticket 05 ✅** 双向好友 API+申请站内信扩展（commit ca0bc05，25/25 绿）
+- **Ticket 12 ✅(代码)** 前端认证旅程+api client+auth store+i18n+proxy rewrite（commit 5404518，build 通过；Playwright 冒烟延后到 13/15）
 - Ticket 03~15：待办（依赖顺序见 issues/*.md 的 Blocked by）
 - 前端：uni-app(Vue3) 脚手架已建（frontend/，npm 走 npmmirror，@dcloudio 版本 3.0.0-5020620260917001，vite 5.2.8，vue-i18n+pinia 已装），H5 dev 验证待做
 - 环境注意：
