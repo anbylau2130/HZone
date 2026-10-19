@@ -1,3 +1,53 @@
 {
-  "app": { "tagline": "私密的定向分享社区" }
+  "app": { "tagline": "私密的定向分享社区" },
+  "common": {
+    "networkError": "网络错误，请稍后重试",
+    "requestFailed": "请求失败"
+  },
+  "fields": {
+    "email": "邮箱",
+    "password": "密码",
+    "nickname": "昵称",
+    "inviteCode": "邀请码"
+  },
+  "login": {
+    "title": "登录",
+    "submit": "登录",
+    "toRegister": "没有账号？去注册",
+    "toForgot": "忘记密码？"
+  },
+  "register": {
+    "title": "注册",
+    "submit": "注册",
+    "toLogin": "已有账号？去登录",
+    "success": "注册成功，请查收验证邮件"
+  },
+  "verifyEmail": {
+    "title": "邮箱验证",
+    "verifying": "正在验证…",
+    "success": "邮箱验证成功",
+    "failed": "验证失败，链接无效或已过期",
+    "retry": "重试",
+    "toLogin": "去登录"
+  },
+  "forgot": {
+    "title": "忘记密码",
+    "submit": "发送重置邮件",
+    "success": "如果该邮箱已注册，重置邮件已发送",
+    "toLogin": "返回登录"
+  },
+  "reset": {
+    "title": "重置密码",
+    "newPassword": "新密码",
+    "confirmPassword": "确认新密码",
+    "submit": "重置密码",
+    "success": "密码已重置，请重新登录",
+    "mismatch": "两次输入的密码不一致",
+    "missingToken": "缺少重置令牌"
+  },
+  "home": {
+    "welcome": "你好，{name}",
+    "logout": "退出登录",
+    "adminBadge": "管理员"
+  }
 }

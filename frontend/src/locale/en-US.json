@@ -1,3 +1,53 @@
 {
-  "app": { "tagline": "A private, directed sharing space" }
+  "app": { "tagline": "A private, directed sharing space" },
+  "common": {
+    "networkError": "Network error, please retry later",
+    "requestFailed": "Request failed"
+  },
+  "fields": {
+    "email": "Email",
+    "password": "Password",
+    "nickname": "Nickname",
+    "inviteCode": "Invite code"
+  },
+  "login": {
+    "title": "Sign in",
+    "submit": "Sign in",
+    "toRegister": "No account? Register",
+    "toForgot": "Forgot password?"
+  },
+  "register": {
+    "title": "Register",
+    "submit": "Register",
+    "toLogin": "Already have an account? Sign in",
+    "success": "Registered. Please check your inbox to verify your email"
+  },
+  "verifyEmail": {
+    "title": "Email verification",
+    "verifying": "Verifying…",
+    "success": "Email verified",
+    "failed": "Verification failed, link invalid or expired",
+    "retry": "Retry",
+    "toLogin": "Sign in"
+  },
+  "forgot": {
+    "title": "Forgot password",
+    "submit": "Send reset email",
+    "success": "If the email is registered, a reset email has been sent",
+    "toLogin": "Back to sign in"
+  },
+  "reset": {
+    "title": "Reset password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "submit": "Reset password",
+    "success": "Password reset, please sign in again",
+    "mismatch": "Passwords do not match",
+    "missingToken": "Missing reset token"
+  },
+  "home": {
+    "welcome": "Hello, {name}",
+    "logout": "Sign out",
+    "adminBadge": "Admin"
+  }
 }

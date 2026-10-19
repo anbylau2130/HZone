@@ -5,7 +5,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] uni-app H5 本地 dev 可跑，请求层带 JWT
-- [ ] 登录/注册/验证/忘记密码旅程通（对着本地 API）
-- [ ] i18n 中英包 + design token 主题骨架（浅/深）
+- [x] uni-app H5 本地 dev 可跑，请求层带 JWT
+- [x] 登录/注册/验证/忘记密码旅程通（对着本地 API）
+- [x] i18n 中英包 + design token 主题骨架（浅/深）
 - [ ] Playwright 冒烟：登录旅程通过
