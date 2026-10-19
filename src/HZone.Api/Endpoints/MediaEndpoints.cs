@@ -2,10 +2,12 @@ using System.Globalization;
 using System.Security.Claims;
 using HZone.Core.Entities;
 using HZone.Core.Interfaces;
+using HZone.Core.Media;
 using HZone.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using SixLabors.ImageSharp;
+using HZone.Api.Services;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 
@@ -13,9 +15,10 @@ namespace HZone.Api.Endpoints;
 
 public static class MediaEndpoints
 {
-    private const long DefaultImageLimit = 10L * 1024 * 1024;
-    private const long DefaultVideoLimit = 200L * 1024 * 1024;
-    private const long DefaultAudioLimit = 50L * 1024 * 1024;
+    public const long DefaultImageLimit = 10L * 1024 * 1024;
+    public const long DefaultVideoLimit = 200L * 1024 * 1024;
+    public const long DefaultAudioLimit = 50L * 1024 * 1024;
+    public const int DefaultVideoMaxSeconds = 300;
     private const int MainImageMaxSide = 1920;
     private const int ThumbMaxSide = 320;
     private const int JpegQuality = 75;
@@ -30,6 +33,7 @@ public static class MediaEndpoints
             ClaimsPrincipal principal,
             HZoneDbContext db,
             IFileStorage storage,
+            IFFmpegCompressor ffmpeg,
             CancellationToken ct) =>
         {
             if (!request.HasFormContentType)
@@ -89,16 +93,42 @@ public static class MediaEndpoints
             }
             else
             {
-                // 视频/音频超限直接 413（ffmpeg 压缩决策留给 ticket 11）；不压缩直接存。
-                if (file.Length > limit)
+                // 视频/音频：超限且 ffmpeg 可用 → 单次转码（crf28/1280p、aac64k）；无 ffmpeg 或产物仍超限 → 413。
+                var available = await ffmpeg.IsAvailableAsync(ct);
+                var action = FFmpegCompressDecision.Decide(kind.Value, file.Length, limit, available);
+                if (action == MediaCompressAction.Reject)
                 {
                     return Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge,
                         title: "media too large");
                 }
 
-                await using var raw = file.OpenReadStream();
-                storedName = await storage.SaveAsync(raw, file.FileName, file.ContentType, ct);
-                sizeBytes = file.Length;
+                if (action == MediaCompressAction.FFmpegTranscode)
+                {
+                    await using var input = file.OpenReadStream();
+                    using var buffered = new MemoryStream();
+                    await input.CopyToAsync(buffered, ct);
+                    var inputBytes = buffered.ToArray();
+                    var transcoded = kind == MediaKind.Video
+                        ? await ffmpeg.TranscodeVideoAsync(inputBytes, ct)
+                        : await ffmpeg.TranscodeAudioAsync(inputBytes, ct);
+                    var transcodedContentType = kind == MediaKind.Video ? "video/mp4" : "audio/mp4";
+                    if (transcoded is null || transcoded.Length > limit)
+                    {
+                        return Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge,
+                            title: "media too large");
+                    }
+
+                    await using var transcodedStream = new MemoryStream(transcoded);
+                    storedName = await storage.SaveAsync(transcodedStream, file.FileName, transcodedContentType, ct);
+                    contentType = transcodedContentType;
+                    sizeBytes = transcoded.Length;
+                }
+                else
+                {
+                    await using var raw = file.OpenReadStream();
+                    storedName = await storage.SaveAsync(raw, file.FileName, file.ContentType, ct);
+                    sizeBytes = file.Length;
+                }
             }
 
             // MediaAsset.ContentId 留空 = 临时媒体；被内容绑定后设置。

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using HZone.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,32 @@ public static class SetupState
             {
                 return Results.Problem(statusCode: StatusCodes.Status409Conflict,
                     title: "instance not initialized");
+            }
+
+            return await next(context);
+        };
+
+    /// <summary>
+    /// 端点过滤器：先初始化检查（未初始化 409），再管理员检查（非管理员 403）。管理员端点统一挂载。
+    /// </summary>
+    public static readonly Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>
+        RequireAdmin = async (context, next) =>
+        {
+            var db = context.HttpContext.RequestServices.GetRequiredService<HZoneDbContext>();
+            if (!await IsInitializedAsync(db, context.HttpContext.RequestAborted))
+            {
+                return Results.Problem(statusCode: StatusCodes.Status409Conflict,
+                    title: "instance not initialized");
+            }
+
+            var sub = context.HttpContext.User.FindFirstValue("sub");
+            var isAdmin = Guid.TryParse(sub, out var userId) && await db.Users.AnyAsync(
+                u => u.Id == userId && u.IsAdmin && !u.IsDisabled,
+                context.HttpContext.RequestAborted);
+            if (!isAdmin)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status403Forbidden,
+                    title: "admin only");
             }
 
             return await next(context);

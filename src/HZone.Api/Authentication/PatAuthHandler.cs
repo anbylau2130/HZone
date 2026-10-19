@@ -50,20 +50,23 @@ public sealed class PatAuthHandler : AuthenticationHandler<PatAuthenticationOpti
             return AuthenticateResult.Fail("PAT revoked");
         }
 
-        var nickname = await db.Users.AsNoTracking()
-            .Where(u => u.Id == pat.UserId)
-            .Select(u => u.Nickname)
-            .FirstOrDefaultAsync();
-        if (nickname is null)
+        var owner = await db.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == pat.UserId);
+        if (owner is null)
         {
             return AuthenticateResult.Fail("PAT owner missing");
+        }
+
+        if (owner.IsDisabled)
+        {
+            return AuthenticateResult.Fail("PAT owner disabled");
         }
 
         // 与 JWT 签发口径一致：sub=UserId、nickname；端点统一用 sub 取当前用户。
         var identity = new ClaimsIdentity(
         [
             new Claim("sub", pat.UserId.ToString()),
-            new Claim("nickname", nickname),
+            new Claim("nickname", owner.Nickname),
         ], Scheme.Name);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));
     }

@@ -40,6 +40,22 @@ public static class SeedExtensions
         return admin;
     }
 
+    /// <summary>
+    /// 保证实例已初始化并返回管理员（已初始化时返回现有管理员，供多测试共享 fixture 使用）。
+    /// </summary>
+    public static async Task<User> EnsureAdminAsync(this HZoneApiFactory factory)
+    {
+        var admin = await factory.SeedSetupAsync();
+        if (admin is not null)
+        {
+            return admin;
+        }
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
+        return await db.Users.AsNoTracking().FirstAsync(u => u.IsAdmin);
+    }
+
     public static async Task<User> SeedUserAsync(
         this HZoneApiFactory factory, string email, string nickname)
     {

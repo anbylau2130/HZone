@@ -28,6 +28,7 @@ builder.Services.AddScoped<IContentQuery, ContentQuery>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
+builder.Services.AddSingleton<IFFmpegCompressor, FFmpegCompressor>();
 
 builder.Services
     .AddAuthentication(options => options.DefaultScheme = "HZone.Auth")
@@ -57,6 +58,29 @@ builder.Services
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         };
+        // 禁用用户即使持有效 JWT 也拒绝（查库实时校验），禁用立即生效。
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var db = context.HttpContext.RequestServices.GetRequiredService<HZoneDbContext>();
+                var sub = context.Principal?.FindFirstValue("sub");
+                var user = Guid.TryParse(sub, out var userId)
+                    ? await db.Users.AsNoTracking()
+                        .Where(u => u.Id == userId)
+                        .Select(u => new { u.IsDisabled })
+                        .FirstOrDefaultAsync(context.HttpContext.RequestAborted)
+                    : null;
+                if (user is null)
+                {
+                    context.Fail("user missing");
+                }
+                else if (user.IsDisabled)
+                {
+                    context.Fail("user disabled");
+                }
+            },
+        };
     })
     .AddScheme<PatAuthenticationOptions, PatAuthHandler>(PatAuthHandler.SchemeName, _ => { });
 builder.Services.AddAuthorization();
@@ -77,6 +101,7 @@ app.MapMediaEndpoints();
 app.MapExportImportEndpoints();
 app.MapFriendEndpoints();
 app.MapSetupEndpoints();
+app.MapAdminEndpoints();
 app.MapInviteEndpoints();
 app.MapAuthEndpoints();
 app.MapPatEndpoints();

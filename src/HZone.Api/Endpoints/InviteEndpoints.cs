@@ -19,6 +19,16 @@ public static class InviteEndpoints
             HZoneDbContext db,
             CancellationToken ct) =>
         {
+            // 管理员全局邀请开关（PRD 6.2）：关闭时业务码 invites-disabled（前端可提示）。
+            var inviteEnabled = await db.SystemConfigs
+                .Where(c => c.Key == AdminEndpoints.InviteEnabledKey)
+                .Select(c => c.Value)
+                .FirstOrDefaultAsync(ct) != "false";
+            if (!inviteEnabled)
+            {
+                return Results.Json(new { error = "invites-disabled" }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
             var userId = CurrentUserId(principal);
             var now = DateTime.UtcNow;
             var activeCount = await db.InviteCodes.CountAsync(
