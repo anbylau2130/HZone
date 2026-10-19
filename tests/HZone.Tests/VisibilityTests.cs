@@ -96,7 +96,8 @@ public class VisibilityTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         Assert.Equal("journal", body.GetProperty("kind").GetString());
         Assert.Equal("My Journal", body.GetProperty("title").GetString());
         Assert.Equal("# hello", body.GetProperty("markdownBody").GetString());
-        Assert.Equal(author.Id, body.GetProperty("authorId").GetGuid());
+        Assert.Equal(author.Id, body.GetProperty("author").GetProperty("id").GetGuid());
+        Assert.Equal("Author4", body.GetProperty("author").GetProperty("nickname").GetString());
 
         var recipients = body.GetProperty("recipients");
         Assert.Equal(1, recipients.GetArrayLength());

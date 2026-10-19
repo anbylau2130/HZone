@@ -17,18 +17,34 @@ public record UpdateContentRequest(
 
 public record RecipientResponse(Guid UserId, string Nickname);
 
+public record AuthorResponse(Guid Id, string Nickname);
+
 public record MediaResponse(Guid Id, string Kind, string Url, string? ThumbUrl, long SizeBytes);
 
+/// <summary>
+/// 统一内容 DTO：详情/列表/创建响应同形。
+/// </summary>
 public record ContentResponse(
     Guid Id,
     string Kind,
-    Guid AuthorId,
+    AuthorResponse Author,
     string? Text,
     string? Title,
     string? MarkdownBody,
     List<RecipientResponse> Recipients,
     DateTime CreatedAt,
+    DateTime UpdatedAt,
+    int CommentCount,
     List<MediaResponse>? Media = null);
+
+/// <summary>
+/// 列表/搜索分页响应：total 为过滤后（分页前）总数。
+/// </summary>
+public record ContentListResponse(
+    List<ContentResponse> Items,
+    int Total,
+    int Offset,
+    int Limit);
 
 public sealed record RecipientsResult(List<RecipientResponse> Recipients, string? Error);
 

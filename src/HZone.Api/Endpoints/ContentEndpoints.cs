@@ -69,16 +69,8 @@ public static class ContentEndpoints
             await db.SaveChangesAsync(ct);
 
             var media = await LoadMediaAsync(db, say.Id, ct);
-            return Results.Created($"/contents/{say.Id}", new ContentResponse(
-                say.Id,
-                "say",
-                say.AuthorId,
-                say.Text,
-                null,
-                null,
-                recipientsResult.Recipients,
-                say.CreatedAt,
-                media));
+            var author = await LoadAuthorAsync(db, say.AuthorId, ct);
+            return Results.Created($"/contents/{say.Id}", ToResponse(say, author, recipientsResult.Recipients, media, commentCount: 0));
         }).AddEndpointFilter(RequireInitialized);
 
         app.MapPost("/contents/journals", [Authorize] async (
@@ -119,16 +111,8 @@ public static class ContentEndpoints
             db.Contents.Add(journal);
             await db.SaveChangesAsync(ct);
 
-            return Results.Created($"/contents/{journal.Id}", new ContentResponse(
-                journal.Id,
-                "journal",
-                journal.AuthorId,
-                null,
-                journal.Title,
-                journal.MarkdownBody,
-                recipientsResult.Recipients,
-                journal.CreatedAt,
-                new List<MediaResponse>()));
+            var author = await LoadAuthorAsync(db, journal.AuthorId, ct);
+            return Results.Created($"/contents/{journal.Id}", ToResponse(journal, author, recipientsResult.Recipients, new List<MediaResponse>(), commentCount: 0));
         }).AddEndpointFilter(RequireInitialized);
 
         app.MapGet("/contents/{id:guid}", [Authorize] async (
@@ -153,7 +137,8 @@ public static class ContentEndpoints
                 .ToList();
 
             var media = await LoadMediaAsync(db, id, ct);
-            return Results.Ok(ToResponse(content, recipients, media));
+            var commentCount = await db.Comments.CountAsync(c => c.ContentId == id, ct);
+            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount));
         });
 
         app.MapPut("/contents/{id:guid}", [Authorize] async (
@@ -222,7 +207,8 @@ public static class ContentEndpoints
 
             var recipients = await LoadRecipientsAsync(db, id, ct);
             var media = await LoadMediaAsync(db, id, ct);
-            return Results.Ok(ToResponse(content, recipients, media));
+            var commentCount = await db.Comments.CountAsync(c => c.ContentId == id, ct);
+            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount));
         });
 
         app.MapDelete("/contents/{id:guid}", [Authorize] async (
@@ -257,17 +243,219 @@ public static class ContentEndpoints
 
             return Results.NoContent();
         });
+
+        app.MapGet("/me/contents", [Authorize] async (
+            ClaimsPrincipal principal,
+            IContentQuery contentQuery,
+            HZoneDbContext db,
+            string? kind,
+            int? offset,
+            int? limit,
+            CancellationToken ct) =>
+        {
+            var me = CurrentUserId(principal);
+            var kindError = ValidateKind(kind);
+            if (kindError is not null)
+            {
+                return Results.BadRequest(new { error = kindError });
+            }
+
+            var (skip, take) = NormalizePage(offset, limit);
+            return await RunListQueryAsync(contentQuery, db, new ContentQuerySpec
+            {
+                ViewerId = me,
+                AuthorId = me,
+                Kind = kind,
+                Offset = skip,
+                Limit = take,
+            }, ct);
+        }).AddEndpointFilter(RequireInitialized);
+
+        app.MapGet("/me/received", [Authorize] async (
+            ClaimsPrincipal principal,
+            IContentQuery contentQuery,
+            HZoneDbContext db,
+            string? kind,
+            int? offset,
+            int? limit,
+            CancellationToken ct) =>
+        {
+            var me = CurrentUserId(principal);
+            var kindError = ValidateKind(kind);
+            if (kindError is not null)
+            {
+                return Results.BadRequest(new { error = kindError });
+            }
+
+            var (skip, take) = NormalizePage(offset, limit);
+            return await RunListQueryAsync(contentQuery, db, new ContentQuerySpec
+            {
+                ViewerId = me,
+                RecipientId = me,
+                ExcludeAuthorId = me,
+                Kind = kind,
+                Offset = skip,
+                Limit = take,
+            }, ct);
+        }).AddEndpointFilter(RequireInitialized);
+
+        app.MapGet("/users/{userId:guid}/contents", [Authorize] async (
+            Guid userId,
+            ClaimsPrincipal principal,
+            IContentQuery contentQuery,
+            HZoneDbContext db,
+            string? kind,
+            int? offset,
+            int? limit,
+            CancellationToken ct) =>
+        {
+            var me = CurrentUserId(principal);
+            var kindError = ValidateKind(kind);
+            if (kindError is not null)
+            {
+                return Results.BadRequest(new { error = kindError });
+            }
+
+            var (skip, take) = NormalizePage(offset, limit);
+            return await RunListQueryAsync(contentQuery, db, new ContentQuerySpec
+            {
+                ViewerId = me,
+                AuthorId = userId,
+                Kind = kind,
+                Offset = skip,
+                Limit = take,
+            }, ct);
+        }).AddEndpointFilter(RequireInitialized);
+
+        app.MapGet("/search", [Authorize] async (
+            ClaimsPrincipal principal,
+            IContentQuery contentQuery,
+            HZoneDbContext db,
+            string q,
+            string? kind,
+            int? offset,
+            int? limit,
+            CancellationToken ct) =>
+        {
+            var me = CurrentUserId(principal);
+            var kindError = ValidateKind(kind);
+            if (kindError is not null)
+            {
+                return Results.BadRequest(new { error = kindError });
+            }
+
+            var (skip, take) = NormalizePage(offset, limit);
+            return await RunListQueryAsync(spec: new ContentQuerySpec
+            {
+                ViewerId = me,
+                AuthorId = me,
+                SearchText = q,
+                Kind = kind,
+                Offset = skip,
+                Limit = take,
+            }, contentQuery: contentQuery, db: db, ct: ct);
+        }).AddEndpointFilter(RequireInitialized);
     }
 
-    private static ContentResponse ToResponse(Content content, List<RecipientResponse> recipients, List<MediaResponse> media)
+    private static ContentResponse ToResponse(
+        Content content,
+        AuthorResponse author,
+        List<RecipientResponse> recipients,
+        List<MediaResponse> media,
+        int commentCount)
     {
         return content switch
         {
-            Say s => new ContentResponse(s.Id, "say", s.AuthorId, s.Text, null, null, recipients, s.CreatedAt, media),
-            Journal j => new ContentResponse(j.Id, "journal", j.AuthorId, null, j.Title, j.MarkdownBody, recipients, j.CreatedAt, media),
+            Say s => new ContentResponse(
+                s.Id, "say", author, s.Text, null, null,
+                recipients, s.CreatedAt, s.UpdatedAt, commentCount, media),
+            Journal j => new ContentResponse(
+                j.Id, "journal", author, null, j.Title, j.MarkdownBody,
+                recipients, j.CreatedAt, j.UpdatedAt, commentCount, media),
             _ => throw new InvalidOperationException("unknown content type"),
         };
     }
+
+    private static async Task<AuthorResponse> LoadAuthorAsync(HZoneDbContext db, Guid userId, CancellationToken ct)
+    {
+        var nickname = await db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.Nickname)
+            .SingleAsync(ct);
+        return new AuthorResponse(userId, nickname);
+    }
+
+    /// <summary>
+    /// 列表/搜索共用出口：执行单一入口查询并批量装配条目 DTO
+    /// （作者、收件人、媒体、评论数各一次批查询，避免逐条 N+1）。
+    /// </summary>
+    private static async Task<IResult> RunListQueryAsync(
+        IContentQuery contentQuery, HZoneDbContext db, ContentQuerySpec spec, CancellationToken ct)
+    {
+        var (items, total) = await contentQuery.QueryAsync(spec, ct);
+        var responses = await ToResponsesAsync(db, items, ct);
+        return Results.Ok(new ContentListResponse(responses, total, spec.Offset, spec.Limit));
+    }
+
+    /// <summary>批量装配列表条目 DTO（与详情同形）。</summary>
+    private static async Task<List<ContentResponse>> ToResponsesAsync(
+        HZoneDbContext db, List<Content> items, CancellationToken ct)
+    {
+        if (items.Count == 0)
+        {
+            return new List<ContentResponse>();
+        }
+
+        var ids = items.Select(c => c.Id).ToList();
+        var authorIds = items.Select(c => c.AuthorId).Distinct().ToList();
+
+        var authors = await db.Users
+            .Where(u => authorIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Nickname, ct);
+        var recipientsByContent = (await db.ContentRecipients
+                .Where(r => ids.Contains(r.ContentId))
+                .Select(r => new { r.ContentId, r.RecipientUserId, r.User.Nickname })
+                .ToListAsync(ct))
+            .GroupBy(r => r.ContentId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(r => new RecipientResponse(r.RecipientUserId, r.Nickname)).ToList());
+
+        var mediaRows = await db.MediaAssets
+            .Where(m => m.ContentId != null && ids.Contains(m.ContentId.Value))
+            .ToListAsync(ct);
+        var mediaByContent = mediaRows
+            .GroupBy(m => m.ContentId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(MediaResponses.ToResponse).ToList());
+
+        var commentCounts = await db.Comments
+            .Where(c => ids.Contains(c.ContentId))
+            .GroupBy(c => c.ContentId)
+            .Select(g => new { ContentId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var commentByContent = commentCounts.ToDictionary(x => x.ContentId, x => x.Count);
+
+        return items.Select(c => new ContentResponse(
+            c.Id,
+            c is Say ? "say" : "journal",
+            new AuthorResponse(c.AuthorId, authors[c.AuthorId]),
+            c is Say s ? s.Text : null,
+            c is Journal j ? j.Title : null,
+            c is Journal j2 ? j2.MarkdownBody : null,
+            recipientsByContent.GetValueOrDefault(c.Id) ?? new(),
+            c.CreatedAt,
+            c.UpdatedAt,
+            commentByContent.GetValueOrDefault(c.Id),
+            mediaByContent.GetValueOrDefault(c.Id) ?? new())).ToList();
+    }
+
+    /// <summary>kind 查询参数校验：say/journal/null 之外 → 错误消息。</summary>
+    private static string? ValidateKind(string? kind) =>
+        kind is null or "say" or "journal" ? null : "invalid kind";
+
+    /// <summary>分页参数归一：offset 下限 0；limit 默认 20，上限 100。</summary>
+    private static (int Offset, int Limit) NormalizePage(int? offset, int? limit) =>
+        (Math.Max(0, offset ?? 0), limit is null or <= 0 ? 20 : Math.Min(limit.Value, 100));
 
     private static async Task<List<RecipientResponse>> LoadRecipientsAsync(
         HZoneDbContext db, Guid contentId, CancellationToken ct)
