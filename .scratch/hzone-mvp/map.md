@@ -12,6 +12,11 @@
 - **Ticket 12 ✅(代码)** 前端认证旅程+api client+auth store+i18n+proxy rewrite（commit 5404518，build 通过；Playwright 冒烟延后到 13/15）
 - **Ticket 06 ✅** 媒体上传(ImageSharp 压缩+缩略图)/本地存储/说说媒体绑定/编辑/硬删除级联（commit 79ddc67，35/35 绿）
 - **Ticket 07 ✅** 列表(ContentQuerySpec 单一入口)/received/主页/搜索/详情 DTO（commit 58e396c，42/42 绿；t07 代理停滞已由 t07b 接手完成）
+- **Ticket 08 ✅** 评论+站内信（mention/comment/friendRequest + 已读；发布时写 Mentioned 行）（commit e8d9d22，50/50 绿）
+- **Ticket 09 ✅** PAT 生成/吊销/列表 + PatAuthHandler（hz_ 前缀分流 scheme）（commit 441f48f，58/58 绿）
+- **Ticket 10 ✅** 整站 zip 导出/导入 + 批量 @（默认私密导入）（commit 2d06a63，65/65 绿）
+- **Ticket 11 ✅** 管理员配置/用户禁用/邀请开关/ffmpeg 压缩决策单测（commit 6571408，83/83 绿）
+- **Ticket 13 ✅(代码)** 前端内容旅程 13 页面（commit 2c778a8，build 通过；Playwright 旅程在 15 做）
 - Ticket 03~15：待办（依赖顺序见 issues/*.md 的 Blocked by）
 - 前端：uni-app(Vue3) 脚手架已建（frontend/，npm 走 npmmirror，@dcloudio 版本 3.0.0-5020620260917001，vite 5.2.8，vue-i18n+pinia 已装），H5 dev 验证待做
 - 环境注意：
