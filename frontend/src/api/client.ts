@@ -111,3 +111,70 @@ export function request<T = unknown>(path: string, options: RequestOptions = {})
     })
   })
 }
+
+// ---------- 上传 / 下载 ----------
+
+/**
+ * multipart 上传（POST，字段名固定 'file'），带 Bearer；响应按 JSON 解析。
+ * 媒体上传（POST /media）与 zip 导入（POST /import）共用。
+ */
+export function uploadFile<T = unknown>(path: string, filePath: string): Promise<T> {
+  const token = getToken()
+  return new Promise<T>((resolve, reject) => {
+    uni.uploadFile({
+      url: path,
+      filePath,
+      name: 'file',
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      success: (res) => {
+        const status = res.statusCode
+        if (status >= 200 && status < 300) {
+          try {
+            resolve(JSON.parse(res.data) as T)
+          } catch {
+            resolve(undefined as unknown as T)
+          }
+          return
+        }
+        const message = extractMessage(safeParse(res.data)) ?? i18n.global.t('common.requestFailed')
+        uni.showToast({ title: message, icon: 'none' })
+        const err = new Error(message) as ApiError
+        err.status = status
+        err.data = safeParse(res.data)
+        reject(err)
+      },
+      fail: () => {
+        const message = i18n.global.t('common.networkError')
+        uni.showToast({ title: message, icon: 'none' })
+        reject(new Error(message))
+      }
+    })
+  })
+}
+
+/** H5 导出下载：带 Authorization 的 fetch → blob → 触发浏览器下载。 */
+export async function downloadBlob(path: string, filename: string): Promise<void> {
+  // #ifdef H5
+  const res = await fetch(path, { headers: { Authorization: `Bearer ${getToken()}` } })
+  if (!res.ok) {
+    const message = i18n.global.t('common.requestFailed')
+    uni.showToast({ title: message, icon: 'none' })
+    throw new Error(`export download failed: ${res.status}`)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+  // #endif
+}
+
+function safeParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return raw
+  }
+}

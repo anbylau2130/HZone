@@ -2,7 +2,20 @@
   "app": { "tagline": "私密的定向分享社区" },
   "common": {
     "networkError": "网络错误，请稍后重试",
-    "requestFailed": "请求失败"
+    "requestFailed": "请求失败",
+    "loading": "加载中…",
+    "cancel": "取消",
+    "confirm": "确定",
+    "delete": "删除",
+    "edit": "编辑",
+    "save": "保存",
+    "saved": "已保存",
+    "copy": "复制",
+    "copied": "已复制",
+    "empty": "暂无内容",
+    "loadMore": "加载更多",
+    "noMore": "没有更多了",
+    "mediaLoadFailed": "媒体加载失败"
   },
   "fields": {
     "email": "邮箱",
@@ -49,5 +62,111 @@
     "welcome": "你好，{name}",
     "logout": "退出登录",
     "adminBadge": "管理员"
+  },
+  "hub": {
+    "publish": "发布内容",
+    "timeline": "我的内容",
+    "received": "收到的内容",
+    "friends": "好友",
+    "inbox": "站内信",
+    "search": "搜索",
+    "pats": "PAT 管理",
+    "importExport": "导入导出",
+    "admin": "管理后台"
+  },
+  "publish": {
+    "sayMode": "说说",
+    "journalMode": "日志",
+    "sayPlaceholder": "说点什么…",
+    "titlePlaceholder": "标题",
+    "bodyPlaceholder": "正文（Markdown）",
+    "addImages": "添加图片",
+    "addVideo": "添加视频",
+    "mediaRule": "最多 9 张图片，或 1 个视频",
+    "videoOnlySingle": "视频只能单独发一个",
+    "maxImagesReached": "图片最多 9 张",
+    "recipients": "@ 谁",
+    "chooseRecipients": "选择好友",
+    "sayEmpty": "说说需要文字或媒体",
+    "journalEmpty": "标题和正文不能为空",
+    "submit": "发布",
+    "success": "发布成功"
+  },
+  "media": {
+    "playVideo": "播放视频",
+    "playAudio": "播放音频"
+  },
+  "timeline": {
+    "filterAll": "全部",
+    "kindSay": "说说",
+    "kindJournal": "日志"
+  },
+  "friends": {
+    "addSection": "添加好友",
+    "targetUserId": "对方用户 ID",
+    "targetUserIdHint": "用户 ID 可请对方在个人资料页查看",
+    "sendRequest": "发送申请",
+    "requestSent": "申请已发送",
+    "incoming": "收到的申请",
+    "outgoing": "发出的申请",
+    "pendingLabel": "等待对方确认",
+    "listSection": "我的好友",
+    "viewProfile": "主页",
+    "remove": "移除",
+    "removeConfirm": "确定移除好友 {name} 吗？",
+    "accept": "同意",
+    "decline": "拒绝",
+    "pickerTitle": "选择好友"
+  },
+  "profile": {
+    "title": "好友主页",
+    "visibleOnly": "这里只显示 Ta 发的、你可见的内容"
+  },
+  "detail": {
+    "recipients": "可见名单",
+    "comments": "评论",
+    "commentPlaceholder": "写评论…",
+    "send": "发送",
+    "commentCount": "评论 {n}",
+    "deleteConfirm": "删除后媒体文件一并删除，确定吗？",
+    "deleted": "已删除"
+  },
+  "inbox": {
+    "mentioned": "内容中 @ 了你",
+    "commented": "评论了你的内容",
+    "friendRequest": "请求加你为好友"
+  },
+  "search": {
+    "placeholder": "搜索我的内容",
+    "button": "搜索"
+  },
+  "pats": {
+    "createSection": "生成新令牌",
+    "namePlaceholder": "令牌名称",
+    "create": "生成",
+    "tokenOnceNote": "令牌仅显示这一次，请立即保存",
+    "listSection": "我的令牌",
+    "revoke": "吊销",
+    "revokedAt": "已于 {time} 吊销",
+    "active": "有效"
+  },
+  "ie": {
+    "exportSection": "导出全部内容",
+    "exportDesc": "打包你的全部说说、日志与媒体为 zip 下载",
+    "exportBtn": "导出 zip",
+    "exported": "导出已开始下载",
+    "importSection": "导入 zip",
+    "importDesc": "从导出包恢复；导入的内容默认私密，可再批量编辑 @ 名单",
+    "importBtn": "选择 zip 并导入",
+    "importSuccess": "导入成功",
+    "batchSection": "批量编辑 @ 名单",
+    "batchDesc": "勾选内容，选择好友，为其追加 @",
+    "batchPick": "选择好友",
+    "batchSubmit": "追加 @",
+    "batchDone": "已更新 {n} 条内容"
+  },
+  "admin": {
+    "title": "管理后台",
+    "todo": "后端管理接口尚未合入，此页暂为占位"
   }
 }

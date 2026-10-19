@@ -2,7 +2,20 @@
   "app": { "tagline": "A private, directed sharing space" },
   "common": {
     "networkError": "Network error, please retry later",
-    "requestFailed": "Request failed"
+    "requestFailed": "Request failed",
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "confirm": "OK",
+    "delete": "Delete",
+    "edit": "Edit",
+    "save": "Save",
+    "saved": "Saved",
+    "copy": "Copy",
+    "copied": "Copied",
+    "empty": "Nothing here yet",
+    "loadMore": "Load more",
+    "noMore": "No more",
+    "mediaLoadFailed": "Failed to load media"
   },
   "fields": {
     "email": "Email",
@@ -49,5 +62,111 @@
     "welcome": "Hello, {name}",
     "logout": "Sign out",
     "adminBadge": "Admin"
+  },
+  "hub": {
+    "publish": "Publish",
+    "timeline": "My contents",
+    "received": "Received",
+    "friends": "Friends",
+    "inbox": "Inbox",
+    "search": "Search",
+    "pats": "PATs",
+    "importExport": "Import / Export",
+    "admin": "Admin"
+  },
+  "publish": {
+    "sayMode": "Say",
+    "journalMode": "Journal",
+    "sayPlaceholder": "What's on your mind…",
+    "titlePlaceholder": "Title",
+    "bodyPlaceholder": "Body (Markdown)",
+    "addImages": "Add images",
+    "addVideo": "Add video",
+    "mediaRule": "Up to 9 images, or 1 video",
+    "videoOnlySingle": "A video must be posted alone",
+    "maxImagesReached": "At most 9 images",
+    "recipients": "Share with",
+    "chooseRecipients": "Choose friends",
+    "sayEmpty": "A say needs text or media",
+    "journalEmpty": "Title and body are required",
+    "submit": "Publish",
+    "success": "Published"
+  },
+  "media": {
+    "playVideo": "Play video",
+    "playAudio": "Play audio"
+  },
+  "timeline": {
+    "filterAll": "All",
+    "kindSay": "Says",
+    "kindJournal": "Journals"
+  },
+  "friends": {
+    "addSection": "Add friend",
+    "targetUserId": "User ID",
+    "targetUserIdHint": "Ask your friend for their user ID",
+    "sendRequest": "Send request",
+    "requestSent": "Request sent",
+    "incoming": "Incoming requests",
+    "outgoing": "Outgoing requests",
+    "pendingLabel": "Waiting for confirmation",
+    "listSection": "My friends",
+    "viewProfile": "Profile",
+    "remove": "Remove",
+    "removeConfirm": "Remove friend {name}?",
+    "accept": "Accept",
+    "decline": "Decline",
+    "pickerTitle": "Choose friends"
+  },
+  "profile": {
+    "title": "Friend profile",
+    "visibleOnly": "Only contents you are allowed to see are shown here"
+  },
+  "detail": {
+    "recipients": "Visible to",
+    "comments": "Comments",
+    "commentPlaceholder": "Write a comment…",
+    "send": "Send",
+    "commentCount": "{n} comments",
+    "deleteConfirm": "Media files will be deleted too. Continue?",
+    "deleted": "Deleted"
+  },
+  "inbox": {
+    "mentioned": "mentioned you",
+    "commented": "commented on your content",
+    "friendRequest": "sent you a friend request"
+  },
+  "search": {
+    "placeholder": "Search my contents",
+    "button": "Search"
+  },
+  "pats": {
+    "createSection": "Create a new token",
+    "namePlaceholder": "Token name",
+    "create": "Create",
+    "tokenOnceNote": "The token is shown only once. Save it now.",
+    "listSection": "My tokens",
+    "revoke": "Revoke",
+    "revokedAt": "Revoked at {time}",
+    "active": "Active"
+  },
+  "ie": {
+    "exportSection": "Export all contents",
+    "exportDesc": "Download all your says, journals and media as a zip",
+    "exportBtn": "Export zip",
+    "exported": "Export download started",
+    "importSection": "Import zip",
+    "importDesc": "Restore from an export archive; imported contents are private by default",
+    "importBtn": "Choose zip and import",
+    "importSuccess": "Imported",
+    "batchSection": "Batch edit recipients",
+    "batchDesc": "Pick contents, choose friends to append as recipients",
+    "batchPick": "Choose friends",
+    "batchSubmit": "Append",
+    "batchDone": "Updated {n} contents"
+  },
+  "admin": {
+    "title": "Admin",
+    "todo": "Admin backend is not merged yet. This page is a placeholder."
   }
 }

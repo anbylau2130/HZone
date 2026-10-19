@@ -5,6 +5,17 @@
     { "path": "pages/register/register", "style": { "navigationBarTitleText": "注册" } },
     { "path": "pages/verify-email/verify-email", "style": { "navigationBarTitleText": "邮箱验证" } },
     { "path": "pages/forgot-password/forgot-password", "style": { "navigationBarTitleText": "忘记密码" } },
-    { "path": "pages/reset-password/reset-password", "style": { "navigationBarTitleText": "重置密码" } }
+    { "path": "pages/reset-password/reset-password", "style": { "navigationBarTitleText": "重置密码" } },
+    { "path": "pages/publish/publish", "style": { "navigationBarTitleText": "发布内容" } },
+    { "path": "pages/timeline/timeline", "style": { "navigationBarTitleText": "我的内容" } },
+    { "path": "pages/received/received", "style": { "navigationBarTitleText": "收到的内容" } },
+    { "path": "pages/friends/friends", "style": { "navigationBarTitleText": "好友" } },
+    { "path": "pages/profile/profile", "style": { "navigationBarTitleText": "好友主页" } },
+    { "path": "pages/detail/detail", "style": { "navigationBarTitleText": "内容详情" } },
+    { "path": "pages/inbox/inbox", "style": { "navigationBarTitleText": "站内信" } },
+    { "path": "pages/search/search", "style": { "navigationBarTitleText": "搜索" } },
+    { "path": "pages/pats/pats", "style": { "navigationBarTitleText": "PAT 管理" } },
+    { "path": "pages/import-export/import-export", "style": { "navigationBarTitleText": "导入导出" } },
+    { "path": "pages/admin/admin", "style": { "navigationBarTitleText": "管理后台" } }
   ]
 }
