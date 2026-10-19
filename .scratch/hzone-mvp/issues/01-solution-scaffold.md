@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] `dotnet run` 本地启动，`/health` 返回 200
-- [ ] xUnit + WebApplicationFactory e2e 测试通过（真实 DI/管道，非 mock 管道）
-- [ ] `dotnet test` 全绿
+- [x] `dotnet run` 本地启动，`/health` 返回 200
+- [x] xUnit + WebApplicationFactory e2e 测试通过（真实 DI/管道，非 mock 管道）
+- [x] `dotnet test` 全绿

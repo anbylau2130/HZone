@@ -1,0 +1,11 @@
+@HZone.Api_HostAddress = http://localhost:5097
+
+GET {{HZone.Api_HostAddress}}/openapi/v1.json
+Accept: application/json
+
+###
+
+GET {{HZone.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
