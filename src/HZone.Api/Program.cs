@@ -9,8 +9,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 using HZone.Api;
+using HZone.Api.Authentication;
 using HZone.Api.Endpoints;
 using HZone.Api.Services;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +30,21 @@ builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddAuthentication(options => options.DefaultScheme = "HZone.Auth")
+    .AddPolicyScheme("HZone.Auth", "HZone.Auth", options =>
+    {
+        // Bearer 以 hz_ 开头 → PAT 认证，其余（含无头）→ JWT Bearer（NoResult → 401）。
+        options.ForwardDefaultSelector = context =>
+        {
+            var authorization = context.Request.Headers.Authorization.ToString();
+            var token = authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? authorization["Bearer ".Length..].Trim()
+                : null;
+            return token is not null && token.StartsWith(PatToken.Prefix, StringComparison.Ordinal)
+                ? PatAuthHandler.SchemeName
+                : JwtBearerDefaults.AuthenticationScheme;
+        };
+    })
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
@@ -41,7 +57,8 @@ builder.Services
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         };
-    });
+    })
+    .AddScheme<PatAuthenticationOptions, PatAuthHandler>(PatAuthHandler.SchemeName, _ => { });
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -61,6 +78,7 @@ app.MapFriendEndpoints();
 app.MapSetupEndpoints();
 app.MapInviteEndpoints();
 app.MapAuthEndpoints();
+app.MapPatEndpoints();
 
 app.Run();
 

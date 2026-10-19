@@ -4,9 +4,9 @@
 
 **Blocked by:** 06, 07
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] PAT 生成（明文一次性展示）与吊销
-- [ ] PAT 调 API：发说说/日志、读内容、评论、搜索
-- [ ] PAT 权限=本人身份，可见性校验与 session 用户同口径
-- [ ] e2e：PAT 发内容→@好友→好友 PAT 读到；第三方 PAT 访问 404
+- [x] PAT 生成（明文一次性展示）与吊销
+- [x] PAT 调 API：发说说/日志、读内容、评论、搜索
+- [x] PAT 权限=本人身份，可见性校验与 session 用户同口径
+- [x] e2e：PAT 发内容→@好友→好友 PAT 读到；第三方 PAT 访问 404
