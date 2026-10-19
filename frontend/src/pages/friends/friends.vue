@@ -11,9 +11,9 @@
       <text class="hint">{{ $t('friends.targetUserIdHint') }}</text>
     </view>
 
-    <view v-if="incoming.length" class="section">
+    <view v-if="requests.incoming.length" class="section">
       <text class="section-title">{{ $t('friends.incoming') }}</text>
-      <view v-for="r in incoming" :key="r.id" class="row">
+      <view v-for="r in requests.incoming" :key="r.id" class="row">
         <text class="name">{{ r.requester?.nickname }}</text>
         <view class="actions">
           <button class="mini" @click="accept(r.id)">{{ $t('friends.accept') }}</button>
@@ -22,9 +22,9 @@
       </view>
     </view>
 
-    <view v-if="outgoing.length" class="section">
+    <view v-if="requests.outgoing.length" class="section">
       <text class="section-title">{{ $t('friends.outgoing') }}</text>
-      <view v-for="r in outgoing" :key="r.id" class="row">
+      <view v-for="r in requests.outgoing" :key="r.id" class="row">
         <text class="name">{{ r.addressee?.nickname }}</text>
         <text class="hint">{{ $t('friends.pendingLabel') }}</text>
       </view>

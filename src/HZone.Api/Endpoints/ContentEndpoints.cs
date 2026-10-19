@@ -207,6 +207,52 @@ public static class ContentEndpoints
                 changed = true;
             }
 
+            if (request.RecipientIds is not null)
+            {
+                // 可见名单整体替换（story 14）：校验全部为双向好友；新增者写名单 + Mentioned
+                // 站内信（自己 @ 自己不产生）；被移除者删行即立即失权。
+                var recipientsResult = await ValidateRecipientsAsync(db, authorId, request.RecipientIds, ct);
+                if (recipientsResult.Error is not null)
+                {
+                    return Results.BadRequest(new { error = recipientsResult.Error });
+                }
+
+                var existingRows = await db.ContentRecipients
+                    .Where(r => r.ContentId == id)
+                    .ToListAsync(ct);
+                var existingIds = existingRows.Select(r => r.RecipientUserId).ToHashSet();
+                var targetIds = recipientsResult.Recipients.Select(r => r.UserId).ToHashSet();
+                var recipientNow = DateTime.UtcNow;
+                foreach (var recipient in recipientsResult.Recipients.Where(r => !existingIds.Contains(r.UserId)))
+                {
+                    db.ContentRecipients.Add(new ContentRecipient
+                    {
+                        Id = Guid.NewGuid(),
+                        ContentId = id,
+                        RecipientUserId = recipient.UserId,
+                        AddedAt = recipientNow,
+                    });
+                    if (recipient.UserId != authorId)
+                    {
+                        db.InboxMessages.Add(new InboxMessage
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = recipient.UserId,
+                            Type = InboxMessageType.Mentioned,
+                            ContentId = id,
+                            CreatedAt = recipientNow,
+                        });
+                    }
+                }
+
+                foreach (var row in existingRows.Where(r => !targetIds.Contains(r.RecipientUserId)))
+                {
+                    db.ContentRecipients.Remove(row);
+                }
+
+                changed = true;
+            }
+
             if (content is Journal journal)
             {
                 if (request.Title is not null)

@@ -7,13 +7,15 @@ public record CreateSayRequest(string Text, List<Guid> RecipientIds, List<Guid>?
 public record CreateJournalRequest(string Title, string Markdown, List<Guid> RecipientIds);
 
 /// <summary>
-/// 内容编辑：只更新显式提供的字段（null = 不修改）。recipients 修改不在 ticket 06 范围。
+/// 内容编辑：只更新显式提供的字段（null = 不修改）。recipientIds 非空时整体替换可见名单
+/// （story 14）：新增者收 Mentioned 站内信，被移除者立即失权。
 /// </summary>
 public record UpdateContentRequest(
     string? Text = null,
     string? Title = null,
     string? MarkdownBody = null,
-    List<Guid>? MediaIds = null);
+    List<Guid>? MediaIds = null,
+    List<Guid>? RecipientIds = null);
 
 public record RecipientResponse(Guid UserId, string Nickname);
 

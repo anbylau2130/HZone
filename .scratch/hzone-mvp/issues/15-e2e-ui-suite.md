@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] API e2e：全用户故事场景全绿
-- [ ] Playwright UI e2e：核心旅程全绿
-- [ ] dotnet test + Playwright 一键跑通
-- [ ] MVP 验收：spec 28 条用户故事全部有测试证据
+- [x] API e2e：全用户故事场景全绿
+- [x] Playwright UI e2e：核心旅程全绿
+- [x] dotnet test + Playwright 一键跑通
+- [x] MVP 验收：spec 28 条用户故事全部有测试证据

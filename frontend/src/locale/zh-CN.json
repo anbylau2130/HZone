@@ -133,7 +133,7 @@
     "deleted": "已删除"
   },
   "inbox": {
-    "mentioned": "内容中 @ 了你",
+    "mentioned": "内容中 {'@'} 了你",
     "commented": "评论了你的内容",
     "friendRequest": "请求加你为好友"
   },

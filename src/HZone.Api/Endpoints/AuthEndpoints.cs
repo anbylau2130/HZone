@@ -95,7 +95,7 @@ public static class AuthEndpoints
             await db.SaveChangesAsync(ct);
 
             await emailSender.SendAsync(user.Email, "Verify your email",
-                $"Welcome to HZone! Verify your email: {FrontendBaseUrl}/#/verify-email?token={token}", ct);
+                $"Welcome to HZone! Verify your email: {FrontendBaseUrl}/#/pages/verify-email/verify-email?token={token}", ct);
 
             return Results.Created("/auth/me", new
             {
@@ -196,7 +196,7 @@ public static class AuthEndpoints
                 });
                 await db.SaveChangesAsync(ct);
                 await emailSender.SendAsync(user.Email, "Reset your password",
-                    $"Reset your password: {FrontendBaseUrl}/#/reset-password?token={token}", ct);
+                    $"Reset your password: {FrontendBaseUrl}/#/pages/reset-password/reset-password?token={token}", ct);
             }
 
             return Results.Ok(new { ok = true });
