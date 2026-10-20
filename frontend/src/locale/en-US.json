@@ -29,6 +29,19 @@
     "toRegister": "No account? Register",
     "toForgot": "Forgot password?"
   },
+  "setup": {
+    "title": "Setup",
+    "subtitle": "First run: create the admin account",
+    "confirmPassword": "Confirm password",
+    "submit": "Finish setup",
+    "toLogin": "Already initialized? Sign in",
+    "invalidEmail": "Invalid email format",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordMismatch": "Passwords do not match",
+    "nicknameRequired": "Nickname is required",
+    "alreadyInitialized": "Instance already initialized. Please sign in",
+    "success": "Setup complete, signed in automatically"
+  },
   "register": {
     "title": "Register",
     "submit": "Register",

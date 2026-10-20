@@ -25,6 +25,7 @@ import { computed } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useAuthStore } from '../../stores/auth'
 import { useInboxStore } from '../../stores/inbox'
+import { getSetupStatus } from '../../api/endpoints'
 
 const auth = useAuthStore()
 const inbox = useInboxStore()
@@ -47,7 +48,15 @@ const entries = computed(() => {
   return list
 })
 
-onShow(() => {
+onShow(async () => {
+  try {
+    if (!(await getSetupStatus())) {
+      uni.reLaunch({ url: '/pages/setup/setup' })
+      return
+    }
+  } catch {
+    // 探测失败（后端不可达）不阻断首页
+  }
   if (!auth.token) {
     uni.reLaunch({ url: '/pages/login/login' })
     return

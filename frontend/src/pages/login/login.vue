@@ -31,11 +31,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '../../stores/auth'
+import { getSetupStatus } from '../../api/endpoints'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 
-onShow(() => {
+onShow(async () => {
   setNavTitle('login.title')
+  try {
+    if (!(await getSetupStatus())) {
+      uni.reLaunch({ url: '/pages/setup/setup' })
+    }
+  } catch {
+    // 探测失败（后端不可达）不阻断登录页
+  }
 })
 
 const auth = useAuthStore()

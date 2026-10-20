@@ -230,6 +230,31 @@ export function revokePat(id: string) {
   return request<{ ok: boolean }>(`/api/pats/${id}`, { method: 'DELETE' })
 }
 
+// ---------- 初始化向导 ----------
+
+let setupStatusCache: boolean | null = null
+
+/** GET /setup/status（模块级缓存：初始化是一次性状态，避免各入口页重复探测）。 */
+export async function getSetupStatus(): Promise<boolean> {
+  if (setupStatusCache !== null) return setupStatusCache
+  const res = await request<{ initialized: boolean }>('/api/setup/status')
+  setupStatusCache = res.initialized
+  return setupStatusCache
+}
+
+/** 初始化完成后更新缓存，避免入口守卫再探测。 */
+export function markSetupInitialized() {
+  setupStatusCache = true
+}
+
+/** POST /setup/admin：创建首个管理员并完成初始化（已初始化时后端返回 409）。 */
+export function createAdmin(email: string, password: string, nickname: string) {
+  return request<{ id: string; email: string; nickname: string }>('/api/setup/admin', {
+    method: 'POST',
+    data: { email, password, nickname }
+  })
+}
+
 // ---------- 导入导出 / 批量 @ ----------
 
 export function batchRecipients(contentIds: string[], addRecipientIds: string[]) {

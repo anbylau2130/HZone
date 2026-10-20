@@ -29,6 +29,19 @@
     "toRegister": "没有账号？去注册",
     "toForgot": "忘记密码？"
   },
+  "setup": {
+    "title": "初始化",
+    "subtitle": "首次使用，请创建管理员账号",
+    "confirmPassword": "确认密码",
+    "submit": "完成初始化",
+    "toLogin": "已初始化？去登录",
+    "invalidEmail": "邮箱格式不正确",
+    "passwordTooShort": "密码至少 8 位",
+    "passwordMismatch": "两次输入的密码不一致",
+    "nicknameRequired": "请输入昵称",
+    "alreadyInitialized": "实例已被初始化，请直接登录",
+    "success": "初始化完成，已自动登录"
+  },
   "register": {
     "title": "注册",
     "submit": "注册",
