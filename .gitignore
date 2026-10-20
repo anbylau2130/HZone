@@ -14,3 +14,4 @@ TestResults/
 .omc/
 .claude/
 *.log
+.playwright-mcp/
