@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using HZone.Core.Entities;
 using HZone.Core.Lunar;
@@ -27,12 +28,14 @@ public static class MeStatsEndpoints
             var utcNow = DateTime.UtcNow;
             var stampers = await db.Contents
                 .Where(c => c.AuthorId == me)
-                .Select(c => c.CreatedAt)
+                .Select(c => new CreatedAtCity(c.CreatedAt, c.WeatherCity))
                 .ToListAsync(ct);
             return Results.Ok(new MeStatsResponse(
                 new MeTotalsResponse(says, journals, friends),
-                StreakOf(stampers, utcNow),
-                LunarToday()));
+                StreakOf(stampers.Select(s => s.CreatedAt).ToList(), utcNow),
+                LunarToday(),
+                HeatmapOf(stampers, utcNow),
+                FootprintsOf(stampers)));
         }).AddEndpointFilter(ContentEndpoints.RequireInitialized);
     }
 
@@ -60,7 +63,7 @@ public static class MeStatsEndpoints
         return streak;
     }
 
-    /// <summary>今日农历三字段（中国区日期），复用 LunarCalendar，与落库口径一致。</summary>
+    /// <summary>今日农历三字段（中国区日期），复用 LunarCalendar，与落库口径与 streak/热力格同口径。</summary>
     private static TodayResponse LunarToday()
     {
         var (ganzhiYear, monthDay, term) =
@@ -68,7 +71,57 @@ public static class MeStatsEndpoints
         return new TodayResponse(ganzhiYear, monthDay, term);
     }
 
-    private static TimeZoneInfo ChinaZone()
+    /// <summary>
+    /// 近 90 天热力格（含今天）：按中国区本地日期聚合用户内容的日计数，缺天补 0，
+    /// 恒为 90 项旧→新。与 streak 同口径（China Standard Time）。
+    /// </summary>
+    private static List<HeatmapCellResponse> HeatmapOf(
+        List<CreatedAtCity> stampers, DateTime utcNow)
+    {
+        var zone = ChinaZone();
+        var today = TimeZoneInfo.ConvertTime(new DateTimeOffset(utcNow, TimeSpan.Zero), zone).Date;
+        var counts = new Dictionary<DateOnly, int>();
+        foreach (var s in stampers)
+        {
+            var day = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(
+                new DateTimeOffset(s.CreatedAt, TimeSpan.Zero), zone).Date);
+            counts[day] = counts.GetValueOrDefault(day) + 1;
+        }
+
+        var heatmap = new List<HeatmapCellResponse>(90);
+        for (var i = 89; i >= 0; i--)
+        {
+            var day = DateOnly.FromDateTime(today.AddDays(-i));
+            heatmap.Add(new HeatmapCellResponse(
+                day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                counts.GetValueOrDefault(day)));
+        }
+
+        return heatmap;
+    }
+
+    /// <summary>
+    /// 足迹：取有天气城市的内容按时间正序遍历，city 与前一条不同才记一条
+    /// （同城连续去重，firstAt = 该城市首次出现的时刻）；无天气城市的内容跳过。
+    /// 返回倒序（最近在上）。
+    /// </summary>
+    private static List<FootprintResponse> FootprintsOf(List<CreatedAtCity> stampers)
+    {
+        var footprints = new List<FootprintResponse>();
+        string? previous = null;
+        foreach (var s in stampers.OrderBy(s => s.CreatedAt))
+        {
+            if (string.IsNullOrEmpty(s.WeatherCity) || s.WeatherCity == previous) continue;
+            footprints.Add(new FootprintResponse(s.WeatherCity, s.CreatedAt));
+            previous = s.WeatherCity;
+        }
+
+        footprints.Reverse();
+        return footprints;
+    }
+
+    // /me/contents 的 date 参数（热力格点格下钻）与 stats 聚合共用同一时区口径。
+    internal static TimeZoneInfo ChinaZone()
     {
         try
         {
@@ -89,7 +142,20 @@ public static class MeStatsEndpoints
     }
 }
 
-public record MeStatsResponse(MeTotalsResponse Totals, int Streak, TodayResponse Today);
+/// <summary>用户内容的轻量投影：日计数聚合与足迹去重的数据源。</summary>
+public sealed record CreatedAtCity(DateTime CreatedAt, string? WeatherCity);
+
+public record MeStatsResponse(
+    MeTotalsResponse Totals,
+    int Streak,
+    TodayResponse Today,
+    IReadOnlyList<HeatmapCellResponse> Heatmap,
+    IReadOnlyList<FootprintResponse> Footprints);
+
+public record HeatmapCellResponse(string Date, int Count);
+
+/// <summary>足迹条目：城市 + 该城市首次出现的时刻（同城连续去重后）。</summary>
+public record FootprintResponse(string City, DateTime FirstAt);
 
 public record MeTotalsResponse(int Says, int Journals, int Friends);
 

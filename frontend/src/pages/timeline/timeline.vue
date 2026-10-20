@@ -2,6 +2,12 @@
   <view class="page">
     <SegmentedFilter :model-value="kind" :options="kinds" @update:model-value="setKind" />
 
+    <!-- 热力格点格下钻：date 参数激活按天过滤，点击清除回到原行为 -->
+    <view v-if="date" class="date-bar" @click="clearDate">
+      <text class="date-text">{{ $t('timeline.filterDate', { d: date }) }}</text>
+      <text class="date-clear">{{ $t('timeline.clearDate') }}</text>
+    </view>
+
     <view v-if="pagination.loading.value && !items.length" class="hint">
       <text class="hint-text">{{ $t('common.loading') }}</text>
     </view>
@@ -42,8 +48,11 @@ const kinds: { value: KindFilter; label: string }[] = [
 
 const kind = ref<KindFilter>('')
 
+// 热力格点格下钻（homepage-v2 ticket 05）：date=yyyy-MM-dd 按天过滤；无参数=原行为。
+const date = ref<string | null>(null)
+
 const pagination = usePagination<ContentItem>((offset, limit) =>
-  listMyContents(kind.value, offset, limit)
+  listMyContents(kind.value, offset, limit, date.value ?? undefined)
 )
 const { items, finished, loadMore } = pagination
 
@@ -53,8 +62,16 @@ onLoad((query) => {
   if (q.kind === 'say' || q.kind === 'journal') {
     kind.value = q.kind
   }
+  if (q.date && /^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+    date.value = q.date
+  }
   pagination.refresh()
 })
+
+function clearDate() {
+  date.value = null
+  pagination.refresh()
+}
 
 function setKind(k: string) {
   const next = k as KindFilter
@@ -77,6 +94,19 @@ function openDetail(c: ContentItem) {
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
+}
+.date-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.date-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text);
+}
+.date-clear {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-primary);
 }
 .hint {
   padding: 40px 0;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using HZone.Core.Entities;
 using HZone.Core.Lunar;
@@ -330,6 +331,7 @@ public static class ContentEndpoints
             IContentQuery contentQuery,
             HZoneDbContext db,
             string? kind,
+            string? date,
             int? offset,
             int? limit,
             CancellationToken ct) =>
@@ -341,12 +343,30 @@ public static class ContentEndpoints
                 return Results.BadRequest(new { error = kindError });
             }
 
+            // 热力格点格下钻（homepage-v2 ticket 05）：date=yyyy-MM-dd → 中国区本地日的 UTC 区间。
+            var dayFrom = default(DateTime?);
+            var dayTo = default(DateTime?);
+            if (date is not null)
+            {
+                if (!DateOnly.TryParseExact(
+                        date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
+                {
+                    return Results.BadRequest(new { error = "date must be yyyy-MM-dd" });
+                }
+
+                var zone = MeStatsEndpoints.ChinaZone();
+                dayFrom = TimeZoneInfo.ConvertTimeToUtc(day.ToDateTime(TimeOnly.MinValue), zone);
+                dayTo = dayFrom.Value.AddDays(1);
+            }
+
             var (skip, take) = NormalizePage(offset, limit);
             return await RunListQueryAsync(contentQuery, db, new ContentQuerySpec
             {
                 ViewerId = me,
                 AuthorId = me,
                 Kind = kind,
+                CreatedFrom = dayFrom,
+                CreatedTo = dayTo,
                 Offset = skip,
                 Limit = take,
             }, ct);

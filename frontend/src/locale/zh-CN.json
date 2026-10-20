@@ -88,7 +88,11 @@
     "statsFriends": "好友",
     "statsStreak": "连续记录",
     "startToday": "从今天开始",
-    "timeline": "我的时间线"
+    "timeline": "我的时间线",
+    "heatmapTitle": "记录热力 · 近 90 天",
+    "heatmapLess": "少",
+    "heatmapMore": "多",
+    "footprintsTitle": "足迹"
   },
   "hub": {
     "publish": "发布内容",
@@ -164,7 +168,9 @@
   "timeline": {
     "filterAll": "全部",
     "kindSay": "随记",
-    "kindJournal": "日志"
+    "kindJournal": "日志",
+    "filterDate": "已筛选 {d}",
+    "clearDate": "清除"
   },
   "friends": {
     "addSection": "添加好友",

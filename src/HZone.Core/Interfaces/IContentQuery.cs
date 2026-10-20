@@ -25,6 +25,12 @@ public sealed record ContentQuerySpec
     /// <summary>LIKE 关键词：命中说说文本 / 日志标题+正文。</summary>
     public string? SearchText { get; init; }
 
+    /// <summary>CreatedAt UTC 下界（含）——热力格点格下钻按中国区本地日取 UTC 区间。</summary>
+    public DateTime? CreatedFrom { get; init; }
+
+    /// <summary>CreatedAt UTC 上界（不含）。</summary>
+    public DateTime? CreatedTo { get; init; }
+
     public int Offset { get; init; }
 
     public int Limit { get; init; }

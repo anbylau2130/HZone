@@ -88,7 +88,11 @@
     "statsFriends": "Friends",
     "statsStreak": "Streak",
     "startToday": "Start today",
-    "timeline": "My timeline"
+    "timeline": "My timeline",
+    "heatmapTitle": "Heatmap · Last 90 days",
+    "heatmapLess": "Less",
+    "heatmapMore": "More",
+    "footprintsTitle": "Footprints"
   },
   "hub": {
     "publish": "Publish",
@@ -164,7 +168,9 @@
   "timeline": {
     "filterAll": "All",
     "kindSay": "Moments",
-    "kindJournal": "Journals"
+    "kindJournal": "Journals",
+    "filterDate": "Filtered to {d}",
+    "clearDate": "Clear"
   },
   "friends": {
     "addSection": "Add friend",

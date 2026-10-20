@@ -55,6 +55,16 @@ public class ContentQuery : IContentQuery
                 break;
         }
 
+        if (spec.CreatedFrom is { } from)
+        {
+            query = query.Where(c => c.CreatedAt >= from);
+        }
+
+        if (spec.CreatedTo is { } to)
+        {
+            query = query.Where(c => c.CreatedAt < to);
+        }
+
         if (spec.SearchText is not null)
         {
             // LIKE 通配符转义（\ % _），用户输入按字面匹配。

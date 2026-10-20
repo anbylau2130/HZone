@@ -119,12 +119,24 @@ export function deleteContent(id: string) {
   return request<void>(`/api/contents/${id}`, { method: 'DELETE' })
 }
 
-function listContents(path: string, kind: KindFilter, offset: number, limit: number) {
-  return request<ContentPage>(`${path}${qs({ kind, offset, limit })}`)
+function listContents(
+  path: string,
+  kind: KindFilter,
+  offset: number,
+  limit: number,
+  date?: string
+) {
+  return request<ContentPage>(`${path}${qs({ kind, offset, limit, date })}`)
 }
 
-export function listMyContents(kind: KindFilter, offset: number, limit: number) {
-  return listContents('/api/me/contents', kind, offset, limit)
+/** date=yyyy-MM-dd：热力格点格下钻按天过滤（后端按中国区本地日取 UTC 区间）。 */
+export function listMyContents(
+  kind: KindFilter,
+  offset: number,
+  limit: number,
+  date?: string
+) {
+  return listContents('/api/me/contents', kind, offset, limit, date)
 }
 
 export function listReceived(kind: KindFilter, offset: number, limit: number) {
@@ -146,6 +158,16 @@ export function searchContents(q: string, kind: KindFilter, offset: number, limi
 
 // ---------- 我的统计（首页 ticket 04） ----------
 
+export interface HeatmapCell {
+  date: string
+  count: number
+}
+
+export interface Footprint {
+  city: string
+  firstAt: string
+}
+
 export interface MeStats {
   totals: {
     says: number
@@ -154,9 +176,13 @@ export interface MeStats {
   }
   streak: number
   today: LunarInfo
+  /** 近 90 天（含今天）按天计数，缺天补 0，恒 90 项旧→新。 */
+  heatmap: HeatmapCell[]
+  /** 天气快照城市足迹（同城连续去重），倒序最近在上。 */
+  footprints: Footprint[]
 }
 
-/** GET /me/stats：四卡数字 + 连续记录天数 + 今日农历（后端推导，前端不实现农历）。 */
+/** GET /me/stats：四卡数字 + 连续记录天数 + 今日农历 + 热力格 + 足迹（后端推导）。 */
 export function getMyStats() {
   return request<MeStats>('/api/me/stats')
 }

@@ -27,7 +27,18 @@
       </view>
     </view>
 
-    <!-- 预留版式节奏：05/06 的模块（热力格/足迹/那年今天等）将来插在今日卡与时间线之间 -->
+    <!-- 热力格（05）：近 90 天发布密度；stats 已加载即显示（全 0 也是"从今天开始"的留白） -->
+    <view v-if="stats" class="heatmap-section">
+      <text class="section-title">{{ $t('home.heatmapTitle') }}</text>
+      <Heatmap :cells="stats.heatmap" />
+    </view>
+
+    <!-- 足迹（05）：天气快照城市时间线，同城连续去重；无城市数据隐藏 -->
+    <view v-if="stats?.footprints?.length" class="footprints-section">
+      <text class="section-title">{{ $t('home.footprintsTitle') }}</text>
+      <Footprints :items="stats.footprints" />
+    </view>
+
     <!-- 我的时间线：带全部/随记/日志筛选，复用 timeline 数据逻辑 -->
     <view class="timeline-section">
       <text class="section-title">{{ $t('home.timeline') }}</text>
@@ -72,6 +83,8 @@ import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ContentCard from '../../components/ContentCard.vue'
 import SegmentedFilter from '../../components/SegmentedFilter.vue'
+import Heatmap from '../../components/Heatmap.vue'
+import Footprints from '../../components/Footprints.vue'
 import { usePagination } from '../../composables/usePagination'
 import { getWeather, CONDITION_ICONS, type WeatherSnapshot } from '../../utils/weather'
 import { formatLunar } from '../../utils/lunar'
@@ -252,6 +265,12 @@ function openDetail(c: ContentItem) {
   font-weight: 600;
 }
 .timeline-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.heatmap-section,
+.footprints-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
