@@ -108,8 +108,8 @@ test('journey 2: say with mention, inbox red dot, detail comment loop', async ({
 
 test('journey 3: journal publish visible on friend profile', async ({ browser }) => {
   const pageA = await newSession(browser, alice)
-  await openEntry(pageA, '发布内容')
-  await uniButton(pageA, '日志').click()
+  // 去切换器后 kind 由入口 query 决定：直达 journal 入口
+  await pageA.goto('/#/pages/publish/publish?kind=journal')
   await fillUniInput(pageA, '标题', JOURNAL_TITLE)
   await pageA.locator('uni-textarea textarea').fill('正文第一段，写给 Bob 看。')
   await uniButton(pageA, '选择好友').click()

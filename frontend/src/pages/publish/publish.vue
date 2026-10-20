@@ -1,15 +1,6 @@
 <template>
   <view class="page" :class="mode === 'journal' ? 'journal-mode' : 'say-mode'">
-    <view class="modes">
-      <button class="mode" :class="{ on: mode === 'say' }" @click="mode = 'say'">
-        {{ $t('publish.sayMode') }}
-      </button>
-      <button class="mode" :class="{ on: mode === 'journal' }" @click="mode = 'journal'">
-        {{ $t('publish.journalMode') }}
-      </button>
-    </view>
-
-    <!-- 日记头：左侧日期+农历，右侧天气（点击弹选择器修改） -->
+    <!-- 日记头：左侧日期+农历，右侧天气（点击弹选择器修改）。类型由入口 query 决定，页内不切换 -->
     <view class="diary-head">
       <view class="dh-left">
         <text class="dh-date">{{ dateLine }}</text>
@@ -23,7 +14,7 @@
       </view>
     </view>
 
-    <!-- 随记：textarea + 媒体九宫格 + 工具行合成一张卡 -->
+    <!-- 随记：textarea → 媒体独立区块 → 工具行（媒体与输入区视觉分离） -->
     <view v-if="mode === 'say'" class="panel">
       <textarea
         v-model="sayText"
@@ -32,14 +23,17 @@
         :maxlength="-1"
         auto-height
       />
-      <view v-if="mediaItems.length" class="media-grid">
-        <view v-for="m in mediaItems" :key="m.localPath" class="cell">
-          <image v-if="m.kind === 'image'" class="img" :src="m.localPath" mode="aspectFill" />
-          <video v-else class="img" :src="m.localPath" controls />
-          <text class="remove" @click="removeMedia(m.localPath)">{{ $t('common.delete') }}</text>
-        </view>
-        <view v-if="uploading" class="cell uploading">
-          <text class="uploading-text">{{ $t('publish.uploading') }}</text>
+      <view v-if="mediaItems.length || uploading" class="media-block">
+        <text class="media-title">{{ $t('publish.media') }}</text>
+        <view class="media-grid">
+          <view v-for="m in mediaItems" :key="m.localPath" class="cell">
+            <image v-if="m.kind === 'image'" class="img" :src="m.localPath" mode="aspectFill" />
+            <video v-else class="img" :src="m.localPath" controls />
+            <text class="remove" @click="removeMedia(m.localPath)">{{ $t('common.delete') }}</text>
+          </view>
+          <view v-if="uploading" class="cell uploading">
+            <text class="uploading-text">{{ $t('publish.uploading') }}</text>
+          </view>
         </view>
       </view>
       <view v-if="pickedFriends.length" class="chips-row">
@@ -68,20 +62,24 @@
       <text class="hint">{{ $t('publish.mediaRule') }}</text>
     </view>
 
-    <!-- 日志：标题 + 双栏编辑器，发布按钮在底部右侧 -->
+    <!-- 日志：标题独立（无圆角+分隔线）→ 工具栏 → Markdown 编辑 → 下方预览 -->
     <template v-else>
-      <view class="panel">
-        <input v-model="title" class="field" :placeholder="$t('publish.titlePlaceholder')" />
-        <view class="journal-cols">
-          <textarea
-            v-model="markdown"
-            class="area tall"
-            :placeholder="$t('publish.bodyPlaceholder')"
-            :maxlength="-1"
-            auto-height
-          />
-          <view class="md-preview" v-html="previewHtml" />
+      <view class="panel journal-panel">
+        <input v-model="title" class="j-title" :placeholder="$t('publish.titlePlaceholder')" />
+        <view class="j-toolbar">
+          <button class="pick small" @click="pickJournalImage">{{ $t('publish.insertImage') }}</button>
+          <button class="pick small" @click="pickJournalVideo">{{ $t('publish.insertVideo') }}</button>
+          <button class="pick small" @click="insertWrap('**', '**')">{{ $t('publish.bold') }}</button>
+          <button class="pick small" @click="insertHeading">{{ $t('publish.heading') }}</button>
         </view>
+        <textarea
+          v-model="markdown"
+          class="area tall"
+          :placeholder="$t('publish.bodyPlaceholder')"
+          :maxlength="-1"
+          auto-height
+        />
+        <view class="md-preview" v-html="previewHtml" />
       </view>
       <view class="recipients">
         <text class="label">{{ $t('publish.recipients') }}</text>
@@ -127,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import FriendPicker from '../../components/FriendPicker.vue'
@@ -140,6 +138,7 @@ import {
   type WeatherSnapshotInput
 } from '../../api/endpoints'
 import { uploadFile } from '../../api/client'
+import { loadMediaUrl } from '../../api/media'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import { CONDITION_ICONS, WEATHER_CONDITIONS, getWeather, type WeatherSnapshot } from '../../utils/weather'
@@ -257,6 +256,25 @@ function toSnapshot(): WeatherSnapshotInput | undefined {
 
 // 桌面端实时预览（H5 only；marked 默认转义输出，内容可见名单本就受限）
 const previewHtml = computed(() => marked.parse(markdown.value) as string)
+
+// 预览里的 /media/ 媒体发不了 Authorization 头，复用 MediaGrid 的 blob 方案换 src（仅 H5）。
+// #ifdef H5
+watch(previewHtml, () => {
+  nextTick(() => {
+    const root = document.querySelector('.journal-panel .md-preview')
+    if (!root) return
+    for (const el of Array.from(root.querySelectorAll('img[src], video[src]'))) {
+      const raw = el.getAttribute('src') ?? ''
+      if (!raw.startsWith('/media/')) continue
+      loadMediaUrl(raw)
+        .then((u) => {
+          el.setAttribute('src', u)
+        })
+        .catch(() => {})
+    }
+  })
+})
+// #endif
 
 function onFriendsConfirmed(friends: FriendInfo[]) {
   pickedFriends.value = friends
@@ -465,6 +483,85 @@ onHide(() => {
 })
 // #endif
 
+// ---------- 日志工具栏：光标处插入 markdown（H5 读真实 textarea 的 selection） ----------
+function insertWrap(prefix: string, suffix = '') {
+  const value = markdown.value
+  let start = value.length
+  let end = value.length
+  // #ifdef H5
+  const el = document.querySelector<HTMLTextAreaElement>('.journal-panel textarea')
+  if (el) {
+    start = el.selectionStart ?? value.length
+    end = el.selectionEnd ?? value.length
+  }
+  // #endif
+  markdown.value = value.slice(0, start) + prefix + value.slice(start, end) + suffix + value.slice(end)
+}
+
+function insertHeading() {
+  const value = markdown.value
+  let pos = value.length
+  // #ifdef H5
+  const el = document.querySelector<HTMLTextAreaElement>('.journal-panel textarea')
+  if (el) {
+    pos = el.selectionStart ?? value.length
+  }
+  // #endif
+  const lineStart = value.lastIndexOf('\n', Math.max(0, pos - 1)) + 1
+  markdown.value = value.slice(0, lineStart) + '## ' + value.slice(lineStart)
+}
+
+// ---------- 日志附件上传：复用 /api/media，返回 url 以 markdown 语法插入光标处 ----------
+// journal 无 mediaIds 绑定（后端 MediaAsset.ContentId 只绑 say），直接以 url 进 markdown。
+function pickJournalImage() {
+  // #ifdef H5
+  openH5FilePicker('image/*', 1, async (files) => {
+    await insertUploadedMedia(files, 'image')
+  })
+  // #endif
+  // #ifndef H5
+  uni.chooseImage({
+    success: (res) => {
+      insertUploadedMedia(res.tempFilePaths, 'image')
+    }
+  })
+  // #endif
+}
+
+function pickJournalVideo() {
+  // #ifdef H5
+  openH5FilePicker('video/*', 1, (files) => {
+    if (files.length) insertUploadedMedia([files[0]], 'video')
+  })
+  // #endif
+  // #ifndef H5
+  uni.chooseVideo({
+    success: (res) => {
+      insertUploadedMedia([res.tempFilePath], 'video')
+    }
+  })
+  // #endif
+}
+
+async function insertUploadedMedia(files: (File | string)[], kind: 'image' | 'video') {
+  uploading.value = true
+  try {
+    for (const f of files) {
+      const path = typeof f === 'string' ? f : URL.createObjectURL(f)
+      const asset = await uploadFile<{ id: string; url: string }>('/api/media', path)
+      if (kind === 'image') {
+        insertWrap(`![${t('publish.imageAlt')}](${asset.url})`)
+      } else {
+        insertWrap(`<video src="${asset.url}" controls></video>\n`)
+      }
+    }
+  } catch {
+    // 上传失败提示已由请求层统一 toast
+  } finally {
+    uploading.value = false
+  }
+}
+
 async function submit() {
   if (busy.value) return
   const recipientIds = pickedFriends.value.map((f) => f.id)
@@ -522,24 +619,19 @@ async function submit() {
   gap: 14px;
   box-sizing: border-box;
 }
-.modes {
+/* 媒体独立区块：自带边框/底色/小标题，与输入区视觉分离 */
+.media-block {
+  border: 1px solid var(--hz-color-border);
+  border-radius: var(--hz-radius-md);
+  background: var(--hz-color-bg);
+  padding: 10px;
   display: flex;
+  flex-direction: column;
   gap: 8px;
 }
-.mode {
-  flex: 1;
-  height: 40px;
-  line-height: 40px;
-  background: var(--hz-color-surface);
+.media-title {
+  font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
-  border-radius: var(--hz-radius-md);
-  font-size: var(--hz-font-size-base);
-  border: 1px solid var(--hz-color-border);
-}
-.mode.on {
-  background: var(--hz-color-primary);
-  color: #fff;
-  border-color: var(--hz-color-primary);
 }
 /* 日记头：低调的日记本页眉，14px，secondary 色，日期 primary 强调 */
 .diary-head {
@@ -593,11 +685,27 @@ async function submit() {
 .area.tall {
   min-height: 260px;
 }
-/* 移动端：预览隐藏，布局与双栏前的原始结构一致 */
-.journal-cols {
+/* 日志：标题无圆角+分隔线，与编辑器明显分离 */
+.j-title {
+  height: 48px;
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  border-bottom: 1px solid var(--hz-color-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--hz-color-text);
+}
+.j-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* uni-button 默认宽度铺满，工具栏小按钮收紧 */
+.j-toolbar .pick {
+  flex: none;
+  width: auto;
+  margin: 0;
 }
 .md-preview {
   display: none;
@@ -854,15 +962,9 @@ async function submit() {
     margin: 0 auto;
     padding: 32px 24px;
   }
-  /* journal：桌面双栏编辑器 */
-  .journal-cols {
-    flex-direction: row;
-    gap: 16px;
-    align-items: stretch;
-  }
-  .journal-cols .area.tall {
-    flex: 1;
-    height: 70vh !important; /* 覆盖 uni-app auto-height 的行内样式 */
+  /* journal：上下布局——编辑在上（40vh），预览在下（50vh 可滚动） */
+  .journal-panel .area.tall {
+    height: 40vh !important; /* 覆盖 uni-app auto-height 的行内样式 */
     min-height: 0;
     font-size: 15px;
     line-height: 1.8;
@@ -870,9 +972,7 @@ async function submit() {
   }
   .md-preview {
     display: block;
-    flex: 1;
-    max-width: 42rem;
-    height: 70vh;
+    height: 50vh;
     overflow-y: auto;
     background: var(--hz-color-bg);
     border: 1px solid var(--hz-color-border);

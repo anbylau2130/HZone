@@ -134,9 +134,15 @@
     "write": "写日志"
   },
   "publish": {
-    "sayMode": "随记",
-    "journalMode": "日志",
     "sayPlaceholder": "说点什么…",
+    "titlePlaceholder": "标题",
+    "bodyPlaceholder": "正文（Markdown）",
+    "media": "媒体",
+    "insertImage": "插图",
+    "insertVideo": "插视频",
+    "bold": "加粗",
+    "heading": "标题",
+    "imageAlt": "图片",
     "titlePlaceholder": "标题",
     "bodyPlaceholder": "正文（Markdown）",
     "addImages": "添加图片",

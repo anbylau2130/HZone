@@ -134,11 +134,15 @@
     "write": "Write a journal"
   },
   "publish": {
-    "sayMode": "Moments",
-    "journalMode": "Journal",
     "sayPlaceholder": "What's on your mind…",
     "titlePlaceholder": "Title",
     "bodyPlaceholder": "Body (Markdown)",
+    "media": "Media",
+    "insertImage": "Insert image",
+    "insertVideo": "Insert video",
+    "bold": "Bold",
+    "heading": "Heading",
+    "imageAlt": "Image",
     "addImages": "Add images",
     "addVideo": "Add video",
     "mediaRule": "Up to 9 images, or 1 video",
