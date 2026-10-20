@@ -117,7 +117,7 @@
     "mediaRule": "最多 9 张图片，或 1 个视频",
     "videoOnlySingle": "视频只能单独发一个",
     "maxImagesReached": "图片最多 9 张",
-    "recipients": "@ 谁",
+    "recipients": "{"@"} 谁",
     "chooseRecipients": "选择好友",
     "sayEmpty": "随记需要文字或媒体",
     "journalEmpty": "标题和正文不能为空",
