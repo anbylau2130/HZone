@@ -24,6 +24,14 @@
 - **缺口补齐**：前端初始化向导页（238e0f8，后端接口早有但页面缺失——ticket 12/13 的真实缺口，Playwright 未覆盖"全新实例首访"路径）。
 - 遗留：主题账号级跨端同步未做（本地存储，acceptance.md 已标注）；UI e2e 仅 H5（按用户要求）
 
+## homepage-v2 批次（2026-10-20 完成）
+
+- 01 农历+天气保存链路（15f4ec5）｜ 02 发布页天气 UI（ebc03e5）｜ 03 六 tab 导航重组（7482573）｜ 04 新首页一期（899f6f4）｜ 05 热力格+足迹（8e62213）｜ 06 首页三期四模块（229374a）｜ 07 收口验收（本次）
+- 终态：dotnet test 103/103 + Playwright 12/12 全绿；验收报告 .scratch/homepage-v2/acceptance.md
+- 领域决策：天气快照（城市+现象+气温）+ 农历（干支年/月日/节气，ChineseLunisolarCalendar+寿星公式±1天）落库；定位/天气全客户端化（ipwho.is→Open-Meteo，禁服务端代查）；旧内容农历 createdAt 惰性推导
+- 导航：六 tab 首页/随记/日志/收到/主题/设置；搜索上移；我的时间线并入首页；设置页=hub 入口、主题页=外观定制
+- EnsureCreated 不加列的教训与 EF Migrations 待办已记（见上）
+
 ## 一键验收
 
 ```bash

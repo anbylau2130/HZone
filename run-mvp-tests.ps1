@@ -3,11 +3,11 @@
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 
-Write-Host "=== [1/2] dotnet test（API e2e，87 项） ===" -ForegroundColor Cyan
+Write-Host "=== [1/2] dotnet test（API e2e，103 项） ===" -ForegroundColor Cyan
 dotnet test "$root/HZone.sln" --nologo
 if ($LASTEXITCODE -ne 0) { Write-Host "dotnet test 失败" -ForegroundColor Red; exit 1 }
 
-Write-Host "=== [2/2] Playwright UI e2e（6 项核心旅程） ===" -ForegroundColor Cyan
+Write-Host "=== [2/2] Playwright UI e2e（12 项核心旅程） ===" -ForegroundColor Cyan
 Push-Location "$root/e2e"
 try {
   npx playwright test

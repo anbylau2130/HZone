@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Playwright 新旅程（天气 mock/首页九模块/热力格跳转/足迹去重）全绿
-- [ ] dotnet test 全量回归全绿
-- [ ] run-mvp-tests.ps1 扩展 + acceptance.md + map.md 更新
+- [x] Playwright 新旅程（天气 mock/首页九模块/热力格跳转/足迹去重）全绿
+- [x] dotnet test 全量回归全绿
+- [x] run-mvp-tests.ps1 扩展 + acceptance.md + map.md 更新
