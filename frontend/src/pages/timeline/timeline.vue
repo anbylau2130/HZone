@@ -25,6 +25,7 @@
     </view>
 
     <AppSidebar current="mine" />
+    <ToolDock />
     <AppTabBar current="mine" />
   </view>
 </template>
@@ -37,6 +38,7 @@ import ContentCard from '../../components/ContentCard.vue'
 import SegmentedFilter from '../../components/SegmentedFilter.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
+import ToolDock from '../../components/ToolDock.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, type ContentItem, type KindFilter } from '../../api/endpoints'
 
@@ -140,8 +142,16 @@ function onCardDeleted(id: string) {
 @media (min-width: 768px) {
   .page {
     margin-left: 220px;
-    padding-left: max(16px, calc((100% - 220px - 42rem) / 2));
-    padding-right: max(16px, calc((100% - 220px - 42rem) / 2));
+    padding-left: max(16px, calc((100% - 220px - 48rem) / 2));
+    padding-right: max(16px, calc((100% - 220px - 48rem) / 2));
+  }
+}
+/* ≥1200 三栏壳：右侧为 300px 工具 dock 留位，内容在侧栏与 dock 之间居中 */
+@media (min-width: 1200px) {
+  .page {
+    margin-right: 300px;
+    padding-left: max(16px, calc((100% - 220px - 300px - 48rem) / 2));
+    padding-right: max(16px, calc((100% - 220px - 300px - 48rem) / 2));
   }
 }
 </style>

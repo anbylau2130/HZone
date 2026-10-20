@@ -180,6 +180,9 @@
     "playVideo": "Play video",
     "playAudio": "Play audio"
   },
+  "dock": {
+    "title": "Tools"
+  },
   "timeline": {
     "filterAll": "All",
     "kindSay": "Moments",

@@ -93,6 +93,7 @@
     </view>
 
     <AppSidebar current="index" />
+    <ToolDock />
     <AppTabBar current="index" />
   </view>
 </template>
@@ -116,6 +117,7 @@ import {
 } from '../../api/endpoints'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
+import ToolDock from '../../components/ToolDock.vue'
 import ContentCard from '../../components/ContentCard.vue'
 import SegmentedFilter from '../../components/SegmentedFilter.vue'
 import Heatmap from '../../components/Heatmap.vue'
@@ -487,6 +489,14 @@ function onCardDeleted(id: string) {
   }
   .today-card {
     padding: 40px 16px 32px;
+  }
+}
+/* ≥1200 三栏壳：右侧为 300px 工具 dock 留位，内容在侧栏与 dock 之间居中 */
+@media (min-width: 1200px) {
+  .page {
+    margin-right: 300px;
+    padding-left: max(16px, calc((100% - 220px - 300px - 60rem) / 2));
+    padding-right: max(16px, calc((100% - 220px - 300px - 60rem) / 2));
   }
 }
 </style>

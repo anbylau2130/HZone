@@ -954,7 +954,8 @@ async function submit() {
 }
 @media (min-width: 768px) {
   .page {
-    padding: 32px max(24px, calc((100% - 80rem) / 2));
+    /* journal 模式：编辑器区域 56rem 宽（say 模式由下方 say-mode 覆盖为 42rem） */
+    padding: 32px max(24px, calc((100% - 56rem) / 2));
   }
   /* say 短内容：单栏限宽居中（覆盖视口 padding 公式，否则 672px 盒子被 185px×2 的 padding 挤扁） */
   .page.say-mode {

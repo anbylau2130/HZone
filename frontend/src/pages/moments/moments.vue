@@ -68,6 +68,7 @@
     </view>
 
     <AppSidebar current="moments" />
+    <ToolDock />
     <AppTabBar current="moments" />
     <view class="fab" @click="goPublish">＋</view>
   </view>
@@ -80,6 +81,7 @@ import MediaGrid from '../../components/MediaGrid.vue'
 import RecipientsBar from '../../components/RecipientsBar.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
+import ToolDock from '../../components/ToolDock.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, deleteContent, type ContentItem } from '../../api/endpoints'
 import { formatRelativeTime } from '../../utils/format'
@@ -315,7 +317,7 @@ function goSearch() {
     padding: 24px;
   }
   .container {
-    max-width: 42rem;
+    max-width: 48rem;
     margin: 0 auto;
     width: 100%;
   }
@@ -330,6 +332,12 @@ function goSearch() {
   }
   .write-btn.empty-cta {
     display: inline-flex;
+  }
+}
+/* ≥1200 三栏壳：右侧为 300px 工具 dock 留位，容器在剩余空间居中 */
+@media (min-width: 1200px) {
+  .page {
+    margin-right: 300px;
   }
 }
 </style>

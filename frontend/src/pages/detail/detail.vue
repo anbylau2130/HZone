@@ -345,7 +345,7 @@ async function postComment() {
 }
 @media (min-width: 768px) {
   .page {
-    max-width: calc(42rem + 32px);
+    max-width: calc(48rem + 32px);
     margin: 0 auto;
     padding: 24px 16px;
   }

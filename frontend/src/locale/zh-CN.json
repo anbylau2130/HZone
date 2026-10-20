@@ -121,6 +121,9 @@
     "theme": "主题",
     "settings": "设置"
   },
+  "dock": {
+    "title": "工具"
+  },
   "moments": {
     "title": "随记",
     "desc": "记下此刻的心情与瞬间",

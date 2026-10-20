@@ -42,6 +42,7 @@
     </view>
 
     <AppSidebar current="journals" />
+    <ToolDock />
     <AppTabBar current="journals" />
     <view class="fab" @click="goPublish">＋</view>
   </view>
@@ -52,6 +53,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
+import ToolDock from '../../components/ToolDock.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, type ContentItem } from '../../api/endpoints'
 import { formatDateTime, stripMarkdown } from '../../utils/format'
@@ -249,6 +251,12 @@ function summary(c: ContentItem): string {
   }
   .write-btn.empty-cta {
     display: inline-flex;
+  }
+}
+/* ≥1200 三栏壳：右侧为 300px 工具 dock 留位，容器在剩余空间居中 */
+@media (min-width: 1200px) {
+  .page {
+    margin-right: 300px;
   }
 }
 </style>
