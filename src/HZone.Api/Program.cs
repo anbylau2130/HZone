@@ -95,6 +95,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapContentEndpoints();
+app.MapMeStatsEndpoints();
 app.MapCommentEndpoints();
 app.MapInboxEndpoints();
 app.MapMediaEndpoints();

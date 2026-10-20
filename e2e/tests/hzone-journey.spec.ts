@@ -61,6 +61,9 @@ test('journey 1: register via UI, verify via email link route, login via UI', as
   await expect(page.getByText('邮箱验证成功')).toBeVisible({ timeout: 15_000 })
 
   await loginViaUi(page, { email, password: PASSWORD, nickname: 'CarlUi', userId: '', token: '' })
+  // ticket 04：登录后落在新首页，今日卡 + 四张统计卡
+  await expect(page.locator('.today-card')).toBeVisible()
+  await expect(page.locator('.stat-card')).toHaveCount(4)
 })
 
 // ---------- 旅程 2：A 发随记 @ B → B 站内信红点 → 详情 → 评论 → A 看到评论站内信 ----------
@@ -76,12 +79,12 @@ test('journey 2: say with mention, inbox red dot, detail comment loop', async ({
   await pageA.waitForResponse((r) => r.url().includes('/api/contents/says') && r.status() === 201)
   await expect(pageA.getByText('发布成功')).toBeVisible()
 
-  // B 登录：首页站内信红点（friendRequest + mentioned = 2 条未读）
+  // B 登录：首页侧栏「收到」tab 红点（friendRequest + mentioned = 2 条未读）
   const pageB = await newSession(browser, bob)
-  const inboxEntry = pageB.locator('.entry', { hasText: '站内信' })
-  await expect(inboxEntry.locator('.dot')).toBeVisible({ timeout: 10_000 })
-  await expect(inboxEntry.locator('.dot')).toHaveText('2')
-  await inboxEntry.click()
+  const receivedTab = pageB.locator('.sb-item', { hasText: '收到' })
+  await expect(receivedTab.locator('.dot')).toBeVisible({ timeout: 10_000 })
+  await expect(receivedTab.locator('.dot')).toHaveText('2')
+  await openEntry(pageB, '站内信')
 
   // 站内信列表：mentioned 事件 → 进详情 → 评论
   const item = pageB.locator('.item', { hasText: '内容中 @ 了你' })
@@ -92,12 +95,12 @@ test('journey 2: say with mention, inbox red dot, detail comment loop', async ({
   await uniButton(pageB, '发送').click()
   await expect(pageB.getByText('UI 旅程评论：同意！')).toBeVisible()
 
-  // A 的会话回到前台（刷新触发站内信拉取，对齐"登录后可见"的产品语义）
-  await pageA.reload()
-  await expect(pageA.locator('.nickname').first()).toBeVisible({ timeout: 15_000 })
-  const aliceInboxEntry = pageA.locator('.entry', { hasText: '站内信' })
-  await expect(aliceInboxEntry.locator('.dot')).toBeVisible({ timeout: 10_000 })
-  await aliceInboxEntry.click()
+  // A 的会话回到前台（回到首页触发站内信拉取，对齐"登录后可见"的产品语义）
+  await pageA.goto('/#/pages/home/home')
+  await expect(pageA.locator('.today-card')).toBeVisible({ timeout: 15_000 })
+  const aliceReceivedTab = pageA.locator('.sb-item', { hasText: '收到' })
+  await expect(aliceReceivedTab.locator('.dot')).toBeVisible({ timeout: 10_000 })
+  await openEntry(pageA, '站内信')
   await expect(pageA.getByText('评论了你的内容').first()).toBeVisible()
 })
 
@@ -166,7 +169,7 @@ test('journey 5: theme dark persists, language en persists after reload', async 
 // ---------- 旅程 6：游客访问受保护页面 → 跳登录 ----------
 
 test('journey 6: guest visiting protected page redirects to login', async ({ page }) => {
-  await page.goto('/#/pages/index/index')
+  await page.goto('/#/pages/home/home')
   await expect(uniButton(page, '登录')).toBeVisible({ timeout: 15_000 })
   await expect(page).toHaveURL(/pages\/login\/login/)
 })
@@ -176,8 +179,10 @@ test('journey 6: guest visiting protected page redirects to login', async ({ pag
 test('journey 7: publish with mocked weather snapshot, detail shows lunar + weather', async ({
   browser
 }) => {
-  const pageA = await newSession(browser, alice)
-
+  // ticket 04：新首页会自动采集天气（getWeather 模块级缓存），mock 必须在登录前装好，
+  // 否则首页先用真实网络拿到城市，缓存与 mock 不一致。
+  const ctx = await browser.newContext()
+  const pageA = await ctx.newPage()
   // mock 浏览器直调的 ipwho.is 与 Open-Meteo（免真实外网依赖）
   await pageA.route('**ipwho.is**', (route) =>
     route.fulfill({
@@ -194,10 +199,13 @@ test('journey 7: publish with mocked weather snapshot, detail shows lunar + weat
     })
   )
 
+  await loginViaUi(pageA, alice)
+
   await openEntry(pageA, '发布内容')
 
-  // 天气条自动预览：城市 + 现象 + 温度
+  // 天气条自动预览：城市 + 精确温度（含单位），mock 已就位
   await expect(pageA.getByText('杭州').first()).toBeVisible()
+  await expect(pageA.getByText('12°C').first()).toBeVisible()
   await expect(pageA.getByText('12°C').first()).toBeVisible()
 
   const SAY_WITH_WEATHER = 'UI 旅程：天气快照随记'

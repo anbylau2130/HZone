@@ -74,7 +74,21 @@
   "home": {
     "welcome": "Hello, {name}",
     "logout": "Sign out",
-    "adminBadge": "Admin"
+    "adminBadge": "Admin",
+    "monthDay": "{m}/{d}",
+    "weekday0": "Sunday",
+    "weekday1": "Monday",
+    "weekday2": "Tuesday",
+    "weekday3": "Wednesday",
+    "weekday4": "Thursday",
+    "weekday5": "Friday",
+    "weekday6": "Saturday",
+    "statsSays": "Moments",
+    "statsJournals": "Journals",
+    "statsFriends": "Friends",
+    "statsStreak": "Streak",
+    "startToday": "Start today",
+    "timeline": "My timeline"
   },
   "hub": {
     "publish": "Publish",

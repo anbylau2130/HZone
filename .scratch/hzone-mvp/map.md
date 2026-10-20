@@ -48,6 +48,8 @@ cd frontend && pnpm dev:h5               # H5 :5173（/api 代理 :5000）
 
 ## 验证口径
 
+**开发库 Schema 变更注意**：EnsureCreated 不给已存在的库加列——后端加字段后要么删 `src/HZone.Api/data/hzone.db` 重建，要么在线 ALTER TABLE 补列（t20 曾用后者救场）。正式方案是切到 EF Migrations（待办）。
+
 - 后端：`dotnet test`（WebApplicationFactory 进程内 e2e，HTTP 边界 seam）
 - 前端 H5：`pnpm -C frontend dev:h5`（:5173，/api 代理到 :5000）+ Playwright（ticket 15）
 - 全部本地，无 Docker

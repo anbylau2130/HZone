@@ -201,7 +201,9 @@ export function uniButton(page: Page, text: string): Locator {
   return page.locator('uni-button', { hasText: text }).first()
 }
 
-/** 走 UI 登录并停在首页（你好，{nickname} 可见）。 */
+/**
+ * 走 UI 登录并停在首页（ticket 04：新首页，今日卡可见）。
+ */
 export async function loginViaUi(page: Page, user: TestUser): Promise<void> {
   // 已在登录页（登出后的常态）则不再 goto：hash URL 的 goto 会触发整页 reload，
   // 曾中断进行中的登录 POST（status -1）。仅在需要时跳转。
@@ -212,28 +214,39 @@ export async function loginViaUi(page: Page, user: TestUser): Promise<void> {
   await fillUniInput(page, '邮箱', user.email)
   await fillUniInput(page, '密码', user.password)
   await uniButton(page, '登录').click()
-  await expect(page.locator('.nickname', { hasText: user.nickname })).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('.today-card')).toBeVisible({ timeout: 20_000 })
   // uni-app reLaunch 后页面转场/keep-alive 尚在收尾，立刻点入口偶发路由栈错乱
   // （详情见 ticket 15 排查记录）：等转场稳定再继续。
   await page.waitForTimeout(1_500)
 }
 
-/** 首页点击功能入口（发布内容/站内信/好友/搜索…）。 */
+/**
+ * 打开功能入口（发布内容/站内信/好友/搜索…）。ticket 04 删除了旧首页入口列表
+ * （部分入口已并入设置页），改为按目标直达路由导航。
+ */
 export async function openEntry(page: Page, label: string): Promise<void> {
-  await page.locator('.entry', { hasText: label }).click()
+  const entryUrls: Record<string, string> = {
+    发布内容: '/pages/publish/publish',
+    站内信: '/pages/inbox/inbox',
+    好友: '/pages/friends/friends',
+    搜索: '/pages/search/search'
+  }
+  const path = entryUrls[label]
+  if (!path) throw new Error(`unknown entry: ${label}`)
+  await page.goto(`/#${path}`)
 }
 
 /**
  * 回首页后退出登录。深层页面沿浏览器历史后退（uni-app hash 路由响应 popstate），
- * 避免 hash URL goto 的整页 reload 竞态。
+ * 避免 hash URL goto 的整页 reload 竞态。退出按钮在桌面侧栏底部（首页不再有退出按钮）。
  */
 export async function logoutViaUi(page: Page): Promise<void> {
   for (let i = 0; i < 4; i++) {
-    if (page.url().includes('pages/index/index')) break
+    if (page.url().includes('pages/home/home')) break
     await page.goBack()
-    await expect(page.locator('.nickname').first()).toBeVisible({ timeout: 10_000 }).catch(() => {})
+    await expect(page.locator('.today-card')).toBeVisible({ timeout: 10_000 }).catch(() => {})
   }
-  await expect(page.locator('.nickname').first()).toBeVisible({ timeout: 10_000 })
-  await uniButton(page, '退出登录').click()
+  await expect(page.locator('.today-card')).toBeVisible({ timeout: 10_000 })
+  await page.locator('.sb-bottom .sb-item', { hasText: '退出登录' }).click()
   await expect(uniButton(page, '登录')).toBeVisible({ timeout: 10_000 })
 }

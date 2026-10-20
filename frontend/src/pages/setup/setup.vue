@@ -62,7 +62,7 @@ onLoad(() => {
   setNavTitle('setup.title')
   getSetupStatus()
     .then((initialized) => {
-      if (initialized) uni.reLaunch({ url: '/pages/index/index' })
+      if (initialized) uni.reLaunch({ url: '/pages/home/home' })
     })
     .catch(() => {
       // 探测失败（后端不可达）：停留本页，提交时会再报错
@@ -94,7 +94,7 @@ async function submit() {
     markSetupInitialized()
     await auth.login(mail, password.value)
     uni.showToast({ title: t('setup.success'), icon: 'success' })
-    setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 800)
+    setTimeout(() => uni.reLaunch({ url: '/pages/home/home' }), 800)
     return
   } catch (e) {
     const err = e as ApiError

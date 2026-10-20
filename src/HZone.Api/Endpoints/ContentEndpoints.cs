@@ -10,7 +10,7 @@ namespace HZone.Api.Endpoints;
 
 public static class ContentEndpoints
 {
-    private static readonly Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>
+    internal static readonly Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>
         RequireInitialized = async (context, next) =>
         {
             var db = context.HttpContext.RequestServices.GetRequiredService<HZoneDbContext>();

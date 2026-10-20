@@ -144,6 +144,23 @@ export function searchContents(q: string, kind: KindFilter, offset: number, limi
   return request<ContentPage>(`/api/search${qs({ q, kind, offset, limit })}`)
 }
 
+// ---------- 我的统计（首页 ticket 04） ----------
+
+export interface MeStats {
+  totals: {
+    says: number
+    journals: number
+    friends: number
+  }
+  streak: number
+  today: LunarInfo
+}
+
+/** GET /me/stats：四卡数字 + 连续记录天数 + 今日农历（后端推导，前端不实现农历）。 */
+export function getMyStats() {
+  return request<MeStats>('/api/me/stats')
+}
+
 // ---------- 好友 ----------
 
 export interface FriendInfo {

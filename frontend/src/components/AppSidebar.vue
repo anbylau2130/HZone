@@ -50,7 +50,7 @@ interface TabItem {
 const props = defineProps<{ current: TabKey }>()
 
 const tabs: TabItem[] = [
-  { key: 'index', labelKey: 'tabs.index', icon: '⌂', url: '/pages/index/index' },
+  { key: 'index', labelKey: 'tabs.index', icon: '⌂', url: '/pages/home/home' },
   { key: 'moments', labelKey: 'tabs.moments', icon: '✎', url: '/pages/moments/moments' },
   { key: 'journals', labelKey: 'tabs.journals', icon: '▤', url: '/pages/journals/journals' },
   { key: 'received', labelKey: 'tabs.received', icon: '◉', url: '/pages/received/received' },

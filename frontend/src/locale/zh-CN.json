@@ -74,7 +74,21 @@
   "home": {
     "welcome": "你好，{name}",
     "logout": "退出登录",
-    "adminBadge": "管理员"
+    "adminBadge": "管理员",
+    "monthDay": "{m}月{d}日",
+    "weekday0": "星期日",
+    "weekday1": "星期一",
+    "weekday2": "星期二",
+    "weekday3": "星期三",
+    "weekday4": "星期四",
+    "weekday5": "星期五",
+    "weekday6": "星期六",
+    "statsSays": "随记",
+    "statsJournals": "日志",
+    "statsFriends": "好友",
+    "statsStreak": "连续记录",
+    "startToday": "从今天开始",
+    "timeline": "我的时间线"
   },
   "hub": {
     "publish": "发布内容",

@@ -56,7 +56,7 @@ async function submit() {
   loading.value = true
   try {
     await auth.login(email.value, password.value)
-    uni.reLaunch({ url: '/pages/index/index' })
+    uni.reLaunch({ url: '/pages/home/home' })
   } catch {
     // 错误提示由请求层统一 toast
   } finally {
