@@ -125,6 +125,24 @@
     "submit": "发布",
     "success": "发布成功"
   },
+  "weather": {
+    "title": "天气",
+    "add": "添加天气",
+    "edit": "修改",
+    "clear": "清除",
+    "city": "城市",
+    "tempPlaceholder": "温度 (°C)",
+    "conditions": {
+      "sunny": "晴",
+      "cloudy": "多云",
+      "overcast": "阴",
+      "fog": "雾",
+      "rain": "雨",
+      "showers": "阵雨",
+      "snow": "雪",
+      "thunderstorm": "雷暴"
+    }
+  },
   "media": {
     "playVideo": "播放视频",
     "playAudio": "播放音频"

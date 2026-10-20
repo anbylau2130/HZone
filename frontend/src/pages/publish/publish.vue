@@ -44,6 +44,21 @@
       </view>
     </view>
 
+    <view class="weather" @click="openWeatherPicker">
+      <template v-if="weather">
+        <text class="w-icon">{{ CONDITION_ICONS[weather.condition] }}</text>
+        <text class="w-text">
+          {{ weather.city }} · {{ $t('weather.conditions.' + weather.condition) }} ·
+          {{ formatTemp(weather.tempC) }}
+        </text>
+        <text class="w-action">{{ $t('weather.edit') }}</text>
+      </template>
+      <template v-else>
+        <text class="w-icon">📍</text>
+        <text class="w-action">{{ $t('weather.add') }}</text>
+      </template>
+    </view>
+
     <view class="recipients">
       <text class="label">{{ $t('publish.recipients') }}</text>
       <view class="chips">
@@ -55,6 +70,35 @@
     <button class="btn" :disabled="busy" @click="submit">{{ $t('publish.submit') }}</button>
 
     <FriendPicker v-model:visible="pickerVisible" @confirm="onFriendsConfirmed" />
+
+    <view v-if="weatherPickerOpen" class="overlay" @click="weatherPickerOpen = false">
+      <view class="sheet" @click.stop>
+        <view class="head">
+          <text class="sheet-title">{{ $t('weather.title') }}</text>
+          <text class="cancel" @click="weatherPickerOpen = false">{{ $t('common.cancel') }}</text>
+        </view>
+        <view class="cond-grid">
+          <view
+            v-for="c in WEATHER_CONDITIONS"
+            :key="c"
+            class="cond"
+            :class="{ on: wCondition === c }"
+            @click="wCondition = c"
+          >
+            <text class="cond-icon">{{ CONDITION_ICONS[c] }}</text>
+            <text class="cond-name">{{ $t('weather.conditions.' + c) }}</text>
+          </view>
+        </view>
+        <view class="w-fields">
+          <input v-model="wCity" class="field" :placeholder="$t('weather.city')" />
+          <input v-model="wTemp" class="field" type="digit" :placeholder="$t('weather.tempPlaceholder')" />
+        </view>
+        <view class="sheet-actions">
+          <button class="mini ghost" @click="clearWeather">{{ $t('weather.clear') }}</button>
+          <button class="mini" @click="confirmWeather">{{ $t('common.confirm') }}</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -63,14 +107,32 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import FriendPicker from '../../components/FriendPicker.vue'
-import { createSay, createJournal, type FriendInfo } from '../../api/endpoints'
+import {
+  createSay,
+  createJournal,
+  type FriendInfo,
+  type WeatherSnapshotInput
+} from '../../api/endpoints'
 import { uploadFile } from '../../api/client'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
+import { CONDITION_ICONS, WEATHER_CONDITIONS, getWeather, type WeatherSnapshot } from '../../utils/weather'
 
 onShow(() => {
   setNavTitle('hub.publish')
+  // 进入时自动获取天气（模块级缓存，一次会话只探一次）；失败静默降级为手动选择
+  if (!weatherAutoDone) {
+    weatherAutoDone = true
+    getWeather()
+      .then((w) => {
+        if (!weather.value) weather.value = w
+      })
+      .catch(() => {})
+  }
 })
+
+// 页面实例内只自动获取一次（用户清除后不再回填）
+let weatherAutoDone = false
 
 // 支持 ?kind=say / ?kind=journal 预选发布类型（随记/日志分页入口跳入）
 onLoad((query) => {
@@ -101,6 +163,46 @@ const uploading = ref(false)
 const submitting = ref(false)
 
 const busy = computed(() => uploading.value || submitting.value)
+
+// ---------- 天气（homepage-v2）：快照随发布提交，可改可清 ----------
+const weather = ref<WeatherSnapshot | null>(null)
+const weatherPickerOpen = ref(false)
+const wCondition = ref<WeatherSnapshot['condition']>('sunny')
+const wCity = ref('')
+const wTemp = ref('')
+
+function openWeatherPicker() {
+  const w = weather.value
+  wCondition.value = w?.condition ?? 'sunny'
+  wCity.value = w?.city ?? ''
+  wTemp.value = w ? String(Math.round(w.tempC)) : ''
+  weatherPickerOpen.value = true
+}
+
+function confirmWeather() {
+  const temp = Number.parseFloat(wTemp.value)
+  weather.value = {
+    city: wCity.value.trim(),
+    condition: wCondition.value,
+    tempC: Number.isFinite(temp) ? temp : 0
+  }
+  weatherPickerOpen.value = false
+}
+
+function clearWeather() {
+  weather.value = null
+  weatherPickerOpen.value = false
+}
+
+function formatTemp(tempC: number): string {
+  return `${Math.round(tempC)}°C`
+}
+
+function toSnapshot(): WeatherSnapshotInput | undefined {
+  return weather.value
+    ? { city: weather.value.city, condition: weather.value.condition, tempC: weather.value.tempC }
+    : undefined
+}
 
 // 桌面端实时预览（H5 only；marked 默认转义输出，内容可见名单本就受限）
 const previewHtml = computed(() => marked.parse(markdown.value) as string)
@@ -177,13 +279,13 @@ async function submit() {
         uni.showToast({ title: t('publish.sayEmpty'), icon: 'none' })
         return
       }
-      await createSay(sayText.value, recipientIds, mediaIds)
+      await createSay(sayText.value, recipientIds, mediaIds, toSnapshot())
     } else {
       if (!title.value.trim() || !markdown.value.trim()) {
         uni.showToast({ title: t('publish.journalEmpty'), icon: 'none' })
         return
       }
-      await createJournal(title.value, markdown.value, recipientIds)
+      await createJournal(title.value, markdown.value, recipientIds, toSnapshot())
     }
     uni.showToast({ title: t('publish.success'), icon: 'success' })
     setTimeout(() => {
@@ -306,6 +408,116 @@ async function submit() {
 .hint {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
+}
+.weather {
+  background: var(--hz-color-surface);
+  border-radius: var(--hz-radius-lg);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.w-icon {
+  font-size: 18px;
+}
+.w-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text);
+}
+.w-action {
+  margin-left: auto;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-primary);
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 999;
+}
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  background: var(--hz-color-surface);
+  border-radius: var(--hz-radius-lg) var(--hz-radius-lg) 0 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sheet-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--hz-color-text);
+}
+.cancel {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.cond-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.cond {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0;
+  border: 1px solid var(--hz-color-border);
+  border-radius: var(--hz-radius-md);
+}
+.cond.on {
+  border-color: var(--hz-color-primary);
+  background: var(--hz-color-bg);
+}
+.cond-icon {
+  font-size: 22px;
+}
+.cond-name {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text);
+}
+.w-fields {
+  display: flex;
+  gap: 8px;
+}
+.field {
+  flex: 1;
+  height: 38px;
+  border: 1px solid var(--hz-color-border);
+  border-radius: var(--hz-radius-md);
+  padding: 0 12px;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text);
+  background: var(--hz-color-bg);
+}
+.sheet-actions {
+  display: flex;
+  gap: 8px;
+}
+.mini {
+  flex: 1;
+  height: 38px;
+  line-height: 38px;
+  font-size: var(--hz-font-size-sm);
+  background: var(--hz-color-primary);
+  color: #fff;
+  border-radius: var(--hz-radius-md);
+}
+.mini.ghost {
+  background: var(--hz-color-surface);
+  color: var(--hz-color-text-secondary);
+  border: 1px solid var(--hz-color-border);
 }
 .recipients {
   background: var(--hz-color-surface);

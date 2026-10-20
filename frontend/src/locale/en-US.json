@@ -125,6 +125,24 @@
     "submit": "Publish",
     "success": "Published"
   },
+  "weather": {
+    "title": "Weather",
+    "add": "Add weather",
+    "edit": "Edit",
+    "clear": "Clear",
+    "city": "City",
+    "tempPlaceholder": "Temperature (°C)",
+    "conditions": {
+      "sunny": "Sunny",
+      "cloudy": "Cloudy",
+      "overcast": "Overcast",
+      "fog": "Fog",
+      "rain": "Rain",
+      "showers": "Showers",
+      "snow": "Snow",
+      "thunderstorm": "Thunderstorm"
+    }
+  },
   "media": {
     "playVideo": "Play video",
     "playAudio": "Play audio"

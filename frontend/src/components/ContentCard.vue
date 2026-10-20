@@ -5,6 +5,7 @@
       <text class="kind">{{ kindLabel }}</text>
       <text class="time">{{ formatDateTime(content.createdAt) }}</text>
     </view>
+    <text v-if="weatherChip" class="weather-chip">{{ weatherChip }}</text>
     <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
     <text v-else class="text">{{ content.text }}</text>
     <MediaGrid v-if="hasMedia" :media="content.media" />
@@ -21,9 +22,10 @@ import { useI18n } from 'vue-i18n'
 import MediaGrid from './MediaGrid.vue'
 import RecipientsBar from './RecipientsBar.vue'
 import { formatDateTime } from '../utils/format'
+import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
 import type { ContentItem } from '../api/endpoints'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const props = defineProps<{ content: ContentItem }>()
 
 defineEmits<{ (e: 'open', c: ContentItem): void }>()
@@ -32,6 +34,14 @@ const hasMedia = computed(() => (props.content.media ?? []).length > 0)
 const kindLabel = computed(() =>
   props.content.kind === 'journal' ? t('timeline.kindJournal') : t('timeline.kindSay')
 )
+// 列表卡只显天气（现象图标+温度），无则不显
+const weatherChip = computed(() => {
+  const w = props.content.weather
+  if (!w?.city) return ''
+  const icon = CONDITION_ICONS[w.condition as WeatherCondition] ?? ''
+  const temp = w.tempC !== null && w.tempC !== undefined ? `${Math.round(w.tempC)}°C` : ''
+  return [icon, temp].filter(Boolean).join(' ')
+})
 </script>
 
 <style scoped>
@@ -59,6 +69,10 @@ const kindLabel = computed(() =>
 }
 .time {
   margin-left: auto;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.weather-chip {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
 }

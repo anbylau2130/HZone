@@ -7,6 +7,8 @@
         <text class="time">{{ formatDateTime(content.createdAt) }}</text>
       </view>
 
+      <text v-if="contextLine" class="context-line">{{ contextLine }}</text>
+
       <template v-if="!editing">
         <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
         <view
@@ -71,6 +73,8 @@ import { useI18n } from 'vue-i18n'
 import MediaGrid from '../../components/MediaGrid.vue'
 import RecipientsBar from '../../components/RecipientsBar.vue'
 import { formatDateTime } from '../../utils/format'
+import { formatLunar } from '../../utils/lunar'
+import { CONDITION_ICONS, type WeatherCondition } from '../../utils/weather'
 import {
   getContent,
   updateContent,
@@ -82,7 +86,7 @@ import {
 } from '../../api/endpoints'
 import { useAuthStore } from '../../stores/auth'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const auth = useAuthStore()
 
 const contentId = ref('')
@@ -100,6 +104,30 @@ const kindLabel = computed(() =>
 
 // 日志正文渲染完整 Markdown（marked 默认转义输出）
 const mdHtml = computed(() => marked.parse(content.value?.markdownBody ?? '') as string)
+
+// 农历+天气全显条（homepage-v2）：`乙巳年 腊月初一 · 大雪 ｜ 杭州 · 晴 · 12°C`
+const contextLine = computed(() => {
+  const lunar = formatLunar(content.value?.lunar)
+  const w = content.value?.weather
+  const weatherText = w?.city ? formatWeather(w) : null
+  if (!lunar && !weatherText) return ''
+  return [lunar, weatherText].filter(Boolean).join(' ｜ ')
+})
+
+function conditionLabel(condition: string): string {
+  return te(`weather.conditions.${condition}`) ? t(`weather.conditions.${condition}`) : condition
+}
+
+function formatWeather(w: NonNullable<ContentItem['weather']>): string {
+  const parts = [w.city ?? '']
+  if (w.condition) {
+    parts.push(conditionLabel(w.condition))
+    if (w.tempC !== null && w.tempC !== undefined) {
+      parts.push(`${Math.round(w.tempC)}°C`)
+    }
+  }
+  return `${CONDITION_ICONS[w.condition as WeatherCondition] ?? ''} ${parts.filter(Boolean).join(' · ')}`.trim()
+}
 
 onLoad((query) => {
   setNavTitle('detail.title')
@@ -216,6 +244,10 @@ async function postComment() {
 }
 .time {
   margin-left: auto;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.context-line {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
 }

@@ -170,3 +170,56 @@ test('journey 6: guest visiting protected page redirects to login', async ({ pag
   await expect(uniButton(page, '登录')).toBeVisible({ timeout: 15_000 })
   await expect(page).toHaveURL(/pages\/login\/login/)
 })
+
+// ---------- 旅程 7：天气采集（mock 外部服务）→ 发布快照 → 详情全显 ----------
+
+test('journey 7: publish with mocked weather snapshot, detail shows lunar + weather', async ({
+  browser
+}) => {
+  const pageA = await newSession(browser, alice)
+
+  // mock 浏览器直调的 ipwho.is 与 Open-Meteo（免真实外网依赖）
+  await pageA.route('**ipwho.is**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ city: '杭州', latitude: 30.27, longitude: 120.15 })
+    })
+  )
+  await pageA.route('**api.open-meteo.com**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ current: { temperature_2m: 12, weather_code: 0 } })
+    })
+  )
+
+  await openEntry(pageA, '发布内容')
+
+  // 天气条自动预览：城市 + 现象 + 温度
+  await expect(pageA.getByText('杭州').first()).toBeVisible()
+  await expect(pageA.getByText('12°C').first()).toBeVisible()
+
+  const SAY_WITH_WEATHER = 'UI 旅程：天气快照随记'
+  await pageA.locator('uni-textarea textarea').fill(SAY_WITH_WEATHER)
+  await uniButton(pageA, '选择好友').click()
+  await pageA.locator('.sheet .row', { hasText: bob.nickname }).click()
+  await uniButton(pageA, '确定').click()
+  const respPromise = pageA.waitForResponse(
+    (r) => r.url().includes('/api/contents/says') && r.status() === 201
+  )
+  await uniButton(pageA, '发布').click()
+  const resp = await respPromise
+  const created = (await resp.json()) as { id: string }
+  await expect(pageA.getByText('发布成功')).toBeVisible()
+
+  // 详情：农历+天气全显条（农历宽松匹配：含"年"且含"月"）
+  await pageA.goto(`/#/pages/detail/detail?id=${created.id}`)
+  const line = pageA.locator('.context-line')
+  await expect(line).toBeVisible({ timeout: 15_000 })
+  const text = (await line.textContent()) ?? ''
+  expect(text).toContain('年')
+  expect(text).toContain('月')
+  expect(text).toContain('杭州')
+  expect(text).toContain('12°C')
+})

@@ -24,6 +24,25 @@ export interface MediaItem {
   sizeBytes: number
 }
 
+export interface LunarInfo {
+  ganzhiYear: string
+  monthDay: string
+  term: string
+}
+
+export interface WeatherInfo {
+  city: string | null
+  condition: string | null
+  tempC: number | null
+}
+
+/** 天气快照提交体（采集见 utils/weather.ts）。 */
+export interface WeatherSnapshotInput {
+  city: string
+  condition: string
+  tempC: number
+}
+
 export interface ContentItem {
   id: string
   kind: 'say' | 'journal'
@@ -36,6 +55,8 @@ export interface ContentItem {
   updatedAt: string
   commentCount: number
   media?: MediaItem[] | null
+  lunar?: LunarInfo | null
+  weather?: WeatherInfo | null
 }
 
 export interface ContentPage {
@@ -58,17 +79,27 @@ function qs(params: Record<string, string | number | undefined>): string {
   return s ? `?${s}` : ''
 }
 
-export function createSay(text: string, recipientIds: string[], mediaIds?: string[]) {
+export function createSay(
+  text: string,
+  recipientIds: string[],
+  mediaIds?: string[],
+  weather?: WeatherSnapshotInput
+) {
   return request<ContentItem>('/api/contents/says', {
     method: 'POST',
-    data: { text, recipientIds, mediaIds: mediaIds ?? [] }
+    data: { text, recipientIds, mediaIds: mediaIds ?? [], weather }
   })
 }
 
-export function createJournal(title: string, markdown: string, recipientIds: string[]) {
+export function createJournal(
+  title: string,
+  markdown: string,
+  recipientIds: string[],
+  weather?: WeatherSnapshotInput
+) {
   return request<ContentItem>('/api/contents/journals', {
     method: 'POST',
-    data: { title, markdown, recipientIds }
+    data: { title, markdown, recipientIds, weather }
   })
 }
 
