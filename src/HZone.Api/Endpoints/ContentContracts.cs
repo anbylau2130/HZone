@@ -2,20 +2,38 @@ using HZone.Core.Entities;
 
 namespace HZone.Api.Endpoints;
 
-public record CreateSayRequest(string Text, List<Guid> RecipientIds, List<Guid>? MediaIds = null);
+/// <summary>
+/// 天气快照（homepage-v2）：客户端采集，保存即快照，服务端不代查。
+/// </summary>
+public record WeatherSnapshotRequest(string? City, string? Condition, double? TempC);
 
-public record CreateJournalRequest(string Title, string Markdown, List<Guid> RecipientIds);
+public record WeatherResponse(string? City, string? Condition, double? TempC);
+
+public record LunarResponse(string GanzhiYear, string MonthDay, string Term);
+
+public record CreateSayRequest(
+    string Text,
+    List<Guid> RecipientIds,
+    List<Guid>? MediaIds = null,
+    WeatherSnapshotRequest? Weather = null);
+
+public record CreateJournalRequest(
+    string Title,
+    string Markdown,
+    List<Guid> RecipientIds,
+    WeatherSnapshotRequest? Weather = null);
 
 /// <summary>
 /// 内容编辑：只更新显式提供的字段（null = 不修改）。recipientIds 非空时整体替换可见名单
-/// （story 14）：新增者收 Mentioned 站内信，被移除者立即失权。
+/// （story 14）：新增者收 Mentioned 站内信，被移除者立即失权。weather 非空时整体替换快照。
 /// </summary>
 public record UpdateContentRequest(
     string? Text = null,
     string? Title = null,
     string? MarkdownBody = null,
     List<Guid>? MediaIds = null,
-    List<Guid>? RecipientIds = null);
+    List<Guid>? RecipientIds = null,
+    WeatherSnapshotRequest? Weather = null);
 
 public record RecipientResponse(Guid UserId, string Nickname);
 
@@ -37,7 +55,9 @@ public record ContentResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     int CommentCount,
-    List<MediaResponse>? Media = null);
+    List<MediaResponse>? Media = null,
+    WeatherResponse? Weather = null,
+    LunarResponse? Lunar = null);
 
 /// <summary>
 /// 列表/搜索分页响应：total 为过滤后（分页前）总数。

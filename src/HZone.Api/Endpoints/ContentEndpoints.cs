@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using HZone.Core.Entities;
+using HZone.Core.Lunar;
 using HZone.Core.Interfaces;
 using HZone.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -46,6 +47,8 @@ public static class ContentEndpoints
                 CreatedAt = now,
                 UpdatedAt = now,
             };
+            ApplyWeatherSnapshot(say, request.Weather);
+            ApplyLunar(say, now);
 
             // 绑定媒体（ticket 06）：校验存在/属主/未绑定 + 数量与类型规则。
             var mediaError = await BindMediaAsync(db, authorId, say.Id, request.MediaIds, ct);
@@ -108,6 +111,8 @@ public static class ContentEndpoints
                 CreatedAt = now,
                 UpdatedAt = now,
             };
+            ApplyWeatherSnapshot(journal, request.Weather);
+            ApplyLunar(journal, now);
 
             foreach (var recipient in recipientsResult.Recipients)
             {
@@ -266,6 +271,12 @@ public static class ContentEndpoints
                     journal.MarkdownBody = request.MarkdownBody;
                     changed = true;
                 }
+            }
+
+            if (request.Weather is not null)
+            {
+                ApplyWeatherSnapshot(content, request.Weather);
+                changed = true;
             }
 
             if (changed)
@@ -438,12 +449,48 @@ public static class ContentEndpoints
         {
             Say s => new ContentResponse(
                 s.Id, "say", author, s.Text, null, null,
-                recipients, s.CreatedAt, s.UpdatedAt, commentCount, media),
+                recipients, s.CreatedAt, s.UpdatedAt, commentCount, media,
+                WeatherOf(s), LunarOf(s)),
             Journal j => new ContentResponse(
                 j.Id, "journal", author, null, j.Title, j.MarkdownBody,
-                recipients, j.CreatedAt, j.UpdatedAt, commentCount, media),
+                recipients, j.CreatedAt, j.UpdatedAt, commentCount, media,
+                WeatherOf(j), LunarOf(j)),
             _ => throw new InvalidOperationException("unknown content type"),
         };
+    }
+
+    /// <summary>
+    /// 农历三字段装配：旧内容（农历列空）由 CreatedAt 惰性推导，不回写库。
+    /// </summary>
+    private static LunarResponse LunarOf(Content content)
+    {
+        return string.IsNullOrEmpty(content.LunarGanzhiYear)
+            ? FromComputed(LunarCalendar.Compute(new DateTimeOffset(content.CreatedAt, TimeSpan.Zero)))
+            : new LunarResponse(content.LunarGanzhiYear, content.LunarMonthDay ?? string.Empty, content.LunarTerm ?? string.Empty);
+    }
+
+    private static LunarResponse FromComputed((string GanzhiYear, string MonthDay, string Term) lunar) =>
+        new(lunar.GanzhiYear, lunar.MonthDay, lunar.Term);
+
+    /// <summary>天气快照装配：无天气（WeatherCity 空）→ null（旧内容不回补）。</summary>
+    private static WeatherResponse? WeatherOf(Content content) =>
+        content.WeatherCity is null
+            ? null
+            : new WeatherResponse(content.WeatherCity, content.WeatherCondition, content.WeatherTempC);
+
+    /// <summary>天气快照写入：整体替换。</summary>
+    private static void ApplyWeatherSnapshot(Content content, WeatherSnapshotRequest? weather)
+    {
+        content.WeatherCity = weather?.City;
+        content.WeatherCondition = weather?.Condition;
+        content.WeatherTempC = weather?.TempC;
+    }
+
+    /// <summary>保存时计算并落库农历三字段（以 UTC 时间戳推中国区日期）。</summary>
+    private static void ApplyLunar(Content content, DateTime utcNow)
+    {
+        (content.LunarGanzhiYear, content.LunarMonthDay, content.LunarTerm) =
+            LunarCalendar.Compute(new DateTimeOffset(utcNow, TimeSpan.Zero));
     }
 
     private static async Task<AuthorResponse> LoadAuthorAsync(HZoneDbContext db, Guid userId, CancellationToken ct)
@@ -516,7 +563,9 @@ public static class ContentEndpoints
             c.CreatedAt,
             c.UpdatedAt,
             commentByContent.GetValueOrDefault(c.Id),
-            mediaByContent.GetValueOrDefault(c.Id) ?? new())).ToList();
+            mediaByContent.GetValueOrDefault(c.Id) ?? new(),
+            WeatherOf(c),
+            LunarOf(c))).ToList();
     }
 
     /// <summary>kind 查询参数校验：say/journal/null 之外 → 错误消息。</summary>
