@@ -1,10 +1,22 @@
 <template>
   <view class="page">
+    <view class="topbar">
+      <text class="topbar-title">{{ $t('moments.title') }}</text>
+      <view class="write-btn" @click="goPublish">
+        <text class="write-plus">＋</text>
+        <text>{{ $t('moments.write') }}</text>
+      </view>
+    </view>
+
     <view v-if="pagination.loading.value && !items.length" class="hint">
       <text class="hint-text">{{ $t('common.loading') }}</text>
     </view>
     <view v-else-if="!items.length" class="hint">
       <text class="hint-text">{{ $t('moments.empty') }}</text>
+      <view class="write-btn empty-cta" @click="goPublish">
+        <text class="write-plus">＋</text>
+        <text>{{ $t('moments.write') }}</text>
+      </view>
     </view>
 
     <view
@@ -37,6 +49,7 @@
 
     <AppSidebar current="moments" />
     <AppTabBar current="moments" />
+    <view class="fab" @click="goPublish">＋</view>
   </view>
 </template>
 
@@ -63,6 +76,10 @@ onShow(() => {
 function openDetail(c: ContentItem) {
   uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
 }
+
+function goPublish() {
+  uni.navigateTo({ url: '/pages/publish/publish?kind=say' })
+}
 </script>
 
 <style scoped>
@@ -74,6 +91,48 @@ function openDetail(c: ContentItem) {
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.topbar-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--hz-color-text);
+}
+.write-btn {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 18px;
+  background: var(--hz-color-primary);
+  color: #fff;
+  font-size: var(--hz-font-size-sm);
+}
+.write-plus {
+  font-size: 16px;
+}
+.write-btn.empty-cta {
+  display: inline-flex;
+}
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(70px + env(safe-area-inset-bottom) + 16px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--hz-color-primary);
+  color: #fff;
+  font-size: 28px;
+  line-height: 56px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  z-index: 10;
 }
 .card {
   background: var(--hz-color-surface);
@@ -137,7 +196,9 @@ function openDetail(c: ContentItem) {
 .hint {
   padding: 40px 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 .hint-text {
   font-size: var(--hz-font-size-sm);
@@ -161,6 +222,15 @@ function openDetail(c: ContentItem) {
   }
   .card {
     padding: 20px;
+  }
+  .write-btn {
+    display: flex;
+  }
+  .fab {
+    display: none;
+  }
+  .write-btn.empty-cta {
+    display: inline-flex;
   }
 }
 </style>

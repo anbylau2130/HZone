@@ -1,16 +1,6 @@
 <template>
   <view class="page">
-    <view class="filters">
-      <button
-        v-for="k in kinds"
-        :key="k.value"
-        class="filter"
-        :class="{ on: kind === k.value }"
-        @click="setKind(k.value)"
-      >
-        {{ $t(k.label) }}
-      </button>
-    </view>
+    <SegmentedFilter :model-value="kind" :options="kinds" @update:model-value="setKind" />
 
     <view v-if="pagination.loading.value && !items.length" class="hint">
       <text class="hint-text">{{ $t('common.loading') }}</text>
@@ -38,6 +28,7 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import ContentCard from '../../components/ContentCard.vue'
+import SegmentedFilter from '../../components/SegmentedFilter.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import { usePagination } from '../../composables/usePagination'
@@ -65,9 +56,10 @@ onLoad((query) => {
   pagination.refresh()
 })
 
-function setKind(k: KindFilter) {
-  if (kind.value === k) return
-  kind.value = k
+function setKind(k: string) {
+  const next = k as KindFilter
+  if (kind.value === next) return
+  kind.value = next
   pagination.refresh()
 }
 
@@ -85,25 +77,6 @@ function openDetail(c: ContentItem) {
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
-}
-.filters {
-  display: flex;
-  gap: 8px;
-}
-.filter {
-  flex: 1;
-  height: 36px;
-  line-height: 36px;
-  background: var(--hz-color-surface);
-  color: var(--hz-color-text-secondary);
-  border-radius: var(--hz-radius-md);
-  font-size: var(--hz-font-size-sm);
-  border: 1px solid var(--hz-color-border);
-}
-.filter.on {
-  background: var(--hz-color-primary);
-  color: #fff;
-  border-color: var(--hz-color-primary);
 }
 .hint {
   padding: 40px 0;
@@ -134,10 +107,6 @@ function openDetail(c: ContentItem) {
     margin-left: 220px;
     padding-left: max(16px, calc((100% - 220px - 42rem) / 2));
     padding-right: max(16px, calc((100% - 220px - 42rem) / 2));
-  }
-  .filter {
-    flex: 0 0 auto;
-    padding: 0 20px;
   }
 }
 </style>
