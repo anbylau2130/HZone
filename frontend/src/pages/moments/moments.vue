@@ -1,50 +1,60 @@
 <template>
   <view class="page">
-    <view class="topbar">
-      <text class="topbar-title">{{ $t('moments.title') }}</text>
-      <view class="write-btn" @click="goPublish">
-        <text class="write-plus">＋</text>
-        <text>{{ $t('moments.write') }}</text>
-      </view>
-    </view>
-
-    <view v-if="pagination.loading.value && !items.length" class="hint">
-      <text class="hint-text">{{ $t('common.loading') }}</text>
-    </view>
-    <view v-else-if="!items.length" class="hint">
-      <text class="hint-text">{{ $t('moments.empty') }}</text>
-      <view class="write-btn empty-cta" @click="goPublish">
-        <text class="write-plus">＋</text>
-        <text>{{ $t('moments.write') }}</text>
-      </view>
-    </view>
-
-    <view
-      v-for="c in items"
-      :key="c.id"
-      class="card"
-      @click="openDetail(c)"
-    >
-      <view class="head">
-        <view class="avatar">{{ c.author.nickname.slice(0, 1) }}</view>
-        <view class="head-mid">
-          <text class="name">{{ c.author.nickname }}</text>
-          <text class="time">{{ formatRelativeTime(c.createdAt) }}</text>
+    <view class="container">
+      <view class="topbar">
+        <text class="topbar-title">{{ $t('moments.title') }}</text>
+        <view class="topbar-actions">
+          <view v-if="items.length > 0" class="write-btn" @click="goPublish">
+            <text class="write-plus">＋</text>
+            <text>{{ $t('moments.write') }}</text>
+          </view>
+          <view class="search-btn" @click="goSearch">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="16.5" y1="16.5" x2="21" y2="21" />
+            </svg>
+          </view>
         </view>
       </view>
-      <text class="text">{{ c.text }}</text>
-      <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
-      <RecipientsBar :recipients="c.recipients" />
-      <view class="foot">
-        <text class="foot-btn">{{ $t('detail.commentCount', { n: c.commentCount }) }}</text>
-      </view>
-    </view>
 
-    <view v-if="items.length" class="more">
-      <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
-      <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
-        {{ $t('common.loadMore') }}
-      </button>
+      <view v-if="pagination.loading.value && !items.length" class="hint">
+        <text class="hint-text">{{ $t('common.loading') }}</text>
+      </view>
+      <view v-else-if="!items.length" class="hint empty">
+        <text class="hint-text">{{ $t('moments.empty') }}</text>
+        <view class="write-btn empty-cta" @click="goPublish">
+          <text class="write-plus">＋</text>
+          <text>{{ $t('moments.write') }}</text>
+        </view>
+      </view>
+
+      <view
+        v-for="c in items"
+        :key="c.id"
+        class="card"
+        @click="openDetail(c)"
+      >
+        <view class="head">
+          <view class="avatar">{{ c.author.nickname.slice(0, 1) }}</view>
+          <view class="head-mid">
+            <text class="name">{{ c.author.nickname }}</text>
+            <text class="time">{{ formatRelativeTime(c.createdAt) }}</text>
+          </view>
+        </view>
+        <text class="text">{{ c.text }}</text>
+        <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
+        <RecipientsBar :recipients="c.recipients" />
+        <view class="foot">
+          <text class="foot-btn">{{ $t('detail.commentCount', { n: c.commentCount }) }}</text>
+        </view>
+      </view>
+
+      <view v-if="items.length" class="more">
+        <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
+        <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
+          {{ $t('common.loadMore') }}
+        </button>
+      </view>
     </view>
 
     <AppSidebar current="moments" />
@@ -80,6 +90,10 @@ function openDetail(c: ContentItem) {
 function goPublish() {
   uni.navigateTo({ url: '/pages/publish/publish?kind=say' })
 }
+
+function goSearch() {
+  uni.navigateTo({ url: '/pages/search/search?kind=say' })
+}
 </script>
 
 <style scoped>
@@ -87,10 +101,12 @@ function goPublish() {
   min-height: 100vh;
   background: var(--hz-color-bg);
   padding: 16px 16px calc(70px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.container {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-sizing: border-box;
 }
 .topbar {
   display: flex;
@@ -101,6 +117,26 @@ function goPublish() {
   font-size: 20px;
   font-weight: 700;
   color: var(--hz-color-text);
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.search-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--hz-color-border);
+  background: var(--hz-color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hz-color-text-secondary);
+}
+.search-icon {
+  width: 16px;
+  height: 16px;
 }
 .write-btn {
   display: none;
@@ -200,6 +236,10 @@ function goPublish() {
   align-items: center;
   gap: 16px;
 }
+.hint.empty {
+  min-height: 60vh;
+  justify-content: center;
+}
 .hint-text {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
@@ -217,8 +257,12 @@ function goPublish() {
 @media (min-width: 768px) {
   .page {
     margin-left: 220px;
-    padding-left: max(16px, calc((100% - 220px - 42rem) / 2));
-    padding-right: max(16px, calc((100% - 220px - 42rem) / 2));
+    padding: 24px;
+  }
+  .container {
+    max-width: 42rem;
+    margin: 0 auto;
+    width: 100%;
   }
   .card {
     padding: 20px;

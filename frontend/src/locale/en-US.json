@@ -92,7 +92,8 @@
     "moments": "Moments",
     "journals": "Journals",
     "received": "Received",
-    "mine": "Mine"
+    "theme": "Theme",
+    "settings": "Settings"
   },
   "moments": {
     "title": "Moments",
@@ -203,8 +204,10 @@
     "todo": "Admin backend is not merged yet. This page is a placeholder."
   },
   "settings": {
-    "title": "Settings",
-    "appearance": "Appearance",
+    "title": "Settings"
+  },
+  "theme": {
+    "title": "Theme",
     "mode": "Mode",
     "modeLight": "Light",
     "modeDark": "Dark",
@@ -220,9 +223,7 @@
     "contrastPrimaryFail": "Primary/surface contrast too low (need ≥ 3:1)",
     "contrastFailToast": "Contrast check failed, save blocked",
     "resetDefault": "Reset to default",
-    "language": "Language"
-  },
-  "theme": {
+    "language": "Language",
     "presetDefault": "Honey Sun",
     "presetWarm": "Warm Orange",
     "presetGreen": "Eye-care Green",

@@ -48,7 +48,7 @@ import { ref } from 'vue'
 import ContentCard from '../../components/ContentCard.vue'
 import { usePagination } from '../../composables/usePagination'
 import { searchContents, type ContentItem, type KindFilter } from '../../api/endpoints'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onLoad } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 
 onShow(() => {
@@ -64,6 +64,11 @@ const kinds: { value: KindFilter; label: string }[] = [
 const query = ref('')
 const kind = ref<KindFilter>('')
 const searched = ref(false)
+
+onLoad((opts) => {
+  const k = opts?.['kind']
+  if (k === 'say' || k === 'journal') kind.value = k
+})
 
 const pagination = usePagination<ContentItem>((offset, limit) =>
   searchContents(query.value.trim(), kind.value, offset, limit)

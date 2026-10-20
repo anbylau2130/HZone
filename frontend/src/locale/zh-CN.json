@@ -92,7 +92,8 @@
     "moments": "随记",
     "journals": "日志",
     "received": "收到",
-    "mine": "我的"
+    "theme": "主题",
+    "settings": "设置"
   },
   "moments": {
     "title": "随记",
@@ -117,7 +118,7 @@
     "mediaRule": "最多 9 张图片，或 1 个视频",
     "videoOnlySingle": "视频只能单独发一个",
     "maxImagesReached": "图片最多 9 张",
-    "recipients": "{"@"} 谁",
+    "recipients": "{'@'} 谁",
     "chooseRecipients": "选择好友",
     "sayEmpty": "随记需要文字或媒体",
     "journalEmpty": "标题和正文不能为空",
@@ -203,8 +204,10 @@
     "todo": "后端管理接口尚未合入，此页暂为占位"
   },
   "settings": {
-    "title": "设置",
-    "appearance": "外观",
+    "title": "设置"
+  },
+  "theme": {
+    "title": "主题",
     "mode": "模式",
     "modeLight": "浅色",
     "modeDark": "深色",
@@ -220,9 +223,7 @@
     "contrastPrimaryFail": "主色与卡片对比度不足（需 ≥ 3:1）",
     "contrastFailToast": "对比度不达标，已禁止保存",
     "resetDefault": "恢复默认",
-    "language": "界面语言"
-  },
-  "theme": {
+    "language": "界面语言",
     "presetDefault": "蜜杏暖阳",
     "presetWarm": "暖橙",
     "presetGreen": "护眼绿",

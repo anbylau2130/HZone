@@ -1,42 +1,44 @@
 <template>
   <view class="page">
-    <view class="topbar">
-      <text class="topbar-title">{{ $t('journals.title') }}</text>
-      <view class="write-btn" @click="goPublish">
-        <text class="write-plus">＋</text>
-        <text>{{ $t('journals.write') }}</text>
+    <view class="container">
+      <view class="topbar">
+        <text class="topbar-title">{{ $t('journals.title') }}</text>
+        <view v-if="items.length > 0" class="write-btn" @click="goPublish">
+          <text class="write-plus">＋</text>
+          <text>{{ $t('journals.write') }}</text>
+        </view>
       </view>
-    </view>
 
-    <view v-if="pagination.loading.value && !items.length" class="hint">
-      <text class="hint-text">{{ $t('common.loading') }}</text>
-    </view>
-    <view v-else-if="!items.length" class="hint">
-      <text class="hint-text">{{ $t('journals.empty') }}</text>
-      <view class="write-btn empty-cta" @click="goPublish">
-        <text class="write-plus">＋</text>
-        <text>{{ $t('journals.write') }}</text>
+      <view v-if="pagination.loading.value && !items.length" class="hint">
+        <text class="hint-text">{{ $t('common.loading') }}</text>
       </view>
-    </view>
-
-    <view v-if="items.length" class="cards">
-      <view
-        v-for="c in items"
-        :key="c.id"
-        class="card"
-        @click="openDetail(c)"
-      >
-        <text class="title">{{ c.title }}</text>
-        <text class="summary">{{ summary(c) }}</text>
-        <text class="date">{{ formatDateTime(c.createdAt) }}</text>
+      <view v-else-if="!items.length" class="hint empty">
+        <text class="hint-text">{{ $t('journals.empty') }}</text>
+        <view class="write-btn empty-cta" @click="goPublish">
+          <text class="write-plus">＋</text>
+          <text>{{ $t('journals.write') }}</text>
+        </view>
       </view>
-    </view>
 
-    <view v-if="items.length" class="more">
-      <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
-      <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
-        {{ $t('common.loadMore') }}
-      </button>
+      <view v-if="items.length" class="cards">
+        <view
+          v-for="c in items"
+          :key="c.id"
+          class="card"
+          @click="openDetail(c)"
+        >
+          <text class="title">{{ c.title }}</text>
+          <text class="summary">{{ summary(c) }}</text>
+          <text class="date">{{ formatDateTime(c.createdAt) }}</text>
+        </view>
+      </view>
+
+      <view v-if="items.length" class="more">
+        <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
+        <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
+          {{ $t('common.loadMore') }}
+        </button>
+      </view>
     </view>
 
     <AppSidebar current="journals" />
@@ -73,6 +75,10 @@ function goPublish() {
   uni.navigateTo({ url: '/pages/publish/publish?kind=journal' })
 }
 
+function goSearch() {
+  uni.navigateTo({ url: '/pages/search/search?kind=journal' })
+}
+
 function summary(c: ContentItem): string {
   return stripMarkdown(c.markdownBody ?? '')
 }
@@ -83,10 +89,12 @@ function summary(c: ContentItem): string {
   min-height: 100vh;
   background: var(--hz-color-bg);
   padding: 16px 16px calc(70px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.container {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-sizing: border-box;
 }
 /* 移动端维持原 flex 列布局（桌面在下方切 grid 双栏） */
 .topbar {
@@ -98,6 +106,26 @@ function summary(c: ContentItem): string {
   font-size: 20px;
   font-weight: 700;
   color: var(--hz-color-text);
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.search-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--hz-color-border);
+  background: var(--hz-color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hz-color-text-secondary);
+}
+.search-icon {
+  width: 16px;
+  height: 16px;
 }
 .write-btn {
   display: none;
@@ -175,6 +203,10 @@ function summary(c: ContentItem): string {
   align-items: center;
   gap: 16px;
 }
+.hint.empty {
+  min-height: 60vh;
+  justify-content: center;
+}
 .hint-text {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
@@ -193,6 +225,11 @@ function summary(c: ContentItem): string {
   .page {
     margin-left: 220px;
     padding: 24px;
+  }
+  .container {
+    max-width: 42rem;
+    margin: 0 auto;
+    width: 100%;
   }
   /* 桌面双栏 grid */
   .cards {

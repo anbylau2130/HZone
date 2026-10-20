@@ -137,7 +137,8 @@ test('journey 4: search hits own content', async ({ browser }) => {
 
 test('journey 5: theme dark persists, language en persists after reload', async ({ browser }) => {
   const page = await newSession(browser, alice)
-  await page.locator('.settings-entry').click()
+  // 03 导航重组：主题改为独立 tab（桌面走 AppSidebar），不再从首页设置入口进
+  await page.locator('.sb-item', { hasText: '主题' }).click()
   await expect(page.getByText('模式')).toBeVisible()
 
   // 浅 → 深

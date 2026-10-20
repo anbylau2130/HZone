@@ -25,10 +25,6 @@
       </view>
     </view>
     <view class="sb-bottom">
-      <view class="sb-item" @click="goSettings">
-        <text class="sb-icon">⚙</text>
-        <text class="sb-label">{{ $t('settings.title') }}</text>
-      </view>
       <view class="sb-item" @click="logout">
         <text class="sb-icon">↩</text>
         <text class="sb-label">{{ $t('home.logout') }}</text>
@@ -42,7 +38,7 @@ import { computed, onMounted } from 'vue'
 import { useInboxStore } from '../stores/inbox'
 import { useAuthStore } from '../stores/auth'
 
-type TabKey = 'index' | 'moments' | 'journals' | 'received' | 'mine'
+type TabKey = 'index' | 'moments' | 'journals' | 'received' | 'theme' | 'settings'
 
 interface TabItem {
   key: TabKey
@@ -58,7 +54,8 @@ const tabs: TabItem[] = [
   { key: 'moments', labelKey: 'tabs.moments', icon: '✎', url: '/pages/moments/moments' },
   { key: 'journals', labelKey: 'tabs.journals', icon: '▤', url: '/pages/journals/journals' },
   { key: 'received', labelKey: 'tabs.received', icon: '◉', url: '/pages/received/received' },
-  { key: 'mine', labelKey: 'tabs.mine', icon: '☺', url: '/pages/timeline/timeline' }
+  { key: 'theme', labelKey: 'tabs.theme', icon: '◐', url: '/pages/theme/theme' },
+  { key: 'settings', labelKey: 'tabs.settings', icon: '⚙', url: '/pages/settings/settings' }
 ]
 
 const inbox = useInboxStore()
@@ -76,12 +73,7 @@ function go(t: TabItem) {
 }
 
 function goTimeline() {
-  if (props.current === 'mine') return
-  uni.redirectTo({ url: '/pages/timeline/timeline' })
-}
-
-function goSettings() {
-  uni.navigateTo({ url: '/pages/settings/settings' })
+  uni.navigateTo({ url: '/pages/timeline/timeline' })
 }
 
 function logout() {
