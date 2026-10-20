@@ -9,6 +9,21 @@
       </button>
     </view>
 
+    <!-- 日记头：左侧日期+农历，右侧天气（点击弹选择器修改） -->
+    <view class="diary-head">
+      <view class="dh-left">
+        <text class="dh-date">{{ dateLine }}</text>
+        <text v-if="lunarLine" class="dh-lunar">{{ lunarLine }}</text>
+      </view>
+      <view class="dh-weather" @click="openWeatherPicker">
+        <text v-if="weather" class="dh-weather-text">
+          {{ CONDITION_ICONS[weather.condition] }} {{ weather.city }} {{ formatTemp(weather.tempC) }}
+        </text>
+        <text v-else class="dh-weather-add">{{ $t('weather.add') }}</text>
+      </view>
+    </view>
+
+    <!-- 随记：textarea + 媒体九宫格 + 工具行合成一张卡 -->
     <view v-if="mode === 'say'" class="panel">
       <textarea
         v-model="sayText"
@@ -19,55 +34,64 @@
       />
       <view v-if="mediaItems.length" class="media-grid">
         <view v-for="m in mediaItems" :key="m.localPath" class="cell">
-          <image class="img" :src="m.localPath" mode="aspectFill" />
+          <image v-if="m.kind === 'image'" class="img" :src="m.localPath" mode="aspectFill" />
+          <video v-else class="img" :src="m.localPath" controls />
           <text class="remove" @click="removeMedia(m.localPath)">{{ $t('common.delete') }}</text>
         </view>
+        <view v-if="uploading" class="cell uploading">
+          <text class="uploading-text">{{ $t('publish.uploading') }}</text>
+        </view>
       </view>
-      <view class="pick-row">
+      <view v-if="pickedFriends.length" class="chips-row">
+        <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
+      </view>
+      <view class="toolbar">
         <button class="pick" @click="pickImage">{{ $t('publish.addImages') }}</button>
-        <button class="pick" @click="pickVideo">{{ $t('publish.addVideo') }}</button>
+        <!-- #ifdef H5 -->
+        <view
+          class="rec-btn"
+          :class="{ on: recording }"
+          @mousedown.prevent="onRecordStart"
+          @mouseup="onRecordEnd"
+          @mouseleave="onRecordEnd"
+          @touchstart.prevent="onRecordStart"
+          @touchend="onRecordEnd"
+        >
+          <text v-if="recording" class="rec-label">{{ recordLabel }}</text>
+          <text v-else class="rec-ico">🎥</text>
+        </view>
+        <!-- #endif -->
+        <button class="pick" @click="pickerVisible = true">{{ $t('publish.chooseRecipients') }}</button>
+        <view class="toolbar-spacer" />
+        <button class="btn-inline" :disabled="busy" @click="submit">{{ $t('publish.submit') }}</button>
       </view>
       <text class="hint">{{ $t('publish.mediaRule') }}</text>
     </view>
 
-    <view v-else class="panel">
-      <input v-model="title" class="field" :placeholder="$t('publish.titlePlaceholder')" />
-      <view class="journal-cols">
-        <textarea
-          v-model="markdown"
-          class="area tall"
-          :placeholder="$t('publish.bodyPlaceholder')"
-          :maxlength="-1"
-          auto-height
-        />
-        <view class="md-preview" v-html="previewHtml" />
+    <!-- 日志：标题 + 双栏编辑器，发布按钮在底部右侧 -->
+    <template v-else>
+      <view class="panel">
+        <input v-model="title" class="field" :placeholder="$t('publish.titlePlaceholder')" />
+        <view class="journal-cols">
+          <textarea
+            v-model="markdown"
+            class="area tall"
+            :placeholder="$t('publish.bodyPlaceholder')"
+            :maxlength="-1"
+            auto-height
+          />
+          <view class="md-preview" v-html="previewHtml" />
+        </view>
       </view>
-    </view>
-
-    <view class="weather" @click="openWeatherPicker">
-      <template v-if="weather">
-        <text class="w-icon">{{ CONDITION_ICONS[weather.condition] }}</text>
-        <text class="w-text">
-          {{ weather.city }} · {{ $t('weather.conditions.' + weather.condition) }} ·
-          {{ formatTemp(weather.tempC) }}
-        </text>
-        <text class="w-action">{{ $t('weather.edit') }}</text>
-      </template>
-      <template v-else>
-        <text class="w-icon">📍</text>
-        <text class="w-action">{{ $t('weather.add') }}</text>
-      </template>
-    </view>
-
-    <view class="recipients">
-      <text class="label">{{ $t('publish.recipients') }}</text>
-      <view class="chips">
-        <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
+      <view class="recipients">
+        <text class="label">{{ $t('publish.recipients') }}</text>
+        <view class="chips">
+          <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
+        </view>
+        <button class="pick small" @click="pickerVisible = true">{{ $t('publish.chooseRecipients') }}</button>
       </view>
-      <button class="pick small" @click="pickerVisible = true">{{ $t('publish.chooseRecipients') }}</button>
-    </view>
-
-    <button class="btn" :disabled="busy" @click="submit">{{ $t('publish.submit') }}</button>
+      <button class="btn" :disabled="busy" @click="submit">{{ $t('publish.submit') }}</button>
+    </template>
 
     <FriendPicker v-model:visible="pickerVisible" @confirm="onFriendsConfirmed" />
 
@@ -103,23 +127,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import FriendPicker from '../../components/FriendPicker.vue'
 import {
   createSay,
   createJournal,
+  getMyStats,
   type FriendInfo,
+  type MeStats,
   type WeatherSnapshotInput
 } from '../../api/endpoints'
 import { uploadFile } from '../../api/client'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import { CONDITION_ICONS, WEATHER_CONDITIONS, getWeather, type WeatherSnapshot } from '../../utils/weather'
+import { formatLunar } from '../../utils/lunar'
 
 onShow(() => {
   setNavTitle('hub.publish')
+  refreshDiaryHead()
   // 进入时自动获取天气（模块级缓存，一次会话只探一次）；失败静默降级为手动选择
   if (!weatherAutoDone) {
     weatherAutoDone = true
@@ -163,6 +191,29 @@ const uploading = ref(false)
 const submitting = ref(false)
 
 const busy = computed(() => uploading.value || submitting.value)
+
+// ---------- 日记头：公历日期+星期 + 农历（/me/stats）+ 天气快照入口 ----------
+const stats = ref<MeStats | null>(null)
+const now = ref(new Date())
+
+function refreshDiaryHead() {
+  now.value = new Date()
+  getMyStats()
+    .then((s) => {
+      stats.value = s
+    })
+    .catch(() => {
+      // 统计/农历失败静默：日记头只显示公历
+    })
+}
+
+const dateLine = computed(() => {
+  const d = now.value
+  const date = t('home.monthDay', { m: d.getMonth() + 1, d: d.getDate() })
+  return `${date} ${t(`home.weekday${d.getDay()}`)}`
+})
+
+const lunarLine = computed(() => formatLunar(stats.value?.today))
 
 // ---------- 天气（homepage-v2）：快照随发布提交，可改可清 ----------
 const weather = ref<WeatherSnapshot | null>(null)
@@ -213,6 +264,11 @@ function onFriendsConfirmed(friends: FriendInfo[]) {
 
 const MAX_IMAGES = 9
 
+// ---------- H5 媒体选择修复 ----------
+// uni.chooseImage/chooseVideo 的 input.click() 经 defineAsyncApi/promisify 包装，在部分场景
+// （自动化点击、无最新手势的任务）下浏览器会静默拦截文件对话框——表现为"点了没反应"。
+// H5 改为在 @click 处理器内同步创建原生 <input type=file> 并 click()，手势链路确定可开。
+
 function pickImage() {
   if (hasVideo()) {
     uni.showToast({ title: t('publish.videoOnlySingle'), icon: 'none' })
@@ -223,12 +279,22 @@ function pickImage() {
     uni.showToast({ title: t('publish.maxImagesReached'), icon: 'none' })
     return
   }
+  // #ifdef H5
+  openH5FilePicker('image/*', remaining, (files) => {
+    uploadAll(
+      files.map((f) => URL.createObjectURL(f)),
+      'image'
+    )
+  })
+  // #endif
+  // #ifndef H5
   uni.chooseImage({
     count: remaining,
     success: (res) => {
       uploadAll(res.tempFilePaths, 'image')
     }
   })
+  // #endif
 }
 
 function pickVideo() {
@@ -236,11 +302,31 @@ function pickVideo() {
     uni.showToast({ title: t('publish.videoOnlySingle'), icon: 'none' })
     return
   }
+  // #ifdef H5
+  openH5FilePicker('video/*', 1, (files) => {
+    if (files.length) uploadAll([URL.createObjectURL(files[0])], 'video')
+  })
+  // #endif
+  // #ifndef H5
   uni.chooseVideo({
     success: (res) => {
       uploadAll([res.tempFilePath], 'video')
     }
   })
+  // #endif
+}
+
+/** H5 同步建 input 触发文件选择（复用 import-export 的成熟路径）。 */
+function openH5FilePicker(accept: string, maxCount: number, onPicked: (files: File[]) => void) {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = accept
+  if (maxCount > 1) input.multiple = true
+  input.onchange = () => {
+    const files = Array.from(input.files ?? []).slice(0, maxCount)
+    if (files.length) onPicked(files)
+  }
+  input.click()
 }
 
 function hasVideo() {
@@ -248,8 +334,11 @@ function hasVideo() {
 }
 
 function removeMedia(localPath: string) {
-  // 已上传未绑定的临时媒体后端暂无删除接口（对他人不可见），本地移除即可。
+  // 已上传未绑定的临时媒体后端暂无删除接口（对他人不可见），本地移除即可；blob 预览 URL 一并回收
   mediaItems.value = mediaItems.value.filter((m) => m.localPath !== localPath)
+  // #ifdef H5
+  if (localPath.startsWith('blob:')) URL.revokeObjectURL(localPath)
+  // #endif
 }
 
 async function uploadAll(paths: string[], kind: 'image' | 'video') {
@@ -266,19 +355,143 @@ async function uploadAll(paths: string[], kind: 'image' | 'video') {
   }
 }
 
+// ---------- 朋友圈式按住录视频（仅 H5） ----------
+// #ifdef H5
+const MAX_RECORD_SECONDS = 60
+
+const recording = ref(false)
+const pressHeld = ref(false)
+const recordSeconds = ref(0)
+
+let mediaStream: MediaStream | null = null
+let mediaRecorder: MediaRecorder | null = null
+let recordChunks: Blob[] = []
+let recordTimer: ReturnType<typeof setInterval> | null = null
+
+const recordLabel = computed(() => {
+  const s = recordSeconds.value
+  return `● ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+})
+
+async function onRecordStart() {
+  if (recording.value) return
+  if (mediaItems.value.length > 0) {
+    uni.showToast({ title: t('publish.videoOnlySingle'), icon: 'none' })
+    return
+  }
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+    uni.showToast({ title: t('publish.recordUnavailable'), icon: 'none' })
+    return
+  }
+  pressHeld.value = true
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+  } catch {
+    pressHeld.value = false
+    // 拒绝权限/无摄像头：提示并保留「添加视频」文件选择兜底
+    uni.showToast({ title: t('publish.recordPermissionDenied'), icon: 'none' })
+    return
+  }
+  // 等待授权期间已松手 → 直接释放
+  if (!pressHeld.value) {
+    releaseCamera()
+    return
+  }
+  const mimeType = pickRecordMime()
+  mediaRecorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : undefined)
+  recordChunks = []
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) recordChunks.push(e.data)
+  }
+  mediaRecorder.onstop = finalizeRecord
+  mediaRecorder.start()
+  recording.value = true
+  recordSeconds.value = 0
+  recordTimer = setInterval(() => {
+    recordSeconds.value++
+    // 上限保护：录满自动停（长按意外滞留不至于无限录）
+    if (recordSeconds.value >= MAX_RECORD_SECONDS) onRecordEnd()
+  }, 1000)
+}
+
+function onRecordEnd() {
+  pressHeld.value = false
+  if (recording.value && mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+  }
+}
+
+function finalizeRecord() {
+  stopRecordTimer()
+  recording.value = false
+  releaseCamera()
+  const type = mediaRecorder?.mimeType || 'video/webm'
+  const blob = new Blob(recordChunks, { type })
+  recordChunks = []
+  mediaRecorder = null
+  if (blob.size === 0) return
+  // 视频独占：清掉已有媒体（上面 start 已挡，这里兜底）
+  mediaItems.value = [{ localPath: URL.createObjectURL(blob), kind: 'video' }]
+}
+
+function pickRecordMime(): string | undefined {
+  const candidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
+  return candidates.find((m) => MediaRecorder.isTypeSupported(m))
+}
+
+function releaseCamera() {
+  mediaStream?.getTracks().forEach((track) => track.stop())
+  mediaStream = null
+}
+
+function stopRecordTimer() {
+  if (recordTimer !== null) {
+    clearInterval(recordTimer)
+    recordTimer = null
+  }
+}
+
+// 组件卸载/页面隐藏时释放摄像头流
+onUnmounted(() => {
+  stopRecordTimer()
+  if (recording.value && mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.onstop = null
+    mediaRecorder.stop()
+  }
+  releaseCamera()
+})
+onHide(() => {
+  if (recording.value) onRecordEnd()
+})
+// #endif
+
 async function submit() {
   if (busy.value) return
   const recipientIds = pickedFriends.value.map((f) => f.id)
   submitting.value = true
   try {
     if (mode.value === 'say') {
-      const mediaIds = mediaItems.value
-        .map((m) => m.mediaId)
-        .filter((id): id is string => Boolean(id))
-      if (!sayText.value.trim() && mediaIds.length === 0) {
+      if (!sayText.value.trim() && mediaItems.value.length === 0) {
         uni.showToast({ title: t('publish.sayEmpty'), icon: 'none' })
         return
       }
+      // 补传本地媒体（如刚录制的视频尚无 mediaId）
+      uploading.value = true
+      try {
+        for (const m of mediaItems.value) {
+          if (!m.mediaId) {
+            const asset = await uploadFile<{ id: string }>('/api/media', m.localPath)
+            m.mediaId = asset.id
+          }
+        }
+      } catch {
+        return // 上传失败提示已由请求层统一 toast
+      } finally {
+        uploading.value = false
+      }
+      const mediaIds = mediaItems.value
+        .map((m) => m.mediaId)
+        .filter((id): id is string => Boolean(id))
       await createSay(sayText.value, recipientIds, mediaIds, toSnapshot())
     } else {
       if (!title.value.trim() || !markdown.value.trim()) {
@@ -327,6 +540,41 @@ async function submit() {
   background: var(--hz-color-primary);
   color: #fff;
   border-color: var(--hz-color-primary);
+}
+/* 日记头：低调的日记本页眉，14px，secondary 色，日期 primary 强调 */
+.diary-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dh-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dh-date {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hz-color-primary);
+}
+.dh-lunar {
+  font-size: 14px;
+  color: var(--hz-color-text-secondary);
+}
+.dh-weather {
+  cursor: pointer;
+  user-select: none;
+}
+.dh-weather-text {
+  font-size: 14px;
+  color: var(--hz-color-text-secondary);
+}
+.dh-weather-add {
+  font-size: 14px;
+  color: var(--hz-color-interactive);
 }
 .panel {
   background: var(--hz-color-surface);
@@ -388,9 +636,35 @@ async function submit() {
   border-radius: 8px;
   padding: 1px 6px;
 }
-.pick-row {
+.cell.uploading {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--hz-color-border);
+  background: var(--hz-color-bg);
+}
+.uploading-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.chips-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-primary);
+  background: var(--hz-color-bg);
+  border-radius: var(--hz-radius-md);
+  padding: 2px 8px;
+}
+/* 工具行：+图片 / 按住录视频 / 选择好友，发布按钮居右 */
+.toolbar {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .pick {
   background: var(--hz-color-bg);
@@ -405,29 +679,54 @@ async function submit() {
   line-height: 32px;
   font-size: var(--hz-font-size-sm);
 }
+/* 按住录视频圆形按钮（仅 H5） */
+.rec-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px dashed var(--hz-color-border);
+  background: var(--hz-color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  flex-shrink: 0;
+}
+.rec-btn.on {
+  background: var(--hz-color-accent);
+  border-color: var(--hz-color-accent);
+  border-style: solid;
+}
+.rec-ico {
+  font-size: 18px;
+  line-height: 1;
+}
+.rec-label {
+  font-size: 11px;
+  color: #fff;
+  line-height: 1;
+}
+.toolbar-spacer {
+  flex: 1;
+}
 .hint {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
+  text-align: right;
 }
-.weather {
-  background: var(--hz-color-surface);
-  border-radius: var(--hz-radius-lg);
-  padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.w-icon {
-  font-size: 18px;
-}
-.w-text {
+.btn-inline {
+  height: 36px;
+  line-height: 36px;
+  padding: 0 20px;
+  background: var(--hz-color-primary);
+  color: #fff;
+  border-radius: var(--hz-radius-md);
   font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text);
 }
-.w-action {
-  margin-left: auto;
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-primary);
+.btn-inline[disabled] {
+  opacity: 0.6;
 }
 .overlay {
   position: fixed;
@@ -536,13 +835,6 @@ async function submit() {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-.chip {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-primary);
-  background: var(--hz-color-bg);
-  border-radius: var(--hz-radius-md);
-  padding: 2px 8px;
 }
 .btn {
   height: 44px;

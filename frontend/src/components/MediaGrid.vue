@@ -23,7 +23,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { loadMediaUrl } from '../api/media'
 import type { MediaItem } from '../api/endpoints'
 
-const props = defineProps<{ media?: MediaItem[] | null }>
+const props = defineProps<{ media?: MediaItem[] | null }>()
 
 const urls = reactive<Record<string, string>>({})
 const loadError = ref(false)

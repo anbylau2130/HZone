@@ -149,6 +149,9 @@
     "sayEmpty": "A moment needs text or media",
     "journalEmpty": "Title and body are required",
     "submit": "Publish",
+    "uploading": "Uploading…",
+    "recordPermissionDenied": "Camera unavailable — use “Add video” instead",
+    "recordUnavailable": "Video recording is not supported in this browser",
     "success": "Published"
   },
   "weather": {
