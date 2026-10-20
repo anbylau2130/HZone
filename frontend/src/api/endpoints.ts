@@ -9,6 +9,8 @@ import { request } from './client'
 export interface AuthorInfo {
   id: string
   nickname: string
+  /** 票 05 接真头像；当前后端不下发，可选字段仅作渲染分支预留 */
+  avatarUrl?: string | null
 }
 
 export interface RecipientInfo {

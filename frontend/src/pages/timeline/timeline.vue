@@ -15,7 +15,7 @@
       <text class="hint-text">{{ $t('common.empty') }}</text>
     </view>
 
-    <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openDetail" />
+    <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openDetail" @deleted="onCardDeleted" />
 
     <view v-if="items.length" class="more">
       <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
@@ -82,6 +82,11 @@ function setKind(k: string) {
 
 function openDetail(c: ContentItem) {
   uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
+}
+
+// 列表卡上删除成功后移除本地列表项
+function onCardDeleted(id: string) {
+  items.value = items.value.filter((c) => c.id !== id)
 }
 </script>
 

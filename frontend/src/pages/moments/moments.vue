@@ -35,7 +35,15 @@
         @click="openDetail(c)"
       >
         <view class="head">
-          <view class="avatar">{{ c.author.nickname.slice(0, 1) }}</view>
+          <view class="avatar">
+            <image
+              v-if="c.author.avatarUrl"
+              class="avatar-img"
+              :src="c.author.avatarUrl"
+              mode="aspectFill"
+            />
+            <text v-else class="avatar-fallback">{{ c.author.nickname.slice(0, 1) }}</text>
+          </view>
           <view class="head-mid">
             <text class="name">{{ c.author.nickname }}</text>
             <text class="time">{{ formatRelativeTime(c.createdAt) }}</text>
@@ -46,6 +54,8 @@
         <RecipientsBar :recipients="c.recipients" />
         <view class="foot">
           <text class="foot-btn">{{ $t('detail.commentCount', { n: c.commentCount }) }}</text>
+          <view class="meta-spacer" />
+          <CardOwnerActions v-if="isMine(c)" @edit="goEdit(c)" @delete="remove(c)" />
         </view>
       </view>
 
@@ -71,11 +81,43 @@ import RecipientsBar from '../../components/RecipientsBar.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import { usePagination } from '../../composables/usePagination'
-import { listMyContents, type ContentItem } from '../../api/endpoints'
+import { listMyContents, deleteContent, type ContentItem } from '../../api/endpoints'
 import { formatRelativeTime } from '../../utils/format'
+import CardOwnerActions from '../../components/CardOwnerActions.vue'
+import { useAuthStore } from '../../stores/auth'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+const auth = useAuthStore()
 
 const pagination = usePagination<ContentItem>((offset, limit) => listMyContents('say', offset, limit))
 const { items, finished, loadMore } = pagination
+
+// 作者本人可见编辑/删除图标；他人内容只有评论入口
+function isMine(c: ContentItem) {
+  return c.author.id === auth.user?.id
+}
+
+function goEdit(c: ContentItem) {
+  uni.navigateTo({ url: '/pages/detail/detail?id=' + c.id + '&edit=1' })
+}
+
+function remove(c: ContentItem) {
+  uni.showModal({
+    title: t('common.delete'),
+    content: t('detail.deleteConfirm'),
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await deleteContent(c.id)
+        uni.showToast({ title: t('detail.deleted'), icon: 'success' })
+        items.value = items.value.filter((x) => x.id !== c.id)
+      } catch {
+        // 错误提示由请求层统一 toast
+      }
+    }
+  })
+}
 
 // onShow 而非 onLoad：H5 端直接 hash 进入时 onLoad 不触发（timeline 同款坑），onShow 稳定
 onShow(() => {
@@ -184,17 +226,24 @@ function goSearch() {
   gap: 10px;
 }
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
+  overflow: hidden;
   background: var(--hz-color-primary);
-  color: #fff;
-  font-size: 17px;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+.avatar-img {
+  width: 44px;
+  height: 44px;
+}
+.avatar-fallback {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
 }
 .head-mid {
   display: flex;
@@ -219,10 +268,16 @@ function goSearch() {
 .foot {
   border-top: 1px solid var(--hz-color-border);
   padding-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .foot-btn {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-interactive);
+}
+.meta-spacer {
+  flex: 1;
 }
 .more {
   display: flex;

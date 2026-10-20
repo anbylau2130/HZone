@@ -5,6 +5,7 @@
         <text class="author">{{ content.author.nickname }}</text>
         <text class="kind">{{ kindLabel }}</text>
         <text class="time">{{ formatDateTime(content.createdAt) }}</text>
+        <CardOwnerActions v-if="isAuthor && !editing" @edit="startEdit" @delete="remove" />
       </view>
 
       <text v-if="contextLine" class="context-line">{{ contextLine }}</text>
@@ -36,10 +37,6 @@
         </view>
       </template>
 
-      <view v-if="isAuthor && !editing" class="owner-actions">
-        <button class="mini" @click="startEdit">{{ $t('common.edit') }}</button>
-        <button class="mini ghost danger" @click="remove">{{ $t('common.delete') }}</button>
-      </view>
     </view>
 
     <view v-if="content" class="card">
@@ -72,6 +69,7 @@ import { setNavTitle } from '../../locale'
 import { useI18n } from 'vue-i18n'
 import MediaGrid from '../../components/MediaGrid.vue'
 import RecipientsBar from '../../components/RecipientsBar.vue'
+import CardOwnerActions from '../../components/CardOwnerActions.vue'
 import { formatDateTime } from '../../utils/format'
 import { formatLunar } from '../../utils/lunar'
 import { CONDITION_ICONS, type WeatherCondition } from '../../utils/weather'
@@ -96,6 +94,8 @@ const commentText = ref('')
 const editing = ref(false)
 const editTitle = ref('')
 const editBody = ref('')
+// 列表卡编辑图标跳转 detail?edit=1：加载完成后直接进编辑态
+let autoEdit = false
 
 const isAuthor = computed(() => content.value?.author.id === auth.user?.id)
 const kindLabel = computed(() =>
@@ -133,6 +133,7 @@ onLoad((query) => {
   setNavTitle('detail.title')
   const q = (query ?? {}) as Record<string, string>
   contentId.value = q.id ?? ''
+  autoEdit = q.edit === '1'
   load()
 })
 
@@ -141,6 +142,7 @@ async function load() {
   try {
     content.value = await getContent(contentId.value)
     comments.value = (await listComments(contentId.value)).items
+    if (autoEdit) startEdit()
   } catch {
     // 错误提示由请求层统一 toast；不可见/不存在时留在本页
   }
@@ -261,12 +263,6 @@ async function postComment() {
   color: var(--hz-color-text);
   white-space: pre-wrap;
   word-break: break-word;
-}
-.owner-actions {
-  display: flex;
-  gap: 8px;
-  border-top: 1px solid var(--hz-color-border);
-  padding-top: 10px;
 }
 .edit-actions {
   display: flex;
