@@ -20,6 +20,8 @@
 - **Ticket 14 ✅** 主题系统（预置4套+自定义+对比度校验+本地存储）+设置页+本地化补漏（commit 2d71fd7，build 通过）
 - **Ticket 15 ✅** 整体验收（commit fbdb550）：API e2e 87/87 + Playwright UI 6/6（本地 :5000+:5173，无 Docker）+ acceptance.md 28 条用户故事全覆盖
 - **MVP 完成**（2026-10-20）。验收中发现并跨栈修复 4 个旅程阻断 bug（好友页模板崩溃/@i18n转义/邮件链接路由/launchSettings 端口）。
+- **后 MVP 改版**（commit 4aa3154 + 39d09ca）：「说说」→「随记」（GLOSSARY/PRD/i18n 全站）；随记/日志分页（moments/journals）+ 自定义 tabBar（首页/随记/日志/收到/我的）；QQ空间温情版视觉（蜜杏暖阳/暖夜 token、masthead 首页）。实现决策：① 蜜黄 #E9A23B 对 surface 对比度 2.13 达不到 ≥3（物理不可达），App.vue 基础色照方案，4 套预置主题 primary 用加深变体实测达标（#B8791F 等）；② uni-app H5 hash 直载时 onLoad 不稳，列表页用 onShow 刷新。
+- **缺口补齐**：前端初始化向导页（238e0f8，后端接口早有但页面缺失——ticket 12/13 的真实缺口，Playwright 未覆盖"全新实例首访"路径）。
 - 遗留：主题账号级跨端同步未做（本地存储，acceptance.md 已标注）；UI e2e 仅 H5（按用户要求）
 
 ## 一键验收
