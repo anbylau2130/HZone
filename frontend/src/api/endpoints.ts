@@ -180,11 +180,43 @@ export interface MeStats {
   heatmap: HeatmapCell[]
   /** 天气快照城市足迹（同城连续去重），倒序最近在上。 */
   footprints: Footprint[]
+  /** 月度回顾（中国区本月）：篇数/有天气的不同城市数/最常天气现象（null 可）。 */
+  monthly: {
+    says: number
+    journals: number
+    cities: number
+    topCondition: string | null
+  }
 }
 
-/** GET /me/stats：四卡数字 + 连续记录天数 + 今日农历 + 热力格 + 足迹（后端推导）。 */
+/** GET /me/stats：四卡数字 + 连续记录天数 + 今日农历 + 热力格 + 足迹 + 月度回顾（后端推导）。 */
 export function getMyStats() {
   return request<MeStats>('/api/me/stats')
+}
+
+// ---------- 那年今天 / 互动摘要（homepage-v2 ticket 06） ----------
+
+export interface OnThisDayItem {
+  id: string
+  kind: 'say' | 'journal'
+  title: string | null
+  summary: string | null
+  year: number
+}
+
+/** GET /me/on-this-day：往年同月同日的内容（倒序限 5 条），无则空数组。 */
+export function getOnThisDay() {
+  return request<OnThisDayItem[]>('/api/me/on-this-day')
+}
+
+export interface InteractionSummary {
+  comments: number
+  mentions: number
+}
+
+/** GET /me/interactions/summary：近 7 天我内容收到的评论数 + 我被 @ 的内容数。 */
+export function getInteractionSummary() {
+  return request<InteractionSummary>('/api/me/interactions/summary')
 }
 
 // ---------- 好友 ----------

@@ -27,16 +27,47 @@
       </view>
     </view>
 
+    <!-- 里程碑（06，纯前端推导）：totals 跨过 10/50/100/500/1000 最高档，未达 10 隐藏 -->
+    <view v-if="milestones.length" class="milestones-row">
+      <text v-for="m in milestones" :key="m.kind" class="milestone-badge">{{ m.label }}</text>
+    </view>
+
+    <!-- 互动摘要（06）：近 7 天评论+被 @，0 也显示（互动为零也是信息） -->
+    <view v-if="interactions" class="interaction-line">
+      <text class="interaction-text">{{ interactionLine }}</text>
+    </view>
+
     <!-- 热力格（05）：近 90 天发布密度；stats 已加载即显示（全 0 也是"从今天开始"的留白） -->
     <view v-if="stats" class="heatmap-section">
       <text class="section-title">{{ $t('home.heatmapTitle') }}</text>
       <Heatmap :cells="stats.heatmap" />
     </view>
 
+    <!-- 月度回顾（06）：中国区本月一句式小卡（篇数/城市/最常天气） -->
+    <view v-if="stats?.monthly" class="monthly-card">
+      <text class="section-title">{{ $t('home.monthlyTitle') }}</text>
+      <text class="monthly-line">{{ monthlyLine }}</text>
+    </view>
+
     <!-- 足迹（05）：天气快照城市时间线，同城连续去重；无城市数据隐藏 -->
     <view v-if="stats?.footprints?.length" class="footprints-section">
       <text class="section-title">{{ $t('home.footprintsTitle') }}</text>
       <Footprints :items="stats.footprints" />
+    </view>
+
+    <!-- 那年今天（06）：往年同月同日的内容，无历史隐藏整块 -->
+    <view v-if="otd.length" class="otd-section">
+      <text class="section-title">{{ $t('home.otdTitle') }}</text>
+      <view
+        v-for="it in otd"
+        :key="it.id"
+        class="otd-item"
+        @click="openDetail({ id: it.id } as ContentItem)"
+      >
+        <text class="otd-year">{{ it.year }}</text>
+        <text class="otd-icon">{{ it.kind === 'journal' ? '📖' : '✏️' }}</text>
+        <text class="otd-title">{{ it.title ?? it.summary }}</text>
+      </view>
     </view>
 
     <!-- 我的时间线：带全部/随记/日志筛选，复用 timeline 数据逻辑 -->
@@ -74,10 +105,14 @@ import { useInboxStore } from '../../stores/inbox'
 import {
   getSetupStatus,
   getMyStats,
+  getOnThisDay,
+  getInteractionSummary,
   listMyContents,
   type ContentItem,
   type KindFilter,
-  type MeStats
+  type MeStats,
+  type OnThisDayItem,
+  type InteractionSummary
 } from '../../api/endpoints'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -94,6 +129,8 @@ const auth = useAuthStore()
 const inbox = useInboxStore()
 const stats = ref<MeStats | null>(null)
 const weather = ref<WeatherSnapshot | null>(null)
+const otd = ref<OnThisDayItem[]>([])
+const interactions = ref<InteractionSummary | null>(null)
 
 // 公历日期「10月20日 星期二」：本地（浏览器）日期即可，农历才由后端推导。
 const gregorian = computed(() => {
@@ -115,6 +152,54 @@ const streakDisplay = computed(() => (hasStreak.value ? String(stats.value!.stre
 const streakLabel = computed(() =>
   hasStreak.value ? i18n.global.t('home.statsStreak') : i18n.global.t('home.startToday')
 )
+
+// 里程碑（06，纯前端推导）：随记/日志各自取已达成的最高档；两者都未达 10 时隐藏。
+const MILESTONE_THRESHOLDS = [10, 50, 100, 500, 1000]
+const milestones = computed(() => {
+  const totals = stats.value?.totals
+  if (!totals) return []
+  const rows: { kind: string; label: string }[] = []
+  const kinds = [
+    { key: 'says', label: i18n.global.t('home.statsSays') },
+    { key: 'journals', label: i18n.global.t('home.statsJournals') }
+  ]
+  for (const k of kinds) {
+    const count = totals[k.key as 'says' | 'journals']
+    const reached = MILESTONE_THRESHOLDS.filter((th) => count >= th).pop()
+    if (reached) {
+      rows.push({
+        kind: k.key,
+        label: i18n.global.t('home.milestoneBadge', { kind: k.label, n: reached })
+      })
+    }
+  }
+  return rows
+})
+
+// 互动摘要行：数值 0 也显示——互动为零也是信息。
+const interactionLine = computed(() =>
+  interactions.value
+    ? i18n.global.t('home.interactionsLine', {
+        n: interactions.value.comments,
+        m: interactions.value.mentions
+      })
+    : ''
+)
+
+// 月度回顾一句式：本月 N 篇 · M 城（+ 常见天气现象，可省）。
+const monthlyLine = computed(() => {
+  const m = stats.value?.monthly
+  if (!m) return ''
+  const base = i18n.global.t('home.monthlyLine', { n: m.says + m.journals, c: m.cities })
+  const condition = m.topCondition
+    ? i18n.global.te(`weather.conditions.${m.topCondition}`)
+      ? i18n.global.t(`weather.conditions.${m.topCondition}`)
+      : m.topCondition
+    : null
+  return condition
+    ? `${base}${i18n.global.t('home.monthlyWeather', { w: condition })}`
+    : base
+})
 
 const kinds: { value: KindFilter; label: string }[] = [
   { value: '', label: 'timeline.filterAll' },
@@ -146,6 +231,8 @@ onShow(async () => {
   })
   inbox.startPolling()
   loadStats()
+  loadOnThisDay()
+  loadInteractions()
   // 天气行失败整行静默隐藏（getWeather 模块级缓存，失败不缓存下次重试）
   getWeather()
     .then((w) => (weather.value = w))
@@ -162,6 +249,24 @@ async function loadStats() {
     stats.value = await getMyStats()
   } catch {
     // 统计失败保持上次值/空值，不阻断首页
+  }
+}
+
+// 那年今天：请求失败或空数组都静默隐藏整块（设计纪律：无数据静默）。
+async function loadOnThisDay() {
+  try {
+    otd.value = await getOnThisDay()
+  } catch {
+    otd.value = []
+  }
+}
+
+// 互动摘要：失败静默隐藏该行（与"零也显示"不冲突：仅网络失败才藏）。
+async function loadInteractions() {
+  try {
+    interactions.value = await getInteractionSummary()
+  } catch {
+    interactions.value = null
   }
 }
 
@@ -263,6 +368,71 @@ function openDetail(c: ContentItem) {
 .stat-label.accent {
   color: var(--hz-color-primary);
   font-weight: 600;
+}
+.milestones-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.milestone-badge {
+  background: var(--hz-color-surface);
+  border: 1px solid var(--hz-color-primary);
+  color: var(--hz-color-primary);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: var(--hz-font-size-sm);
+  font-weight: 600;
+}
+.interaction-line {
+  margin-top: -10px;
+  display: flex;
+  justify-content: center;
+}
+.interaction-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.monthly-card {
+  background: var(--hz-color-surface);
+  border-radius: var(--hz-radius-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.monthly-line {
+  font-size: var(--hz-font-size-base);
+  color: var(--hz-color-text-secondary);
+}
+.otd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.otd-item {
+  background: var(--hz-color-surface);
+  border-radius: var(--hz-radius-lg);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.otd-year {
+  font-size: var(--hz-font-size-base);
+  font-weight: 800;
+  color: var(--hz-color-primary);
+  min-width: 44px;
+}
+.otd-icon {
+  font-size: var(--hz-font-size-base);
+}
+.otd-title {
+  flex: 1;
+  font-size: var(--hz-font-size-base);
+  color: var(--hz-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .timeline-section {
   display: flex;

@@ -1,5 +1,7 @@
 {
-  "app": { "tagline": "A private, directed sharing space" },
+  "app": {
+    "tagline": "A private, directed sharing space"
+  },
   "common": {
     "networkError": "Network error, please retry later",
     "requestFailed": "Request failed",
@@ -92,7 +94,13 @@
     "heatmapTitle": "Heatmap · Last 90 days",
     "heatmapLess": "Less",
     "heatmapMore": "More",
-    "footprintsTitle": "Footprints"
+    "footprintsTitle": "Footprints",
+    "otdTitle": "On this day",
+    "interactionsLine": "Last 7 days: {n} comments · {'@'}-mentioned {m} times",
+    "monthlyTitle": "This month",
+    "monthlyLine": "{n} posts · {c} cities",
+    "monthlyWeather": " · often {w}",
+    "milestoneBadge": "{kind} {n} reached"
   },
   "hub": {
     "publish": "Publish",

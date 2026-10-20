@@ -1,5 +1,7 @@
 {
-  "app": { "tagline": "私密的定向分享社区" },
+  "app": {
+    "tagline": "私密的定向分享社区"
+  },
   "common": {
     "networkError": "网络错误，请稍后重试",
     "requestFailed": "请求失败",
@@ -92,7 +94,13 @@
     "heatmapTitle": "记录热力 · 近 90 天",
     "heatmapLess": "少",
     "heatmapMore": "多",
-    "footprintsTitle": "足迹"
+    "footprintsTitle": "足迹",
+    "otdTitle": "那年今天",
+    "interactionsLine": "近 7 天：{n} 条评论 · 被 {'@'} {m} 次",
+    "monthlyTitle": "月度回顾",
+    "monthlyLine": "本月 {n} 篇 · {c} 城",
+    "monthlyWeather": " · 常见{w}",
+    "milestoneBadge": "{kind} {n} 篇达成"
   },
   "hub": {
     "publish": "发布内容",

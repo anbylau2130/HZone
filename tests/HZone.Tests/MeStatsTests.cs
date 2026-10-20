@@ -162,21 +162,210 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
     }
 
-    private async Task SeedSayAsync(Guid authorId, int daysAgo, string? weatherCity = null)
+    [Fact]
+    public async Task OnThisDay_returns_past_years_same_month_day_only()
     {
-        var created = DateTime.UtcNow.AddDays(-daysAgo);
+        var author = await _factory.SeedUserAsync("ms-otd@test.local", "MsOtd");
+        var client = _factory.CreateAuthorizedClient(author.Id, author.Nickname);
+
+        // 往年今天：2 条（say 2 年前 / journal 1 年前）；今年今天 1 条不计入；昨天去年 1 条不计入。
+        await SeedOnThisDaySayAsync(author.Id, yearsAgo: 2, text: "两年前的今天");
+        await SeedOnThisDayJournalAsync(author.Id, yearsAgo: 1, title: "一年前的今天");
+        await SeedOnThisDaySayAsync(author.Id, yearsAgo: 0, text: "今年的今天不匹配");
+        await SeedOnThisDaySayAsync(author.Id, yearsAgo: 1, dayOffset: -1, text: "去年昨天不匹配");
+
+        var res = await client.GetAsync("/me/on-this-day");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await ReadJson(res);
+        Assert.Equal(2, body.GetArrayLength());
+
+        var items = body.EnumerateArray().ToArray();
+        // 倒序（最近年份在上），say 给 summary、journal 给 title。
+        var thisYear = DateTime.UtcNow.Year;
+        Assert.Equal(thisYear - 1, items[0].GetProperty("year").GetInt32());
+        Assert.Equal("journal", items[0].GetProperty("kind").GetString());
+        Assert.Equal("一年前的今天", items[0].GetProperty("title").GetString());
+        Assert.True(items[0].GetProperty("summary").ValueKind == JsonValueKind.Null);
+        Assert.Equal(thisYear - 2, items[1].GetProperty("year").GetInt32());
+        Assert.Equal("say", items[1].GetProperty("kind").GetString());
+        Assert.Equal("两年前的今天", items[1].GetProperty("summary").GetString());
+    }
+
+    [Fact]
+    public async Task OnThisDay_empty_when_no_history()
+    {
+        var author = await _factory.SeedUserAsync("ms-otd-e@test.local", "MsOtdE");
+        var client = _factory.CreateAuthorizedClient(author.Id, author.Nickname);
+
+        var res = await client.GetAsync("/me/on-this-day");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal(0, (await ReadJson(res)).GetArrayLength());
+    }
+
+    [Fact]
+    public async Task InteractionSummary_counts_comments_and_mentions_within_7_days()
+    {
+        var author = await _factory.SeedUserAsync("ms-int@test.local", "MsInt");
+        var friend = await _factory.SeedUserAsync("ms-int-b@test.local", "MsIntB");
+        var client = _factory.CreateAuthorizedClient(author.Id, author.Nickname);
+
+        var sayId = await SeedSayAsync(author.Id, daysAgo: 0);
+        var commentNow = await SeedCommentAsync(friend.Id, sayId, daysAgo: 0);
+        var commentOld = await SeedCommentAsync(friend.Id, sayId, daysAgo: 8);
+        await SeedMentionAsync(author.Id, daysAgo: 0);
+        await SeedMentionAsync(author.Id, daysAgo: 8);
+        Assert.NotEqual(commentNow, commentOld);
+
+        var res = await client.GetAsync("/me/interactions/summary");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await ReadJson(res);
+        Assert.Equal(1, body.GetProperty("comments").GetInt32());
+        Assert.Equal(1, body.GetProperty("mentions").GetInt32());
+    }
+
+    [Fact]
+    public async Task Stats_monthly_counts_this_month_by_china_zone()
+    {
+        var author = await _factory.SeedUserAsync("ms-mon@test.local", "MsMon");
+        var client = _factory.CreateAuthorizedClient(author.Id, author.Nickname);
+
+        // 本月：say×2（杭州·晴 / 上海·晴）+ journal×1（无天气）；去年 1 条不计入。
+        await SeedSayAsync(author.Id, daysAgo: 0, weatherCity: "杭州", weatherCondition: "sunny");
+        await SeedSayAsync(author.Id, daysAgo: 1, weatherCity: "上海", weatherCondition: "sunny");
+        await SeedJournalAsync(author.Id, daysAgo: 2);
+        await SeedOldYearSayAsync(author.Id, weatherCity: "杭州");
+
+        var res = await client.GetAsync("/me/stats");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await ReadJson(res);
+        var monthly = body.GetProperty("monthly");
+
+        // 用与后端相同的时区口径计算期望值（月初边界稳健：跨月种子不计入）。
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+        var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.Now, zone);
+        var inMonth = new[] { 0, 1, 2 }
+            .Select(d => TimeZoneInfo.ConvertTime(DateTimeOffset.Now.AddDays(-d), zone))
+            .Count(d => d.Year == nowLocal.Year && d.Month == nowLocal.Month);
+
+        Assert.Equal(inMonth >= 2 ? 2 : inMonth, monthly.GetProperty("says").GetInt32());
+        Assert.Equal(inMonth >= 3 ? 1 : 0, monthly.GetProperty("journals").GetInt32());
+        Assert.Equal(inMonth >= 2 ? 2 : inMonth, monthly.GetProperty("cities").GetInt32());
+
+        // 两个晴天 > 雨天无 → sunny 最常见；无天气的旧内容不回补。
+        var expectedCondition = inMonth >= 1 ? "sunny" : (string?)null;
+        Assert.Equal(expectedCondition, monthly.GetProperty("topCondition").GetString());
+    }
+
+    /// <summary>去年今天/往日的随记（on-this-day 专用，年月日按目标年份固定 04:00 UTC）。</summary>
+    private async Task SeedOnThisDaySayAsync(Guid authorId, int yearsAgo, string text, int dayOffset = 0)
+    {
+        var today = DateTime.UtcNow.Date;
+        var day = today.AddYears(-yearsAgo).AddDays(dayOffset);
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
         db.Contents.Add(new Say
         {
             Id = Guid.NewGuid(),
             AuthorId = authorId,
-            Text = $"streak {daysAgo}",
-            CreatedAt = new DateTime(created.Year, created.Month, created.Day, 4, 0, 0, DateTimeKind.Utc),
-            UpdatedAt = created,
+            Text = text,
+            CreatedAt = day.AddHours(4),
+            UpdatedAt = day,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SeedOnThisDayJournalAsync(Guid authorId, int yearsAgo, string title)
+    {
+        var today = DateTime.UtcNow.Date;
+        var day = today.AddYears(-yearsAgo);
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
+        db.Contents.Add(new Journal
+        {
+            Id = Guid.NewGuid(),
+            AuthorId = authorId,
+            Title = title,
+            MarkdownBody = "body",
+            CreatedAt = day.AddHours(4),
+            UpdatedAt = day,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SeedOldYearSayAsync(Guid authorId, string? weatherCity = null)
+    {
+        var day = DateTime.UtcNow.AddYears(-1).Date;
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
+        db.Contents.Add(new Say
+        {
+            Id = Guid.NewGuid(),
+            AuthorId = authorId,
+            Text = "old year",
+            CreatedAt = day.AddHours(4),
+            UpdatedAt = day,
             WeatherCity = weatherCity,
         });
         await db.SaveChangesAsync();
+    }
+
+    private async Task<Guid> SeedCommentAsync(Guid authorId, Guid contentId, int daysAgo)
+    {
+        var created = DateTime.UtcNow.AddDays(-daysAgo);
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
+        var comment = new Comment
+        {
+            Id = Guid.NewGuid(),
+            ContentId = contentId,
+            AuthorId = authorId,
+            Text = "nice",
+            CreatedAt = new DateTime(created.Year, created.Month, created.Day, 4, 0, 0, DateTimeKind.Utc),
+        };
+        db.Comments.Add(comment);
+        await db.SaveChangesAsync();
+        return comment.Id;
+    }
+
+    private async Task SeedMentionAsync(Guid userId, int daysAgo)
+    {
+        var created = DateTime.UtcNow.AddDays(-daysAgo);
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
+        db.InboxMessages.Add(new InboxMessage
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Type = InboxMessageType.Mentioned,
+            CreatedAt = new DateTime(created.Year, created.Month, created.Day, 4, 0, 0, DateTimeKind.Utc),
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private async Task<Guid> SeedSayAsync(Guid authorId, int daysAgo, string? weatherCity = null, string? weatherCondition = null)
+    {
+        var created = DateTimeUtcDaysAgo(daysAgo);
+        var sayId = Guid.NewGuid();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
+        db.Contents.Add(new Say
+        {
+            Id = sayId,
+            AuthorId = authorId,
+            Text = $"streak {daysAgo}",
+            CreatedAt = DateTimeUtcDaysAgo(daysAgo),
+            UpdatedAt = created,
+            WeatherCity = weatherCity,
+            WeatherCondition = weatherCondition,
+        });
+        await db.SaveChangesAsync();
+        return sayId;
+    }
+
+    private static DateTime DateTimeUtcDaysAgo(int daysAgo)
+    {
+        var d = DateTime.UtcNow.AddDays(-daysAgo).Date;
+        return new DateTime(d.Year, d.Month, d.Day, 4, 0, 0, DateTimeKind.Utc);
     }
 
     private async Task SeedJournalAsync(Guid authorId, int daysAgo)
