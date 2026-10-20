@@ -1,7 +1,9 @@
 import type { ColorTokens, ThemeMode } from './tokens'
 
 // 预置主题：用户装修起点（PRD 6.9）。tokens 为其原生模式下的完整配色；
-// 切到另一模式时只带入品牌色（primary/accent），底色回退该模式基础配色。
+// 切到另一模式时只带入品牌色（primary/accent/interactive），底色回退该模式基础配色。
+// 浅色预置的 primary 取基础蜜黄 #e9a23b 的加深变体：原值对 surface 仅约 2.1:1，
+// 达不到主色/卡片 ≥ 3:1 门槛，故预置用可作前景色的深一档（实测见下方各主色）。
 export interface ThemePreset {
   id: string
   nameKey: string
@@ -15,13 +17,14 @@ export const presets: ThemePreset[] = [
     nameKey: 'theme.presetDefault',
     mode: 'light',
     tokens: {
-      primary: '#4f7cff',
-      accent: '#e54d42',
-      bg: '#f7f8fa',
-      surface: '#ffffff',
-      text: '#1f2329',
-      textSecondary: '#646a73',
-      border: '#e5e6eb'
+      primary: '#b8791f',
+      accent: '#c2543f',
+      interactive: '#3e87b5',
+      bg: '#fbf3e9',
+      surface: '#fffdf9',
+      text: '#3b3128',
+      textSecondary: '#8a7a66',
+      border: '#efe2ce'
     }
   },
   {
@@ -29,13 +32,14 @@ export const presets: ThemePreset[] = [
     nameKey: 'theme.presetWarm',
     mode: 'light',
     tokens: {
-      primary: '#ea6202',
-      accent: '#d6336c',
-      bg: '#faf6f1',
-      surface: '#fffdfa',
-      text: '#2d2016',
-      textSecondary: '#8c7f6e',
-      border: '#eee3d6'
+      primary: '#b85c1e',
+      accent: '#c2543f',
+      interactive: '#3e87b5',
+      bg: '#faf1e4',
+      surface: '#fffdf9',
+      text: '#3b3128',
+      textSecondary: '#8a7a66',
+      border: '#eeddc6'
     }
   },
   {
@@ -43,8 +47,9 @@ export const presets: ThemePreset[] = [
     nameKey: 'theme.presetGreen',
     mode: 'light',
     tokens: {
-      primary: '#1a9e6b',
-      accent: '#e8a33d',
+      primary: '#12835a',
+      accent: '#b8791f',
+      interactive: '#3e87b5',
       bg: '#eef5ee',
       surface: '#f7fcf7',
       text: '#1d2b22',
@@ -59,6 +64,7 @@ export const presets: ThemePreset[] = [
     tokens: {
       primary: '#9d7bff',
       accent: '#ff7ac6',
+      interactive: '#5fa3cc',
       bg: '#14121f',
       surface: '#1e1b2e',
       text: '#ece9f7',

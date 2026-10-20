@@ -78,7 +78,7 @@
   },
   "hub": {
     "publish": "发布内容",
-    "timeline": "我的内容",
+    "timeline": "我的",
     "received": "收到的内容",
     "friends": "好友",
     "inbox": "站内信",
@@ -87,8 +87,27 @@
     "importExport": "导入导出",
     "admin": "管理后台"
   },
+  "tabs": {
+    "index": "首页",
+    "moments": "随记",
+    "journals": "日志",
+    "received": "收到",
+    "mine": "我的"
+  },
+  "moments": {
+    "title": "随记",
+    "desc": "记下此刻的心情与瞬间",
+    "empty": "还没有随记，去发布一条吧",
+    "write": "写随记"
+  },
+  "journals": {
+    "title": "日志",
+    "desc": "沉淀长文与思考",
+    "empty": "还没有日志，去写一篇吧",
+    "write": "写日志"
+  },
   "publish": {
-    "sayMode": "说说",
+    "sayMode": "随记",
     "journalMode": "日志",
     "sayPlaceholder": "说点什么…",
     "titlePlaceholder": "标题",
@@ -100,7 +119,7 @@
     "maxImagesReached": "图片最多 9 张",
     "recipients": "@ 谁",
     "chooseRecipients": "选择好友",
-    "sayEmpty": "说说需要文字或媒体",
+    "sayEmpty": "随记需要文字或媒体",
     "journalEmpty": "标题和正文不能为空",
     "submit": "发布",
     "success": "发布成功"
@@ -111,7 +130,7 @@
   },
   "timeline": {
     "filterAll": "全部",
-    "kindSay": "说说",
+    "kindSay": "随记",
     "kindJournal": "日志"
   },
   "friends": {
@@ -166,7 +185,7 @@
   },
   "ie": {
     "exportSection": "导出全部内容",
-    "exportDesc": "打包你的全部说说、日志与媒体为 zip 下载",
+    "exportDesc": "打包你的全部随记、日志与媒体为 zip 下载",
     "exportBtn": "导出 zip",
     "exported": "导出已开始下载",
     "importSection": "导入 zip",
@@ -204,7 +223,7 @@
     "language": "界面语言"
   },
   "theme": {
-    "presetDefault": "默认蓝",
+    "presetDefault": "蜜杏暖阳",
     "presetWarm": "暖橙",
     "presetGreen": "护眼绿",
     "presetSpace": "深空紫"

@@ -52,7 +52,11 @@ function composeColors(mode: ThemeMode, presetId: string, overrides: Partial<Col
     const fromPreset =
       preset.mode === mode
         ? preset.tokens
-        : { primary: preset.tokens.primary, accent: preset.tokens.accent }
+        : {
+            primary: preset.tokens.primary,
+            accent: preset.tokens.accent,
+            interactive: preset.tokens.interactive
+          }
     Object.assign(colors, fromPreset)
   }
   Object.assign(colors, overrides)

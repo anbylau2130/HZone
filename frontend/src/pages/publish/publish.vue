@@ -61,11 +61,21 @@ import { useI18n } from 'vue-i18n'
 import FriendPicker from '../../components/FriendPicker.vue'
 import { createSay, createJournal, type FriendInfo } from '../../api/endpoints'
 import { uploadFile } from '../../api/client'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 
 onShow(() => {
   setNavTitle('hub.publish')
+})
+
+// 支持 ?kind=say / ?kind=journal 预选发布类型（随记/日志分页入口跳入）
+onLoad((query) => {
+  const q = (query ?? {}) as Record<string, string>
+  if (q.kind === 'journal') {
+    mode.value = 'journal'
+  } else if (q.kind === 'say') {
+    mode.value = 'say'
+  }
 })
 
 const { t } = useI18n()

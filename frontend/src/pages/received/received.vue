@@ -27,6 +27,8 @@
         {{ $t('common.loadMore') }}
       </button>
     </view>
+
+    <AppTabBar current="received" />
   </view>
 </template>
 
@@ -35,6 +37,7 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import ContentCard from '../../components/ContentCard.vue'
+import AppTabBar from '../../components/AppTabBar.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listReceived, type ContentItem, type KindFilter } from '../../api/endpoints'
 
@@ -75,7 +78,7 @@ function openDetail(c: ContentItem) {
 .page {
   min-height: 100vh;
   background: var(--hz-color-bg);
-  padding: 16px;
+  padding: 16px 16px calc(70px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 12px;

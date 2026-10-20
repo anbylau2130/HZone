@@ -5,7 +5,7 @@ import { colorVarNames, staticTokens, type ColorTokens } from './tokens'
 export function applyTheme(colors: ColorTokens) {
   const vars: Record<string, string> = { ...staticTokens }
   for (const [key, varName] of Object.entries(colorVarNames)) {
-    const value = (colors as Record<string, string | undefined>)[key]
+    const value = (colors as unknown as Record<string, string | undefined>)[key]
     if (value) vars[varName] = value
   }
   // #ifdef H5

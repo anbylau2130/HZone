@@ -19,7 +19,7 @@ const PASSWORD = 'UiPassw0rd!x'
 // 共享旅程用户（beforeAll 经 HTTP 注册并互为好友）
 let alice: TestUser
 let bob: TestUser
-const SAY_TEXT = 'UI 旅程：今天天气很好，适合发说说'
+const SAY_TEXT = 'UI 旅程：今天天气很好，适合发随记'
 const JOURNAL_TITLE = 'UI 旅程日志标题'
 
 test.beforeAll(async () => {
@@ -63,7 +63,7 @@ test('journey 1: register via UI, verify via email link route, login via UI', as
   await loginViaUi(page, { email, password: PASSWORD, nickname: 'CarlUi', userId: '', token: '' })
 })
 
-// ---------- 旅程 2：A 发说说 @ B → B 站内信红点 → 详情 → 评论 → A 看到评论站内信 ----------
+// ---------- 旅程 2：A 发随记 @ B → B 站内信红点 → 详情 → 评论 → A 看到评论站内信 ----------
 
 test('journey 2: say with mention, inbox red dot, detail comment loop', async ({ browser }) => {
   const pageA = await newSession(browser, alice)
@@ -94,7 +94,7 @@ test('journey 2: say with mention, inbox red dot, detail comment loop', async ({
 
   // A 的会话回到前台（刷新触发站内信拉取，对齐"登录后可见"的产品语义）
   await pageA.reload()
-  await expect(pageA.getByText(/你好，/)).toBeVisible({ timeout: 15_000 })
+  await expect(pageA.locator('.nickname').first()).toBeVisible({ timeout: 15_000 })
   const aliceInboxEntry = pageA.locator('.entry', { hasText: '站内信' })
   await expect(aliceInboxEntry.locator('.dot')).toBeVisible({ timeout: 10_000 })
   await aliceInboxEntry.click()

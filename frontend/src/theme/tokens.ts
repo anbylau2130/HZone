@@ -4,6 +4,7 @@ export type ThemeMode = 'light' | 'dark'
 export interface ColorTokens {
   primary: string
   accent: string
+  interactive: string
   bg: string
   surface: string
   text: string
@@ -14,6 +15,7 @@ export interface ColorTokens {
 export const colorVarNames: Record<keyof ColorTokens, string> = {
   primary: '--hz-color-primary',
   accent: '--hz-color-accent',
+  interactive: '--hz-color-interactive',
   bg: '--hz-color-bg',
   surface: '--hz-color-surface',
   text: '--hz-color-text',
@@ -21,25 +23,28 @@ export const colorVarNames: Record<keyof ColorTokens, string> = {
   border: '--hz-color-border'
 }
 
-// 浅/深两套基础配色（预置主题基于此叠加）
+// 浅/深两套基础配色：浅色「蜜杏暖阳」/ 深色「暖夜」。
+// primary 蜜黄只做按钮底色（白字），文字链/次级按钮用 interactive 天青保证可读对比。
 export const baseColors: Record<ThemeMode, ColorTokens> = {
   light: {
-    primary: '#4f7cff',
-    accent: '#e54d42',
-    bg: '#f7f8fa',
-    surface: '#ffffff',
-    text: '#1f2329',
-    textSecondary: '#646a73',
-    border: '#e5e6eb'
+    primary: '#e9a23b',
+    accent: '#c2543f',
+    interactive: '#3e87b5',
+    bg: '#fbf3e9',
+    surface: '#fffdf9',
+    text: '#3b3128',
+    textSecondary: '#8a7a66',
+    border: '#efe2ce'
   },
   dark: {
-    primary: '#5c8aff',
-    accent: '#ff6b60',
-    bg: '#101114',
-    surface: '#1b1d22',
-    text: '#e8eaed',
-    textSecondary: '#9aa0a6',
-    border: '#2c2f36'
+    primary: '#f0b45a',
+    accent: '#d96b55',
+    interactive: '#5fa3cc',
+    bg: '#1e1712',
+    surface: '#2a211a',
+    text: '#ede4d7',
+    textSecondary: '#a8977f',
+    border: '#3a2f24'
   }
 }
 

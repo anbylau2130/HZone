@@ -212,7 +212,7 @@ export async function loginViaUi(page: Page, user: TestUser): Promise<void> {
   await fillUniInput(page, '邮箱', user.email)
   await fillUniInput(page, '密码', user.password)
   await uniButton(page, '登录').click()
-  await expect(page.getByText(`你好，${user.nickname}`)).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('.nickname', { hasText: user.nickname })).toBeVisible({ timeout: 20_000 })
   // uni-app reLaunch 后页面转场/keep-alive 尚在收尾，立刻点入口偶发路由栈错乱
   // （详情见 ticket 15 排查记录）：等转场稳定再继续。
   await page.waitForTimeout(1_500)
@@ -231,9 +231,9 @@ export async function logoutViaUi(page: Page): Promise<void> {
   for (let i = 0; i < 4; i++) {
     if (page.url().includes('pages/index/index')) break
     await page.goBack()
-    await expect(page.getByText(/你好，/)).toBeVisible({ timeout: 10_000 }).catch(() => {})
+    await expect(page.locator('.nickname').first()).toBeVisible({ timeout: 10_000 }).catch(() => {})
   }
-  await expect(page.getByText(/你好，/)).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('.nickname').first()).toBeVisible({ timeout: 10_000 })
   await uniButton(page, '退出登录').click()
   await expect(uniButton(page, '登录')).toBeVisible({ timeout: 10_000 })
 }

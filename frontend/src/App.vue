@@ -3,15 +3,17 @@
 </script>
 
 <style>
-/* design token：全部颜色/圆角/字号由此定义，主题切换只改变量值（PRD 7.x/6.9） */
+/* design token :root 默认值 = 浅色「蜜杏暖阳」基础配色（与 theme/tokens.ts baseColors 同步）。
+   主题切换只改变量值（PRD 7.x/6.9），结构 token（圆角/字号/间距）固定不变 */
 :root {
-  --hz-color-primary: #4f7cff;
-  --hz-color-accent: #e54d42;
-  --hz-color-bg: #f7f8fa;
-  --hz-color-surface: #ffffff;
-  --hz-color-text: #1f2329;
-  --hz-color-text-secondary: #646a73;
-  --hz-color-border: #e5e6eb;
+  --hz-color-primary: #e9a23b;
+  --hz-color-accent: #c2543f;
+  --hz-color-interactive: #3e87b5;
+  --hz-color-bg: #fbf3e9;
+  --hz-color-surface: #fffdf9;
+  --hz-color-text: #3b3128;
+  --hz-color-text-secondary: #8a7a66;
+  --hz-color-border: #efe2ce;
   --hz-radius-sm: 8px;
   --hz-radius-md: 12px;
   --hz-radius-lg: 20px;

@@ -78,7 +78,7 @@
   },
   "hub": {
     "publish": "Publish",
-    "timeline": "My contents",
+    "timeline": "Mine",
     "received": "Received",
     "friends": "Friends",
     "inbox": "Inbox",
@@ -87,8 +87,27 @@
     "importExport": "Import / Export",
     "admin": "Admin"
   },
+  "tabs": {
+    "index": "Home",
+    "moments": "Moments",
+    "journals": "Journals",
+    "received": "Received",
+    "mine": "Mine"
+  },
+  "moments": {
+    "title": "Moments",
+    "desc": "Capture moods and moments as they happen",
+    "empty": "No moments yet. Post your first one!",
+    "write": "Write a moment"
+  },
+  "journals": {
+    "title": "Journals",
+    "desc": "Longer reads and deeper thoughts",
+    "empty": "No journals yet. Write your first one!",
+    "write": "Write a journal"
+  },
   "publish": {
-    "sayMode": "Say",
+    "sayMode": "Moments",
     "journalMode": "Journal",
     "sayPlaceholder": "What's on your mind…",
     "titlePlaceholder": "Title",
@@ -100,7 +119,7 @@
     "maxImagesReached": "At most 9 images",
     "recipients": "Share with",
     "chooseRecipients": "Choose friends",
-    "sayEmpty": "A say needs text or media",
+    "sayEmpty": "A moment needs text or media",
     "journalEmpty": "Title and body are required",
     "submit": "Publish",
     "success": "Published"
@@ -111,7 +130,7 @@
   },
   "timeline": {
     "filterAll": "All",
-    "kindSay": "Says",
+    "kindSay": "Moments",
     "kindJournal": "Journals"
   },
   "friends": {
@@ -166,7 +185,7 @@
   },
   "ie": {
     "exportSection": "Export all contents",
-    "exportDesc": "Download all your says, journals and media as a zip",
+    "exportDesc": "Download all your moments, journals and media as a zip",
     "exportBtn": "Export zip",
     "exported": "Export download started",
     "importSection": "Import zip",
@@ -204,7 +223,7 @@
     "language": "Language"
   },
   "theme": {
-    "presetDefault": "Default Blue",
+    "presetDefault": "Honey Sun",
     "presetWarm": "Warm Orange",
     "presetGreen": "Eye-care Green",
     "presetSpace": "Deep Space Purple"

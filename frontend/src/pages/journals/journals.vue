@@ -1,0 +1,121 @@
+<template>
+  <view class="page">
+    <view v-if="pagination.loading.value && !items.length" class="hint">
+      <text class="hint-text">{{ $t('common.loading') }}</text>
+    </view>
+    <view v-else-if="!items.length" class="hint">
+      <text class="hint-text">{{ $t('journals.empty') }}</text>
+    </view>
+
+    <view
+      v-for="c in items"
+      :key="c.id"
+      class="card"
+      @click="openDetail(c)"
+    >
+      <text class="title">{{ c.title }}</text>
+      <text class="summary">{{ summary(c) }}</text>
+      <text class="date">{{ formatDateTime(c.createdAt) }}</text>
+    </view>
+
+    <view v-if="items.length" class="more">
+      <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
+      <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
+        {{ $t('common.loadMore') }}
+      </button>
+    </view>
+
+    <AppTabBar current="journals" />
+  </view>
+</template>
+
+<script setup lang="ts">
+import { onShow } from '@dcloudio/uni-app'
+import { setNavTitle } from '../../locale'
+import AppTabBar from '../../components/AppTabBar.vue'
+import { usePagination } from '../../composables/usePagination'
+import { listMyContents, type ContentItem } from '../../api/endpoints'
+import { formatDateTime, stripMarkdown } from '../../utils/format'
+
+const pagination = usePagination<ContentItem>((offset, limit) =>
+  listMyContents('journal', offset, limit)
+)
+const { items, finished, loadMore } = pagination
+
+// onShow 而非 onLoad：H5 端直接 hash 进入时 onLoad 不触发，onShow 稳定
+onShow(() => {
+  setNavTitle('journals.title')
+  pagination.refresh()
+})
+
+function openDetail(c: ContentItem) {
+  uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
+}
+
+function summary(c: ContentItem): string {
+  return stripMarkdown(c.markdownBody ?? '')
+}
+</script>
+
+<style scoped>
+.page {
+  min-height: 100vh;
+  background: var(--hz-color-bg);
+  padding: 16px 16px calc(70px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+.card {
+  background: var(--hz-color-surface);
+  border-radius: var(--hz-radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--hz-color-text);
+  line-height: 1.3;
+}
+.summary {
+  font-size: var(--hz-font-size-base);
+  color: var(--hz-color-text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.date {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.more {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 12px;
+}
+.hint {
+  padding: 40px 0;
+  display: flex;
+  justify-content: center;
+}
+.hint-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.pick {
+  width: 60%;
+  height: 38px;
+  line-height: 38px;
+  background: var(--hz-color-surface);
+  color: var(--hz-color-interactive);
+  border-radius: var(--hz-radius-md);
+  font-size: var(--hz-font-size-sm);
+  border: 1px solid var(--hz-color-border);
+}
+</style>
