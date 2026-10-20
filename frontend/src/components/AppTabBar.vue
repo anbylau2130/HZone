@@ -106,4 +106,10 @@ function go(t: TabItem) {
   font-size: 10px;
   color: #fff;
 }
+@media (min-width: 768px) {
+  /* 桌面端用 AppSidebar，底部 tab 栏隐藏 */
+  .tabbar {
+    display: none;
+  }
+}
 </style>

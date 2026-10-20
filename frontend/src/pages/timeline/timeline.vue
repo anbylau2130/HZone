@@ -28,6 +28,7 @@
       </button>
     </view>
 
+    <AppSidebar current="mine" />
     <AppTabBar current="mine" />
   </view>
 </template>
@@ -38,6 +39,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import ContentCard from '../../components/ContentCard.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, type ContentItem, type KindFilter } from '../../api/endpoints'
 
@@ -126,5 +128,16 @@ function openDetail(c: ContentItem) {
   border-radius: var(--hz-radius-md);
   font-size: var(--hz-font-size-sm);
   border: 1px solid var(--hz-color-border);
+}
+@media (min-width: 768px) {
+  .page {
+    margin-left: 220px;
+    padding-left: max(16px, calc((100% - 220px - 42rem) / 2));
+    padding-right: max(16px, calc((100% - 220px - 42rem) / 2));
+  }
+  .filter {
+    flex: 0 0 auto;
+    padding: 0 20px;
+  }
 }
 </style>

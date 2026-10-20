@@ -7,15 +7,17 @@
       <text class="hint-text">{{ $t('journals.empty') }}</text>
     </view>
 
-    <view
-      v-for="c in items"
-      :key="c.id"
-      class="card"
-      @click="openDetail(c)"
-    >
-      <text class="title">{{ c.title }}</text>
-      <text class="summary">{{ summary(c) }}</text>
-      <text class="date">{{ formatDateTime(c.createdAt) }}</text>
+    <view v-if="items.length" class="cards">
+      <view
+        v-for="c in items"
+        :key="c.id"
+        class="card"
+        @click="openDetail(c)"
+      >
+        <text class="title">{{ c.title }}</text>
+        <text class="summary">{{ summary(c) }}</text>
+        <text class="date">{{ formatDateTime(c.createdAt) }}</text>
+      </view>
     </view>
 
     <view v-if="items.length" class="more">
@@ -25,6 +27,7 @@
       </button>
     </view>
 
+    <AppSidebar current="journals" />
     <AppTabBar current="journals" />
   </view>
 </template>
@@ -33,6 +36,7 @@
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, type ContentItem } from '../../api/endpoints'
 import { formatDateTime, stripMarkdown } from '../../utils/format'
@@ -66,6 +70,12 @@ function summary(c: ContentItem): string {
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
+}
+/* 移动端维持原 flex 列布局（桌面在下方切 grid 双栏） */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .card {
   background: var(--hz-color-surface);
@@ -117,5 +127,21 @@ function summary(c: ContentItem): string {
   border-radius: var(--hz-radius-md);
   font-size: var(--hz-font-size-sm);
   border: 1px solid var(--hz-color-border);
+}
+@media (min-width: 768px) {
+  .page {
+    margin-left: 220px;
+    padding: 24px;
+  }
+  /* 桌面双栏 grid */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  .card {
+    padding: 18px 20px;
+  }
 }
 </style>

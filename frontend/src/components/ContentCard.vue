@@ -81,4 +81,9 @@ const kindLabel = computed(() =>
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
 }
+@media (min-width: 768px) {
+  .card {
+    padding: 20px;
+  }
+}
 </style>

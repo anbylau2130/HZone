@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" :class="mode === 'journal' ? 'journal-mode' : 'say-mode'">
     <view class="modes">
       <button class="mode" :class="{ on: mode === 'say' }" @click="mode = 'say'">
         {{ $t('publish.sayMode') }}
@@ -32,13 +32,16 @@
 
     <view v-else class="panel">
       <input v-model="title" class="field" :placeholder="$t('publish.titlePlaceholder')" />
-      <textarea
-        v-model="markdown"
-        class="area tall"
-        :placeholder="$t('publish.bodyPlaceholder')"
-        :maxlength="-1"
-        auto-height
-      />
+      <view class="journal-cols">
+        <textarea
+          v-model="markdown"
+          class="area tall"
+          :placeholder="$t('publish.bodyPlaceholder')"
+          :maxlength="-1"
+          auto-height
+        />
+        <view class="md-preview" v-html="previewHtml" />
+      </view>
     </view>
 
     <view class="recipients">
@@ -58,6 +61,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { marked } from 'marked'
 import FriendPicker from '../../components/FriendPicker.vue'
 import { createSay, createJournal, type FriendInfo } from '../../api/endpoints'
 import { uploadFile } from '../../api/client'
@@ -97,6 +101,9 @@ const uploading = ref(false)
 const submitting = ref(false)
 
 const busy = computed(() => uploading.value || submitting.value)
+
+// 桌面端实时预览（H5 only；marked 默认转义输出，内容可见名单本就受限）
+const previewHtml = computed(() => marked.parse(markdown.value) as string)
 
 function onFriendsConfirmed(friends: FriendInfo[]) {
   pickedFriends.value = friends
@@ -236,6 +243,15 @@ async function submit() {
 .area.tall {
   min-height: 260px;
 }
+/* 移动端：预览隐藏，布局与双栏前的原始结构一致 */
+.journal-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.md-preview {
+  display: none;
+}
 .field {
   height: 44px;
   border: 1px solid var(--hz-color-border);
@@ -323,5 +339,47 @@ async function submit() {
   color: #fff;
   border-radius: var(--hz-radius-md);
   font-size: var(--hz-font-size-base);
+}
+@media (min-width: 768px) {
+  .page {
+    padding: 32px max(24px, calc((100% - 80rem) / 2));
+  }
+  /* say 短内容：单栏限宽居中 */
+  .page.say-mode {
+    max-width: calc(42rem + 48px);
+    margin: 0 auto;
+  }
+  /* journal：桌面双栏编辑器 */
+  .journal-cols {
+    flex-direction: row;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .journal-cols .area.tall {
+    flex: 1;
+    height: 70vh !important; /* 覆盖 uni-app auto-height 的行内样式 */
+    min-height: 0;
+    font-size: 15px;
+    line-height: 1.8;
+    font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
+  }
+  .md-preview {
+    display: block;
+    flex: 1;
+    max-width: 42rem;
+    height: 70vh;
+    overflow-y: auto;
+    background: var(--hz-color-bg);
+    border: 1px solid var(--hz-color-border);
+    border-radius: var(--hz-radius-lg);
+    padding: 16px 20px;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  .btn {
+    align-self: flex-end;
+    width: 160px;
+    margin-left: auto;
+  }
 }
 </style>

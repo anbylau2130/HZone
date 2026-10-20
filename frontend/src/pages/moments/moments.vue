@@ -35,6 +35,7 @@
       </button>
     </view>
 
+    <AppSidebar current="moments" />
     <AppTabBar current="moments" />
   </view>
 </template>
@@ -45,6 +46,7 @@ import { setNavTitle } from '../../locale'
 import MediaGrid from '../../components/MediaGrid.vue'
 import RecipientsBar from '../../components/RecipientsBar.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, type ContentItem } from '../../api/endpoints'
 import { formatRelativeTime } from '../../utils/format'
@@ -150,5 +152,15 @@ function openDetail(c: ContentItem) {
   border-radius: var(--hz-radius-md);
   font-size: var(--hz-font-size-sm);
   border: 1px solid var(--hz-color-border);
+}
+@media (min-width: 768px) {
+  .page {
+    margin-left: 220px;
+    padding-left: max(16px, calc((100% - 220px - 42rem) / 2));
+    padding-right: max(16px, calc((100% - 220px - 42rem) / 2));
+  }
+  .card {
+    padding: 20px;
+  }
 }
 </style>

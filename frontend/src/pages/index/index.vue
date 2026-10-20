@@ -39,6 +39,7 @@
       </view>
     </view>
     <button class="btn ghost" @click="logout">{{ $t('home.logout') }}</button>
+    <AppSidebar current="index" />
     <AppTabBar current="index" />
   </view>
 </template>
@@ -50,6 +51,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useInboxStore } from '../../stores/inbox'
 import { getSetupStatus, listMyContents } from '../../api/endpoints'
 import AppTabBar from '../../components/AppTabBar.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 
 const auth = useAuthStore()
 const inbox = useInboxStore()
@@ -272,5 +274,16 @@ function logout() {
   background: var(--hz-color-surface);
   color: var(--hz-color-accent);
   border: 1px solid var(--hz-color-border);
+}
+@media (min-width: 768px) {
+  .page {
+    margin-left: 220px;
+    padding-left: max(16px, calc((100% - 220px - 60rem) / 2));
+    padding-right: max(16px, calc((100% - 220px - 60rem) / 2));
+  }
+  .banner {
+    /* 桌面加高 */
+    padding: 40px 16px 32px;
+  }
 }
 </style>

@@ -9,7 +9,12 @@
 
       <template v-if="!editing">
         <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
-        <text v-else class="text">{{ content.text }}</text>
+        <view
+          v-if="content.kind === 'journal' && content.markdownBody"
+          class="md-body"
+          v-html="mdHtml"
+        />
+        <text v-else-if="content.kind !== 'journal'" class="text">{{ content.text }}</text>
         <MediaGrid :media="content.media" />
         <RecipientsBar :recipients="content.recipients" />
       </template>
@@ -60,6 +65,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { marked } from 'marked'
 import { setNavTitle } from '../../locale'
 import { useI18n } from 'vue-i18n'
 import MediaGrid from '../../components/MediaGrid.vue'
@@ -91,6 +97,9 @@ const isAuthor = computed(() => content.value?.author.id === auth.user?.id)
 const kindLabel = computed(() =>
   content.value?.kind === 'journal' ? t('timeline.kindJournal') : t('timeline.kindSay')
 )
+
+// 日志正文渲染完整 Markdown（marked 默认转义输出）
+const mdHtml = computed(() => marked.parse(content.value?.markdownBody ?? '') as string)
 
 onLoad((query) => {
   setNavTitle('detail.title')
@@ -299,5 +308,21 @@ async function postComment() {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+.md-body {
+  font-size: var(--hz-font-size-base);
+  color: var(--hz-color-text);
+  line-height: 1.8;
+  word-break: break-word;
+}
+@media (min-width: 768px) {
+  .page {
+    max-width: calc(42rem + 32px);
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+  .md-body {
+    font-size: 15px;
+  }
 }
 </style>
