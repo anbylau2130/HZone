@@ -7,6 +7,8 @@ export interface HZUser {
   id: string
   email: string
   nickname: string
+  /** 头像 /media/ 相对路径；null = 未设置（票 05）。 */
+  avatarUrl?: string | null
   isAdmin: boolean
 }
 

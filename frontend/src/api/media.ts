@@ -28,3 +28,11 @@ export function loadMediaUrl(path: string): Promise<string> {
   cache.set(path, task)
   return task
 }
+
+/**
+ * 头像加载：与 loadMediaUrl 同一授权 blob 模式与同一模块级缓存
+ * （头像每次上传都是新 storedName，换头像天然取新缓存，无需主动失效）。
+ */
+export function fetchAvatarBlobUrl(path: string): Promise<string> {
+  return loadMediaUrl(path)
+}

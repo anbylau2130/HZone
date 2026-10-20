@@ -2,7 +2,7 @@
  * 后端 API 薄封装：全部走 client.ts 的 request（Bearer 自动带上，401 统一跳登录）。
  * DTO 形状与后端 ContentContracts.cs / CommentInboxEndpoints.cs 等一一对应（camelCase）。
  */
-import { request } from './client'
+import { request, uploadFile } from './client'
 
 // ---------- 内容 ----------
 
@@ -227,6 +227,7 @@ export interface FriendInfo {
   id: string
   nickname: string
   email: string
+  avatarUrl?: string | null
 }
 
 export interface FriendRequestItem {
@@ -265,6 +266,18 @@ export function declineFriendRequest(id: string) {
 
 export function removeFriend(userId: string) {
   return request<void>(`/api/friends/${userId}`, { method: 'DELETE' })
+}
+
+// ---------- 头像（composer-polish 票 05） ----------
+
+/** POST /me/avatar：multipart 上传图片，服务端压缩存储并更新头像；返回 /media/ 相对路径。 */
+export function uploadAvatar(filePath: string) {
+  return uploadFile<{ avatarUrl: string }>('/api/me/avatar', filePath)
+}
+
+/** DELETE /me/avatar：清空头像 → 204。 */
+export function clearAvatar() {
+  return request('/api/me/avatar', { method: 'DELETE' })
 }
 
 // ---------- 评论 ----------

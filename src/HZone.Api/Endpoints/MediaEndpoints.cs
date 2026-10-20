@@ -200,7 +200,7 @@ public static class MediaEndpoints
         });
     }
 
-    private static MediaKind? ClassifyKind(string? contentType)
+    internal static MediaKind? ClassifyKind(string? contentType)
     {
         if (string.IsNullOrEmpty(contentType))
         {
@@ -214,7 +214,7 @@ public static class MediaEndpoints
         return null;
     }
 
-    private static async Task<(byte[] Main, byte[] Thumb)> CompressImageAsync(Stream input, CancellationToken ct)
+    internal static async Task<(byte[] Main, byte[] Thumb)> CompressImageAsync(Stream input, CancellationToken ct)
     {
         // ImageSharp 解码需要可 seek 的流，先缓冲。
         await using var buffered = new MemoryStream();
@@ -244,7 +244,7 @@ public static class MediaEndpoints
         return ValidStoredName.IsMatch(storedName) && !storedName.Contains("..");
     }
 
-    private static async Task<long> GetLimitAsync(HZoneDbContext db, MediaKind kind, CancellationToken ct)
+    internal static async Task<long> GetLimitAsync(HZoneDbContext db, MediaKind kind, CancellationToken ct)
     {
         var key = kind switch
         {

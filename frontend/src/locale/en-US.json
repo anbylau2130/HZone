@@ -260,7 +260,12 @@
     "todo": "Admin backend is not merged yet. This page is a placeholder."
   },
   "settings": {
-    "title": "Settings"
+    "title": "Settings",
+    "changeAvatar": "Change avatar",
+    "removeAvatar": "Remove avatar",
+    "avatarUpdated": "Avatar updated",
+    "avatarRemoved": "Avatar removed",
+    "avatarHint": "jpg/png, compressed automatically"
   },
   "theme": {
     "title": "Theme",

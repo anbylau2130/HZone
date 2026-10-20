@@ -154,7 +154,14 @@ public static class AuthEndpoints
             {
                 token,
                 expiresAt,
-                user = new { id = user.Id, email = user.Email, nickname = user.Nickname, isAdmin = user.IsAdmin },
+                user = new
+                {
+                    id = user.Id,
+                    email = user.Email,
+                    nickname = user.Nickname,
+                    avatarUrl = MediaUrl(user.AvatarUrl),
+                    isAdmin = user.IsAdmin,
+                },
             });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
@@ -170,7 +177,14 @@ public static class AuthEndpoints
                 return Results.NotFound(new { error = "user not found" });
             }
 
-            return Results.Ok(new { id = user.Id, email = user.Email, nickname = user.Nickname, isAdmin = user.IsAdmin });
+            return Results.Ok(new
+            {
+                id = user.Id,
+                email = user.Email,
+                nickname = user.Nickname,
+                avatarUrl = MediaUrl(user.AvatarUrl),
+                isAdmin = user.IsAdmin,
+            });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
         app.MapPost("/auth/forgot-password", async (
@@ -271,6 +285,10 @@ public static class AuthEndpoints
             ? id
             : throw new InvalidOperationException("missing sub claim");
     }
+
+    /// <summary>User.AvatarUrl（storedName）→ /media/{storedName}；未设置为 null。</summary>
+    internal static string? MediaUrl(string? avatarStoredName) =>
+        avatarStoredName is null ? null : $"/media/{avatarStoredName}";
 }
 
 public sealed record RegisterRequest(string InviteCode, string Email, string Password, string Nickname);

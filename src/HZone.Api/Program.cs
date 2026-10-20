@@ -99,6 +99,7 @@ app.MapMeStatsEndpoints();
 app.MapCommentEndpoints();
 app.MapInboxEndpoints();
 app.MapMediaEndpoints();
+app.MapMeAvatarEndpoints();
 app.MapExportImportEndpoints();
 app.MapFriendEndpoints();
 app.MapSetupEndpoints();

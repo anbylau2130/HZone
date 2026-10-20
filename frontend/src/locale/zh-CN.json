@@ -262,7 +262,12 @@
     "todo": "后端管理接口尚未合入，此页暂为占位"
   },
   "settings": {
-    "title": "设置"
+    "title": "设置",
+    "changeAvatar": "更换头像",
+    "removeAvatar": "移除头像",
+    "avatarUpdated": "头像已更新",
+    "avatarRemoved": "头像已移除",
+    "avatarHint": "支持 jpg/png，自动压缩"
   },
   "theme": {
     "title": "主题",

@@ -35,15 +35,7 @@
         @click="openDetail(c)"
       >
         <view class="head">
-          <view class="avatar">
-            <image
-              v-if="c.author.avatarUrl"
-              class="avatar-img"
-              :src="c.author.avatarUrl"
-              mode="aspectFill"
-            />
-            <text v-else class="avatar-fallback">{{ c.author.nickname.slice(0, 1) }}</text>
-          </view>
+          <AvatarCircle :nickname="c.author.nickname" :avatar-url="c.author.avatarUrl" :size="44" />
           <view class="head-mid">
             <text class="name">{{ c.author.nickname }}</text>
             <text class="time">{{ formatRelativeTime(c.createdAt) }}</text>
@@ -86,6 +78,7 @@ import { usePagination } from '../../composables/usePagination'
 import { listMyContents, deleteContent, type ContentItem } from '../../api/endpoints'
 import { formatRelativeTime } from '../../utils/format'
 import CardOwnerActions from '../../components/CardOwnerActions.vue'
+import AvatarCircle from '../../components/AvatarCircle.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useI18n } from 'vue-i18n'
 
@@ -226,26 +219,6 @@ function goSearch() {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--hz-color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.avatar-img {
-  width: 44px;
-  height: 44px;
-}
-.avatar-fallback {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
 }
 .head-mid {
   display: flex;

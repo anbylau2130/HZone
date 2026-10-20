@@ -25,10 +25,12 @@ public static class FriendEndpoints
                 .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
                 .ToList();
 
-            var friends = await db.Users
+            var friends = (await db.Users
                 .Where(u => friendIds.Contains(u.Id))
-                .Select(u => new { u.Id, u.Nickname, u.Email })
-                .ToListAsync(ct);
+                .Select(u => new { u.Id, u.Nickname, u.Email, u.AvatarUrl })
+                .ToListAsync(ct))
+                .Select(u => new { u.Id, u.Nickname, u.Email, AvatarUrl = AuthEndpoints.MediaUrl(u.AvatarUrl) })
+                .ToList();
 
             return Results.Ok(friends);
         }).AddEndpointFilter(SetupState.RequireInitialized);

@@ -5,7 +5,7 @@
       <text class="brand-text">HZone</text>
     </view>
     <view class="sb-user" @click="goTimeline">
-      <view class="sb-avatar">{{ initial }}</view>
+      <AvatarCircle :nickname="auth.user?.nickname ?? ''" :avatar-url="auth.user?.avatarUrl" :size="34" />
       <text class="sb-nick">{{ auth.user?.nickname ?? '' }}</text>
       <view class="sb-spacer" />
     </view>
@@ -34,9 +34,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useInboxStore } from '../stores/inbox'
 import { useAuthStore } from '../stores/auth'
+import AvatarCircle from './AvatarCircle.vue'
 
 type TabKey = 'index' | 'moments' | 'journals' | 'received' | 'theme' | 'settings'
 
@@ -63,8 +64,6 @@ const auth = useAuthStore()
 onMounted(() => {
   inbox.startPolling()
 })
-
-const initial = computed(() => (auth.user?.nickname ?? '').slice(0, 1))
 
 function go(t: TabItem) {
   if (t.key === props.current) return
@@ -118,19 +117,6 @@ function logout() {
   padding: 8px 12px;
   border-radius: var(--hz-radius-md);
   cursor: pointer;
-}
-.sb-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--hz-color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 .sb-nick {
   font-size: var(--hz-font-size-base);

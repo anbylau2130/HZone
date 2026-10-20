@@ -37,7 +37,15 @@ public record UpdateContentRequest(
 
 public record RecipientResponse(Guid UserId, string Nickname);
 
-public record AuthorResponse(Guid Id, string Nickname);
+/// <summary>
+/// 作者节点：AvatarUrl 存的是 User.AvatarUrl（媒体 storedName），
+/// DTO 下发统一投影为 /media/{storedName}（与 MediaResponse 同口径）；未设置为 null。
+/// </summary>
+public record AuthorResponse(Guid Id, string Nickname, string? AvatarUrl = null)
+{
+    public static AuthorResponse Of(Guid id, string nickname, string? avatarStoredName) =>
+        new(id, nickname, avatarStoredName is null ? null : $"/media/{avatarStoredName}");
+}
 
 public record MediaResponse(Guid Id, string Kind, string Url, string? ThumbUrl, long SizeBytes);
 

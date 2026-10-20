@@ -1,16 +1,7 @@
 <template>
   <view class="card" @click="$emit('open', content)">
     <view class="head">
-      <view class="avatar">
-        <!-- 票 05 接真头像：avatarUrl 有值走 image，否则回退昵称首字占位 -->
-        <image
-          v-if="content.author.avatarUrl"
-          class="avatar-img"
-          :src="content.author.avatarUrl"
-          mode="aspectFill"
-        />
-        <text v-else class="avatar-fallback">{{ content.author.nickname.slice(0, 1) }}</text>
-      </view>
+      <AvatarCircle :nickname="content.author.nickname" :avatar-url="content.author.avatarUrl" :size="44" />
       <view class="head-mid">
         <text class="author">{{ content.author.nickname }}</text>
         <text class="kind">{{ kindLabel }}</text>
@@ -43,6 +34,7 @@ import { useI18n } from 'vue-i18n'
 import MediaGrid from './MediaGrid.vue'
 import RecipientsBar from './RecipientsBar.vue'
 import CardOwnerActions from './CardOwnerActions.vue'
+import AvatarCircle from './AvatarCircle.vue'
 import { formatDateTime, formatRelativeTime } from '../utils/format'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
 import { deleteContent } from '../api/endpoints'
@@ -107,26 +99,6 @@ async function remove() {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--hz-color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.avatar-img {
-  width: 44px;
-  height: 44px;
-}
-.avatar-fallback {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
 }
 .head-mid {
   display: flex;

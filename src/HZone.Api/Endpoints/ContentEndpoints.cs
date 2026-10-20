@@ -515,11 +515,11 @@ public static class ContentEndpoints
 
     private static async Task<AuthorResponse> LoadAuthorAsync(HZoneDbContext db, Guid userId, CancellationToken ct)
     {
-        var nickname = await db.Users
+        var author = await db.Users
             .Where(u => u.Id == userId)
-            .Select(u => u.Nickname)
+            .Select(u => new { u.Id, u.Nickname, u.AvatarUrl })
             .SingleAsync(ct);
-        return new AuthorResponse(userId, nickname);
+        return AuthorResponse.Of(author.Id, author.Nickname, author.AvatarUrl);
     }
 
     /// <summary>
@@ -546,9 +546,11 @@ public static class ContentEndpoints
         var ids = items.Select(c => c.Id).ToList();
         var authorIds = items.Select(c => c.AuthorId).Distinct().ToList();
 
-        var authors = await db.Users
-            .Where(u => authorIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Nickname, ct);
+        var authors = (await db.Users
+                .Where(u => authorIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Nickname, u.AvatarUrl })
+                .ToListAsync(ct))
+            .ToDictionary(u => u.Id, u => (u.Nickname, u.AvatarUrl));
         var recipientsByContent = (await db.ContentRecipients
                 .Where(r => ids.Contains(r.ContentId))
                 .Select(r => new { r.ContentId, r.RecipientUserId, r.User.Nickname })
@@ -575,7 +577,7 @@ public static class ContentEndpoints
         return items.Select(c => new ContentResponse(
             c.Id,
             c is Say ? "say" : "journal",
-            new AuthorResponse(c.AuthorId, authors[c.AuthorId]),
+            AuthorResponse.Of(c.AuthorId, authors[c.AuthorId].Nickname, authors[c.AuthorId].AvatarUrl),
             c is Say s ? s.Text : null,
             c is Journal j ? j.Title : null,
             c is Journal j2 ? j2.MarkdownBody : null,
