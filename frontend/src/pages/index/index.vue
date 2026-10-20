@@ -148,6 +148,11 @@ function logout() {
   background: linear-gradient(180deg, var(--hz-color-primary) 0%, transparent 100%);
   opacity: 0.9;
 }
+.banner-mid {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 .banner-row {
   display: flex;
   align-items: center;
