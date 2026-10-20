@@ -556,10 +556,11 @@ async function submit() {
   .page {
     padding: 32px max(24px, calc((100% - 80rem) / 2));
   }
-  /* say 短内容：单栏限宽居中 */
+  /* say 短内容：单栏限宽居中（覆盖视口 padding 公式，否则 672px 盒子被 185px×2 的 padding 挤扁） */
   .page.say-mode {
     max-width: calc(42rem + 48px);
     margin: 0 auto;
+    padding: 32px 24px;
   }
   /* journal：桌面双栏编辑器 */
   .journal-cols {
