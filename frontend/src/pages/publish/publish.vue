@@ -62,22 +62,12 @@
       <text class="hint">{{ $t('publish.mediaRule') }}</text>
     </view>
 
-    <!-- 日志：标题独立（无圆角+分隔线）→ 工具栏 → Markdown 编辑 → 下方预览 -->
+    <!-- 日志：标题独立（无圆角+分隔线）→ vditor 即时渲染编辑器（工具栏/排版一体） -->
     <template v-else>
       <view class="panel journal-panel">
         <input v-model="title" class="j-title" :placeholder="$t('publish.titlePlaceholder')" />
-        <view class="j-toolbar">
-          <button class="pick small" @click="pickJournalImage">{{ $t('publish.insertImage') }}</button>
-          <button class="pick small" @click="pickJournalVideo">{{ $t('publish.insertVideo') }}</button>
-          <button class="pick small" @click="insertWrap('**', '**')">{{ $t('publish.bold') }}</button>
-          <button class="pick small" @click="insertHeading">{{ $t('publish.heading') }}</button>
-        </view>
         <!-- #ifdef H5 -->
-        <CodeMirrorEditor
-          ref="editorRef"
-          v-model="markdown"
-          :placeholder="$t('publish.bodyPlaceholder')"
-        />
+        <VditorEditor v-model="markdown" :placeholder="$t('publish.bodyPlaceholder')" />
         <!-- #endif -->
         <!-- #ifndef H5 -->
         <textarea
@@ -88,7 +78,6 @@
           auto-height
         />
         <!-- #endif -->
-        <view class="md-preview" v-html="previewHtml" />
       </view>
       <view class="recipients">
         <text class="label">{{ $t('publish.recipients') }}</text>
@@ -134,12 +123,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { marked } from 'marked'
 import FriendPicker from '../../components/FriendPicker.vue'
 // #ifdef H5
-import CodeMirrorEditor from '../../components/CodeMirrorEditor.vue'
+import VditorEditor from '../../components/VditorEditor.vue'
 // #endif
 import {
   createSay,
@@ -150,7 +138,6 @@ import {
   type WeatherSnapshotInput
 } from '../../api/endpoints'
 import { uploadFile } from '../../api/client'
-import { loadMediaUrl } from '../../api/media'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import { CONDITION_ICONS, WEATHER_CONDITIONS, getWeather, type WeatherSnapshot } from '../../utils/weather'
@@ -197,9 +184,6 @@ const mode = ref<'say' | 'journal'>('say')
 const sayText = ref('')
 const title = ref('')
 const markdown = ref('')
-// #ifdef H5
-const editorRef = ref<InstanceType<typeof CodeMirrorEditor> | null>(null)
-// #endif
 const mediaItems = ref<PickedMedia[]>([])
 const pickedFriends = ref<FriendInfo[]>([])
 const pickerVisible = ref(false)
@@ -270,28 +254,6 @@ function toSnapshot(): WeatherSnapshotInput | undefined {
     ? { city: weather.value.city, condition: weather.value.condition, tempC: weather.value.tempC }
     : undefined
 }
-
-// 桌面端实时预览（H5 only；marked 默认转义输出，内容可见名单本就受限）
-const previewHtml = computed(() => marked.parse(markdown.value) as string)
-
-// 预览里的 /media/ 媒体发不了 Authorization 头，复用 MediaGrid 的 blob 方案换 src（仅 H5）。
-// #ifdef H5
-watch(previewHtml, () => {
-  nextTick(() => {
-    const root = document.querySelector('.journal-panel .md-preview')
-    if (!root) return
-    for (const el of Array.from(root.querySelectorAll('img[src], video[src]'))) {
-      const raw = el.getAttribute('src') ?? ''
-      if (!raw.startsWith('/media/')) continue
-      loadMediaUrl(raw)
-        .then((u) => {
-          el.setAttribute('src', u)
-        })
-        .catch(() => {})
-    }
-  })
-})
-// #endif
 
 function onFriendsConfirmed(friends: FriendInfo[]) {
   pickedFriends.value = friends
@@ -501,77 +463,7 @@ onHide(() => {
 })
 // #endif
 
-// ---------- 日志工具栏：光标处插入 markdown（H5 走 CodeMirror 光标/选区，App 走 textarea 尾部插入） ----------
-function insertWrap(prefix: string, suffix = '') {
-  // #ifdef H5
-  editorRef.value?.wrap(prefix, suffix)
-  // #endif
-  // #ifndef H5
-  const value = markdown.value
-  markdown.value = value + prefix + suffix
-  // #endif
-}
-
-function insertHeading() {
-  // #ifdef H5
-  editorRef.value?.insertLineStart('## ')
-  // #endif
-  // #ifndef H5
-  const value = markdown.value
-  markdown.value = '## ' + value
-  // #endif
-}
-
-// ---------- 日志附件上传：复用 /api/media，返回 url 以 markdown 语法插入光标处 ----------
-// journal 无 mediaIds 绑定（后端 MediaAsset.ContentId 只绑 say），直接以 url 进 markdown。
-function pickJournalImage() {
-  // #ifdef H5
-  openH5FilePicker('image/*', 1, async (files) => {
-    await insertUploadedMedia(files, 'image')
-  })
-  // #endif
-  // #ifndef H5
-  uni.chooseImage({
-    success: (res) => {
-      insertUploadedMedia(res.tempFilePaths, 'image')
-    }
-  })
-  // #endif
-}
-
-function pickJournalVideo() {
-  // #ifdef H5
-  openH5FilePicker('video/*', 1, (files) => {
-    if (files.length) insertUploadedMedia([files[0]], 'video')
-  })
-  // #endif
-  // #ifndef H5
-  uni.chooseVideo({
-    success: (res) => {
-      insertUploadedMedia([res.tempFilePath], 'video')
-    }
-  })
-  // #endif
-}
-
-async function insertUploadedMedia(files: (File | string)[], kind: 'image' | 'video') {
-  uploading.value = true
-  try {
-    for (const f of files) {
-      const asset = await uploadFile<{ id: string; url: string }>('/api/media', f)
-      if (kind === 'image') {
-        insertWrap(`![${t('publish.imageAlt')}](${asset.url})`)
-      } else {
-        insertWrap(`<video src="${asset.url}" controls></video>\n`)
-      }
-    }
-  } catch {
-    // 上传失败：请求层已 toast 具体错误，这里兜底提示保证用户可感知
-    uni.showToast({ title: t('publish.uploadFailed'), icon: 'none' })
-  } finally {
-    uploading.value = false
-  }
-}
+// ---------- 日志附件上传：vditor 工具栏/自定义菜单接管（见 components/VditorEditor.vue） ----------
 
 async function submit() {
   if (busy.value) return
@@ -706,24 +598,6 @@ async function submit() {
   border-radius: 0;
   background: transparent;
   color: var(--hz-color-text);
-}
-.j-toolbar {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-/* uni-button 默认宽度铺满，工具栏小按钮收紧 */
-.j-toolbar .pick {
-  flex: none;
-  width: auto;
-  margin: 0;
-}
-/* 预览对所有宽度可见：日志页要读作 markdown 编辑器（输入即渲染），
-   手机宽度限高可滚动，避免把提交按钮挤出首屏 */
-.md-preview {
-  display: block;
-  max-height: 30vh;
-  overflow-y: auto;
 }
 .field {
   height: 44px;
@@ -978,24 +852,12 @@ async function submit() {
     margin: 0 auto;
     padding: 32px 24px;
   }
-  /* journal：上下布局——编辑在上（40vh），预览在下（50vh 可滚动） */
-  .journal-panel .area.tall {
+    .journal-panel .area.tall {
     height: 40vh !important; /* 覆盖 uni-app auto-height 的行内样式 */
     min-height: 0;
     font-size: 15px;
     line-height: 1.8;
     font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
-  }
-  .md-preview {
-    display: block;
-    height: 50vh;
-    overflow-y: auto;
-    background: var(--hz-color-bg);
-    border: 1px solid var(--hz-color-border);
-    border-radius: var(--hz-radius-lg);
-    padding: 16px 20px;
-    font-size: 15px;
-    line-height: 1.8;
   }
   .btn {
     align-self: flex-end;
