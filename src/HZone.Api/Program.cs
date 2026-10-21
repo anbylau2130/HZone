@@ -23,7 +23,11 @@ var jwtKey =
 var jwtIssuer = builder.Configuration["HZone:Auth:Issuer"] ?? "HZone";
 var jwtAudience = builder.Configuration["HZone:Auth:Audience"] ?? "HZone";
 
-builder.Services.AddDbContext<HZoneDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<HZoneDbContext>(options =>
+{
+    options.UseSqlite(connectionString);
+    options.AddInterceptors(new HZone.Api.Data.SqlitePragmaInterceptor());
+});
 builder.Services.AddScoped<IContentQuery, ContentQuery>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<IEmailSender, FileEmailSender>();

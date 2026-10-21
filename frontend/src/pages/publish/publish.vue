@@ -62,12 +62,12 @@
       <text class="hint">{{ $t('publish.mediaRule') }}</text>
     </view>
 
-    <!-- 日志：标题独立（无圆角+分隔线）→ vditor 即时渲染编辑器（工具栏/排版一体） -->
+    <!-- 日志：标题独立（无圆角+分隔线）→ cherry-markdown 编辑器（内置工具栏+实时预览同框） -->
     <template v-else>
       <view class="panel journal-panel">
         <input v-model="title" class="j-title" :placeholder="$t('publish.titlePlaceholder')" />
         <!-- #ifdef H5 -->
-        <VditorEditor v-model="markdown" :placeholder="$t('publish.bodyPlaceholder')" />
+        <CherryEditor v-model="markdown" :placeholder="$t('publish.bodyPlaceholder')" />
         <!-- #endif -->
         <!-- #ifndef H5 -->
         <textarea
@@ -127,7 +127,7 @@ import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FriendPicker from '../../components/FriendPicker.vue'
 // #ifdef H5
-import VditorEditor from '../../components/VditorEditor.vue'
+import CherryEditor from '../../components/CherryEditor.vue'
 // #endif
 import {
   createSay,
@@ -463,7 +463,7 @@ onHide(() => {
 })
 // #endif
 
-// ---------- 日志附件上传：vditor 工具栏/自定义菜单接管（见 components/VditorEditor.vue） ----------
+// ---------- 日志附件上传：cherry 工具栏/自定义菜单接管（见 components/CherryEditor.vue） ----------
 
 async function submit() {
   if (busy.value) return

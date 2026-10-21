@@ -60,12 +60,12 @@
     "@lezer/xml": "^1.0.6",
     "@lezer/yaml": "^1.0.4",
     "@marijn/find-cluster-break": "^1.0.4",
+    "cherry-markdown": "^0.11.11",
     "codemirror": "^6.0.2",
     "crelt": "^1.0.7",
     "marked": "^18.1.1",
     "pinia": "^2.2.6",
     "style-mod": "^4.1.4",
-    "vditor": "^4.0.1",
     "vue": "^3.4.21",
     "vue-i18n": "^9.14.4",
     "w3c-keyname": "^2.2.8"

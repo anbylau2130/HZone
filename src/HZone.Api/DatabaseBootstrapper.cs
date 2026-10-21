@@ -23,8 +23,32 @@ public static class DatabaseBootstrapper
 
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
+        db.Database.OpenConnection();
+        EnableSqliteConcurrencyPragmas(app.Logger, db);
         BaselineLegacyDatabaseIfNeeded(app.Logger, db);
         db.Database.Migrate();
+    }
+
+    /// <summary>
+    /// SQLite 并发三件套：WAL（读写不互斥）+ busy_timeout（写锁等待而非立刻报 locked）
+    /// + foreign_keys（EF 关系依赖级联）。连接串 cache=shared 保证同进程多连接看到同一 WAL。
+    /// </summary>
+    private static void EnableSqliteConcurrencyPragmas(ILogger logger, HZoneDbContext db)
+    {
+        var connection = (SqliteConnection)db.Database.GetDbConnection();
+        var pragmas = new[]
+        {
+            "PRAGMA journal_mode = WAL",
+            "PRAGMA busy_timeout = 5000",
+            "PRAGMA foreign_keys = ON"
+        };
+        foreach (var pragma in pragmas)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = pragma;
+            var result = command.ExecuteScalar()?.ToString();
+            logger.LogInformation("SQLite PRAGMA {Pragma} → {Result}", pragma, result);
+        }
     }
 
     /// <summary>
