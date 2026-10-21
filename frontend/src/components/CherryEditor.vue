@@ -176,7 +176,6 @@ onMounted(() => {
         'bold',
         'italic',
         'strikethrough',
-        'underline',
         'header',
         '|',
         'ol',
@@ -187,6 +186,7 @@ onMounted(() => {
         'code',
         'table',
         'hr',
+        'panel',
         '|',
         'image',
         'insertVideo',
@@ -194,17 +194,28 @@ onMounted(() => {
         '|',
         'undo',
         'redo',
-        // 0.11.11 原生嵌套分组（level2MenusName）：{ key: [children] } 渲染为「更多」下拉
-        { moreTools: ['sub', 'sup', 'togglePreview'] }
+        // 0.11.11 原生嵌套分组（level2MenusName）：{ key: [children] } 渲染为「更多」下拉；
+        // 低频但离线可用的能力收进折叠（对齐官方 demo 全量配置的取舍版本）
+        { moreTools: ['underline', 'sub', 'sup', 'color', 'size', 'justify', 'detail', 'ruby', 'copy', 'export'] }
       ],
-      toolbarRight: ['fullScreen'],
+      toolbarRight: [
+        'wordCount',
+        'toc',
+        'search',
+        'mobilePreview',
+        'switchModel',
+        'settings',
+        'shortcutKey',
+        'fullScreen'
+      ],
       customMenu: {
         insertVideo: InsertVideoMenu,
         moreTools: MoreMenu
       },
-      // 关闭侧边栏/悬浮目录等重项（任务书：裁掉非白名单功能）
+      // 关闭侧边栏与选中悬浮菜单（demo 的重交互项按白名单裁剪）
       sidebar: false,
-      toc: false,
+      // toc 按钮依赖悬浮目录配置，false 会令按钮空转
+      toc: { updateLocationHash: false, defaultModel: 'pure', position: 'absolute' },
       bubble: false,
       float: false
     },
@@ -307,6 +318,11 @@ defineExpose({ setMarkdown })
 .cherry-host.no-preview :deep(.cherry-editor) {
   /* cherry 以内联 style 写 width:50%（同 height 内联套路），必须 !important 覆盖 */
   width: 100% !important;
+}
+/* 全屏态：cherry 默认 .cherry.fullscreen z-index 99，低于 uni-app 页面头/导航层，
+   还原（minscreen）按钮会被日志标题栏遮挡——提到 uni 弹层层级之上 */
+.cherry-host :deep(.cherry.fullscreen) {
+  z-index: 3000;
 }
 /* 工具栏溢出横滚（移动端一行放不下时），隐藏滚动条保持观感 */
 .cherry-host :deep(.cherry-toolbar .toolbar-left) {
