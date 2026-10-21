@@ -128,7 +128,12 @@
     "title": "随记",
     "desc": "记下此刻的心情与瞬间",
     "empty": "还没有随记，去发布一条吧",
-    "write": "写随记"
+    "write": "写随记",
+    "today": "今天",
+    "yesterday": "昨天",
+    "dayMonth": "{m}月",
+    "yearMonth": "{y}年{m}月",
+    "noSignature": "未设置签名，去设置页写一个吧"
   },
   "journals": {
     "title": "日志",
@@ -146,8 +151,6 @@
     "bold": "加粗",
     "heading": "标题",
     "imageAlt": "图片",
-    "titlePlaceholder": "标题",
-    "bodyPlaceholder": "正文（Markdown）",
     "addImages": "添加图片",
     "addVideo": "添加视频",
     "mediaRule": "最多 9 张图片，或 1 个视频",
@@ -267,7 +270,16 @@
     "removeAvatar": "移除头像",
     "avatarUpdated": "头像已更新",
     "avatarRemoved": "头像已移除",
-    "avatarHint": "支持 jpg/png，自动压缩"
+    "avatarHint": "支持 jpg/png，自动压缩",
+    "profileSection": "个人资料",
+    "signature": "签名",
+    "signaturePlaceholder": "介绍一下自己（最多 100 字）",
+    "cover": "封面",
+    "uploadCover": "上传封面",
+    "removeCover": "移除封面",
+    "coverUpdated": "封面已更新",
+    "coverRemoved": "封面已移除",
+    "coverHint": "支持 jpg/png，自动压缩"
   },
   "theme": {
     "title": "主题",

@@ -9,8 +9,12 @@ import { request, uploadFile } from './client'
 export interface AuthorInfo {
   id: string
   nickname: string
-  /** 票 05 接真头像；当前后端不下发，可选字段仅作渲染分支预留 */
+  /** 票 05 接真头像 */
   avatarUrl?: string | null
+  /** 签名（moments-wechat 票 01 下发） */
+  signature?: string | null
+  /** 封面 /media/ 相对路径（moments-wechat 票 01 下发） */
+  coverUrl?: string | null
 }
 
 export interface RecipientInfo {
@@ -228,6 +232,8 @@ export interface FriendInfo {
   nickname: string
   email: string
   avatarUrl?: string | null
+  signature?: string | null
+  coverUrl?: string | null
 }
 
 export interface FriendRequestItem {
@@ -278,6 +284,26 @@ export function uploadAvatar(filePath: string) {
 /** DELETE /me/avatar：清空头像 → 204。 */
 export function clearAvatar() {
   return request('/api/me/avatar', { method: 'DELETE' })
+}
+
+// ---------- 个人资料（moments-wechat 票 01/02） ----------
+
+/** PUT /me/profile：整体替换签名（null = 清空），≤100 字。 */
+export function updateMyProfile(signature: string | null) {
+  return request<{ signature: string | null }>('/api/me/profile', {
+    method: 'PUT',
+    data: { signature }
+  })
+}
+
+/** POST /me/cover：multipart 上传封面图，服务端压缩存储并更新封面；返回 /media/ 相对路径。 */
+export function uploadCover(filePath: string) {
+  return uploadFile<{ coverUrl: string }>('/api/me/cover', filePath)
+}
+
+/** DELETE /me/cover：清空封面 → 204。 */
+export function clearCover() {
+  return request('/api/me/cover', { method: 'DELETE' })
 }
 
 // ---------- 评论 ----------

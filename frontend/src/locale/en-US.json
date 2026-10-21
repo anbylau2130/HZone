@@ -125,7 +125,12 @@
     "title": "Moments",
     "desc": "Capture moods and moments as they happen",
     "empty": "No moments yet. Post your first one!",
-    "write": "Write a moment"
+    "write": "Write a moment",
+    "today": "Today",
+    "dayMonth": "{m}/{d}",
+    "yearMonth": "{m}/{y}",
+    "noSignature": "No signature yet. Add one in Settings.",
+    "yesterday": "Yesterday"
   },
   "journals": {
     "title": "Journals",
@@ -265,7 +270,16 @@
     "removeAvatar": "Remove avatar",
     "avatarUpdated": "Avatar updated",
     "avatarRemoved": "Avatar removed",
-    "avatarHint": "jpg/png, compressed automatically"
+    "avatarHint": "jpg/png, compressed automatically",
+    "profileSection": "Profile",
+    "signature": "Signature",
+    "signaturePlaceholder": "Introduce yourself (max 100 chars)",
+    "cover": "Cover",
+    "uploadCover": "Upload cover",
+    "removeCover": "Remove cover",
+    "coverUpdated": "Cover updated",
+    "coverHint": "jpg/png, compressed automatically",
+    "coverRemoved": "Cover removed"
   },
   "theme": {
     "title": "Theme",

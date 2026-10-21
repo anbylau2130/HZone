@@ -4,6 +4,8 @@
  * → weather_code 映射现象枚举。任一步失败/超时/非 2xx 一律 throw，由上层静默降级为手动选择。
  */
 
+import { i18n } from '../locale'
+
 export type WeatherCondition =
   | 'sunny'
   | 'cloudy'
@@ -126,4 +128,23 @@ async function fetchWeather(): Promise<WeatherSnapshot> {
     condition: mapWeatherCode(current.weather_code),
     tempC: current.temperature_2m
   }
+}
+
+/** 随记卡天气 chip 文案：现象（i18n 回退原文）+ 温度 + 城市；三者全空返回 null。 */
+export function weatherChipText(
+  w: { condition: string | null; tempC: number | null; city: string | null } | null
+): string | null {
+  if (!w) return null
+  if (!w.condition && w.tempC == null && !w.city) return null
+  const cond = w.condition
+    ? i18n.global.te(`weather.conditions.${w.condition}`)
+      ? i18n.global.t(`weather.conditions.${w.condition}`)
+      : w.condition
+    : null
+  const parts = [
+    cond,
+    w.tempC != null ? `${w.tempC}°C` : null,
+    w.city || null
+  ].filter(Boolean)
+  return parts.length ? parts.join(' · ') : null
 }

@@ -1,44 +1,85 @@
 <template>
   <view class="page">
-    <view class="head">
-      <text class="name">{{ nickname || $t('profile.title') }}</text>
-      <text class="hint">{{ $t('profile.visibleOnly') }}</text>
-    </view>
+    <view class="container">
+      <ProfileHeader
+        :nickname="friend?.nickname ?? nickname"
+        :avatar-url="friend?.avatarUrl"
+        :signature="friend?.signature"
+        :cover-url="friend?.coverUrl"
+        :is-self="false"
+      />
 
-    <view v-if="pagination.loading.value && !items.length" class="hint">
-      <text class="hint-text">{{ $t('common.loading') }}</text>
-    </view>
-    <view v-else-if="!items.length" class="hint">
-      <text class="hint-text">{{ $t('common.empty') }}</text>
-    </view>
+      <view v-if="pagination.loading.value && !items.length" class="hint">
+        <text class="hint-text">{{ $t('common.loading') }}</text>
+      </view>
+      <view v-else-if="!items.length" class="hint">
+        <text class="hint-text">{{ $t('common.empty') }}</text>
+      </view>
 
-    <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openDetail" @deleted="onCardDeleted" />
+      <view v-for="g in groups" :key="g.key" class="day-group">
+        <view class="date-col">
+          <text class="date-label">{{ g.label }}</text>
+        </view>
+        <view class="items-col">
+          <view v-for="c in g.items" :key="c.id" class="entry" @click="openDetail(c)">
+            <view class="entry-head">
+              <text class="time">{{ formatRelativeTime(c.createdAt) + ' ' }}</text>
+            </view>
+            <text class="text">{{ c.kind === 'journal' ? c.title : c.text }}</text>
+            <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
+            <RecipientsBar :recipients="c.recipients" />
+            <view class="entry-foot">
+              <text class="foot-btn">{{ $t('detail.commentCount', { n: c.commentCount }) }}</text>
+              <view class="head-spacer" />
+              <view v-if="weatherChip(c)" class="weather-chip">
+                <text class="weather-chip-text">{{ weatherChip(c) }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
 
-    <view v-if="items.length" class="more">
-      <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
-      <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
-        {{ $t('common.loadMore') }}
-      </button>
+      <view v-if="items.length" class="more">
+        <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
+        <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
+          {{ $t('common.loadMore') }}
+        </button>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
-import ContentCard from '../../components/ContentCard.vue'
+import MediaGrid from '../../components/MediaGrid.vue'
+import RecipientsBar from '../../components/RecipientsBar.vue'
+import ProfileHeader from '../../components/ProfileHeader.vue'
 import { usePagination } from '../../composables/usePagination'
-import { listUserContents, type ContentItem } from '../../api/endpoints'
+import { listFriends, listUserContents, type ContentItem, type FriendInfo } from '../../api/endpoints'
+import { formatRelativeTime, groupByCnDate } from '../../utils/format'
+import { weatherChipText } from '../../utils/weather'
 
 const nickname = ref('')
 const userId = ref('')
+// 好友资料（签名/封面）来自 GET /friends DTO（moments-wechat 票 01 已下发）
+const friend = ref<FriendInfo | null>(null)
 
 const pagination = usePagination<ContentItem>((offset, limit) =>
   listUserContents(userId.value, '', offset, limit)
 )
 const { items, finished, loadMore } = pagination
 
+// 中国区日期倒序分组，与随记页同款
+const groups = computed(() => groupByCnDate(items.value))
+
+// 天气 chip 文案（现象 i18n 回退原文 + 温度 + 城市）
+function weatherChip(c: ContentItem) {
+  return weatherChipText(c.weather ?? null)
+}
+
+// H5 端直接 hash 进入时 onLoad 不触发的问题不存在于 profile（从好友页进入必走 navigateTo），onLoad 足够
 onLoad((query) => {
   setNavTitle('profile.title')
   const q = (query ?? {}) as Record<string, string>
@@ -46,16 +87,18 @@ onLoad((query) => {
   nickname.value = q.nickname ? decodeURIComponent(q.nickname) : ''
   if (userId.value) {
     pagination.refresh()
+    listFriends()
+      .then((fs) => {
+        friend.value = fs.find((f) => f.id === userId.value) ?? null
+      })
+      .catch(() => {
+        // 拉取失败仅影响头部资料展示，内容流不受影响
+      })
   }
 })
 
 function openDetail(c: ContentItem) {
   uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
-}
-
-// 列表卡上删除成功后移除本地列表项
-function onCardDeleted(id: string) {
-  items.value = items.value.filter((c) => c.id !== id)
 }
 </script>
 
@@ -63,39 +106,100 @@ function onCardDeleted(id: string) {
 .page {
   min-height: 100vh;
   background: var(--hz-color-bg);
-  padding: 16px;
+  padding: 16px 0 calc(70px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.container {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-sizing: border-box;
 }
-.head {
+.day-group {
+  display: flex;
+  gap: 12px;
   background: var(--hz-color-surface);
   border-radius: var(--hz-radius-lg);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
+  padding: 14px;
 }
-.name {
-  font-size: 18px;
+.date-col {
+  width: 72px;
+  flex-shrink: 0;
+}
+.date-label {
+  font-size: 14px;
   font-weight: 600;
   color: var(--hz-color-text);
 }
-.hint {
-  padding: 24px 0;
+.items-col {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
 }
-.hint-text {
+.entry {
+  border-bottom: 1px solid var(--hz-color-border);
+  padding-bottom: 12px;
+  cursor: pointer;
+}
+.entry:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.head-spacer {
+  flex: 1;
+}
+.time {
   font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.text {
+  margin-top: 4px;
+  font-size: var(--hz-font-size-base);
+  color: var(--hz-color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.entry-foot {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.foot-btn {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-interactive);
+}
+.weather-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--hz-color-bg);
+  border: 1px solid var(--hz-color-border);
+}
+.weather-chip-text {
+  font-size: 12px;
   color: var(--hz-color-text-secondary);
 }
 .more {
   display: flex;
   justify-content: center;
   padding: 4px 0 12px;
+}
+.hint {
+  padding: 40px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.hint-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
 }
 .pick {
   width: 60%;
@@ -106,5 +210,18 @@ function onCardDeleted(id: string) {
   border-radius: var(--hz-radius-md);
   font-size: var(--hz-font-size-sm);
   border: 1px solid var(--hz-color-border);
+}
+@media (min-width: 768px) {
+  .page {
+    padding: 24px 0;
+  }
+  .container {
+    max-width: 48rem;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .day-group {
+    padding: 20px;
+  }
 }
 </style>

@@ -9,6 +9,10 @@ export interface HZUser {
   nickname: string
   /** 头像 /media/ 相对路径；null = 未设置（票 05）。 */
   avatarUrl?: string | null
+  /** 签名（≤100 字，null = 未设置，moments-wechat 票 01）。 */
+  signature?: string | null
+  /** 封面 /media/ 相对路径；null = 未设置（moments-wechat 票 01）。 */
+  coverUrl?: string | null
   isAdmin: boolean
 }
 
