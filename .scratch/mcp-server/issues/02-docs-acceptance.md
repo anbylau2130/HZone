@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] mcp/README.md（配置示例双端齐全）
-- [ ] acceptance.md + map.md 更新
-- [ ] smoke 复跑全绿
+- [x] mcp/README.md（配置示例双端齐全）
+- [x] acceptance.md + map.md 更新
+- [x] smoke 复跑全绿

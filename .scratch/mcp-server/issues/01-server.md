@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] server + 9 工具实现
-- [ ] smoke 脚本对本地实例跑通（读+写各至少一次真实调用）
-- [ ] pnpm build + tsc 通过
+- [x] server + 9 工具实现
+- [x] smoke 脚本对本地实例跑通（读+写各至少一次真实调用）
+- [x] pnpm build + tsc 通过

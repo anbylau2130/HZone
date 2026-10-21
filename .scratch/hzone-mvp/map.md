@@ -38,6 +38,13 @@
 - 随记页=朋友圈个人页：封面（可上传）+压角头像+签名档+日期分组流；好友主页同布局；ProfileHeader 公共组件
 - 报告 .scratch/moments-wechat/acceptance.md；已知限制：默认封面渐变尾段硬编码暖色（待 token 化）
 
+## mcp-server 批次（2026-10-21 完成）
+
+- 01 stdio server+9 工具（7d7a1ed）｜ 02 README+验收（本次）；同批次修复日志编辑器/上传（05b91e4，t35 调试代理）
+- 终态：dotnet 111/111 + Playwright 12/12；MCP 端到端亲测（真实 PAT：9 工具/读/写/吊销）；报告 .scratch/mcp-server/acceptance.md
+- 接入：见 mcp/README.md（Claude Code/Desktop 配置，HZONE_URL+HZONE_PAT）
+- 待办队列：随记/日志页重设计剩余项（日志页已修，需再验收）、dock 工具、主题账号级同步
+
 ## infra：EF Migrations（2026-10-21 完成）
 
 - commit c6e5994：EnsureCreated → Migrate()；InitialCreate 迁移入 git；legacy 库（有表无 history）自动 baseline 后增量；dev 库已重建走新链路
