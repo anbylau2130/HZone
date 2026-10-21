@@ -1,6 +1,6 @@
 # moments-wechat 批次验收报告
 
-**日期：** 2026-10-21 ｜ **结论：** 全部通过（2/2 tickets）
+**日期：** 2026-10-21 ｜ **结论：** 全部通过（3/3 tickets）
 
 - 进程内 API e2e：**111/111 绿**（106 + 签名/封面 5 条）
 - Playwright UI e2e：**12/12 绿**（主会话独立复核）
@@ -15,3 +15,9 @@
 
 - 默认封面的渐变尾段硬编码暖色（#f5c98a/#f7dcb4）——用户上传封面后不可见，深色主题下无封面时会偏亮（后续可 token 化）
 - 朋友圈流的作者行不显示头像（微信同款——个人页自己的内容不重复头像）
+
+## 追加：03 专业 markdown 编辑器（d494266）
+
+- **md-editor-v3 判死**：uni-app H5 用分支 Vue（@dcloudio/uni-h5-vue），md-editor-v3 直依赖原版 vue（缺 Comment/EMPTY_ARR 导出）双实例冲突，挂载即崩（console 实锤）
+- **CodeMirror 6 替代成功**（d494266）：框架无关无 vue 依赖；行号+语法高亮、工具栏（插图/插视频/加粗/标题走 editor.insert）、marked 预览、标题独立区块保留；H5 only，App 端保留 textarea fallback
+- 回归：12/12 + build/tsc 绿（主会话独立复核）；编辑器选型教训已记 map.md
