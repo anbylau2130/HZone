@@ -104,7 +104,9 @@ class InsertVideoMenu extends MenuHookBase {
   }
 
   onClick(): Promise<string | null> {
-    // 同步段：创建 input 并 click()（保住用户手势，文件框必弹）
+    // 同步段：创建 input、挂回调、click() 全在同一同步栈（cherry 派发链
+    // pointerup → _E.onClick → fire → onClick 全程无 await），用户手势必达文件框。
+    // Promise 只包异步上传回填；resolve(null) 时 fire 跳过选区替换（取消/失败不吞正文）
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'video/*'
@@ -116,7 +118,7 @@ class InsertVideoMenu extends MenuHookBase {
       settled = true
       resolve(v)
     }
-    return new Promise<string | null>((resolve) => {
+    const done = new Promise<string | null>((resolve) => {
       input.onchange = () => {
         const file = input.files?.[0]
         if (!file) {
@@ -132,8 +134,10 @@ class InsertVideoMenu extends MenuHookBase {
       }
       // 用户取消文件框：浏览器触发 cancel 事件，必须 resolve 否则 Promise 悬置（菜单反复触发文件框）
       input.addEventListener('cancel', () => settle(resolve, null))
-      input.click()
     })
+    // click() 在 Promise 构造语句之后、同一同步栈内执行（用户手势链最末环）
+    input.click()
+    return done
   }
 }
 
@@ -325,6 +329,13 @@ defineExpose({ setMarkdown })
 /* 全屏态：cherry 默认 .cherry.fullscreen z-index 99，低于 uni-app 页面头/导航层，
    还原（minscreen）按钮会被日志标题栏遮挡——提到 uni 弹层层级之上 */
 .cherry-host :deep(.cherry.fullscreen) {
+  z-index: 3000;
+}
+/* cherry 浮层默认 z-index 极低（dropdown 13 / fullscreen 99），uni 页面头 998、
+   页面 overlay 999——极端层叠下弹层会被页面元素盖住，表现为"点了没反应"。
+   全部提到 3000 层（uni toast 在 9999 仍在其上，不被遮） */
+.cherry-host :deep(.cherry-dropdown),
+.cherry-host :deep(.cherry-dialog) {
   z-index: 3000;
 }
 /* 工具栏溢出横滚（移动端一行放不下时），隐藏滚动条保持观感 */
