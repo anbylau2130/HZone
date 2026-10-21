@@ -32,6 +32,12 @@
 - 导航：六 tab 首页/随记/日志/收到/主题/设置；搜索上移；我的时间线并入首页；设置页=hub 入口、主题页=外观定制
 - EnsureCreated 不加列的教训与 EF Migrations 待办已记（见上）
 
+## infra：EF Migrations（2026-10-21 完成）
+
+- commit c6e5994：EnsureCreated → Migrate()；InitialCreate 迁移入 git；legacy 库（有表无 history）自动 baseline 后增量；dev 库已重建走新链路
+- 今后 schema 变更：`dotnet ef migrations add X -p src/HZone.Infrastructure -s src/HZone.Api`，启动自动应用
+- 待办队列：MCP server（方案已提报待批：stdio + PAT，9 工具读写）；随记/日志两页重设计（待讨论）；dock 工具（待讨论）；主题账号级同步
+
 ## composer-polish 批次（2026-10-21 完成）
 
 - 01/02 发布页（c620e39）｜ 03 三栏壳+dock（a85d480）｜ 04 朋友圈化（fffc3eb）｜ 05 头像（ef11be9）｜ 06 收口（本次）
