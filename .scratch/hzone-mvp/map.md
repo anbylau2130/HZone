@@ -32,6 +32,13 @@
 - 导航：六 tab 首页/随记/日志/收到/主题/设置；搜索上移；我的时间线并入首页；设置页=hub 入口、主题页=外观定制
 - EnsureCreated 不加列的教训与 EF Migrations 待办已记（见上）
 
+## composer-polish 批次（2026-10-21 完成）
+
+- 01/02 发布页（c620e39）｜ 03 三栏壳+dock（a85d480）｜ 04 朋友圈化（fffc3eb）｜ 05 头像（ef11be9）｜ 06 收口（本次）
+- 终态：dotnet 106/106 + Playwright 12/12；报告 .scratch/composer-polish/acceptance.md
+- 新结构：桌面三栏（侧栏 220px｜内容 48-60rem｜右 ToolDock 300px ≥1200px）；发布页日记头+整体卡片+按住录视频；日志编辑器上下布局+MD 附件插入；朋友圈化随记卡；头像全栈
+- 流程教训：**建票前先确认 cwd**（本批次 ticket 文件曾写进 e2e/.scratch/ 被误删，git 未收录，已重建）
+
 ## 一键验收
 
 ```bash
