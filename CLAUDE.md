@@ -35,6 +35,3 @@ cd frontend && pnpm build:h5             # H5 构建校验
 - global.json 锁 SDK 8.0.426，TFM net8.0；TFM 必须 net8.0（模板可能生成 net11）
 - GitHub 直连不通，npm 走 npmmirror；@intlify/* 用 pnpm.overrides 钉 9.14.x（vue-i18n 必须 ^9 不能 v10）
 - 主会话直接写长文件会随机乱码 → 代码实现委托 executor 子代理，`dotnet test`/`pnpm build:h5` 兜底
-"" 
-"" 
-"" 
