@@ -32,6 +32,12 @@
 - 导航：六 tab 首页/随记/日志/收到/主题/设置；搜索上移；我的时间线并入首页；设置页=hub 入口、主题页=外观定制
 - EnsureCreated 不加列的教训与 EF Migrations 待办已记（见上）
 
+## moments-wechat 批次（2026-10-21 完成）
+
+- 01 签名/封面字段+端点（d28ad38，111/111）｜ 02 朋友圈 UI+profile 复用+个人资料区（b98847f，12/12）
+- 随记页=朋友圈个人页：封面（可上传）+压角头像+签名档+日期分组流；好友主页同布局；ProfileHeader 公共组件
+- 报告 .scratch/moments-wechat/acceptance.md；已知限制：默认封面渐变尾段硬编码暖色（待 token 化）
+
 ## infra：EF Migrations（2026-10-21 完成）
 
 - commit c6e5994：EnsureCreated → Migrate()；InitialCreate 迁移入 git；legacy 库（有表无 history）自动 baseline 后增量；dev 库已重建走新链路

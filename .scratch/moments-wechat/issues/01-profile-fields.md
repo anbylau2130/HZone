@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] 字段+迁移+端点（profile/cover）
-- [ ] DTO 下发（me/login/friends/profile 场景）
-- [ ] e2e 全绿（≥109）
+- [x] 字段+迁移+端点（profile/cover）
+- [x] DTO 下发（me/login/friends/profile 场景）
+- [x] e2e 全绿（≥109）

@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] moments 朋友圈布局（封面+压角头像+签名+日期分组流）
-- [ ] profile 页同布局复用
-- [ ] 设置页个人资料区（签名/封面编辑）
-- [ ] build/tsc/playwright 全绿
+- [x] moments 朋友圈布局（封面+压角头像+签名+日期分组流）
+- [x] profile 页同布局复用
+- [x] 设置页个人资料区（签名/封面编辑）
+- [x] build/tsc/playwright 全绿
