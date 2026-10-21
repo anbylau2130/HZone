@@ -42,6 +42,12 @@
 - 随记页=朋友圈个人页：封面（可上传）+压角头像+签名档+日期分组流；好友主页同布局；ProfileHeader 公共组件
 - 报告 .scratch/moments-wechat/acceptance.md；已知限制：默认封面渐变尾段硬编码暖色（待 token 化）
 
+## prefs-sync（2026-10-21 完成）
+
+- 6f3e8b1：主题/语言偏好账号级同步——PRD 6.9 欠账补齐。User.Preferences JSON 列（AddUserPrefs 迁移）；PUT /me/preferences（≤4KB）；/auth/me、/auth/login 下发；前端登录拉取覆盖本地、修改防抖 1s 上推、失败静默
+- 终态：dotnet 116/116 + Playwright 14/14（新增多端同步旅程 2 条）
+- **PRD 欠账清零**。剩余待讨论：dock 工具、日志页打磨
+
 ## mcp-server 批次（2026-10-21 完成）
 
 - 01 stdio server+9 工具（7d7a1ed）｜ 02 README+验收（本次）；同批次修复日志编辑器/上传（05b91e4，t35 调试代理）
