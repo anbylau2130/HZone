@@ -15,3 +15,7 @@ TestResults/
 .claude/
 *.log
 .playwright-mcp/
+
+# mcp server
+mcp/node_modules/
+mcp/dist/
