@@ -36,17 +36,12 @@ for (const width of [1280, 375]) {
       if (/user activation/i.test(m.text())) activationWarnings.push(m.text())
     })
 
-    // ---- ① 视频按钮（自定义 insertVideo，insert 下拉第 3 项）：raw mouse → 文件框 → 上传 → 即渲染
-    await rawClick(page, page.locator('.cherry-toolbar-insert'))
-    await expect(page.locator('.cherry-dropdown .cherry-dropdown-item').first()).toBeVisible()
-    console.log(`[${width}] ①insert 下拉可见, z-index:`, await page
-      .locator('.cherry-dropdown')
-      .filter({ has: page.locator('.cherry-dropdown-item') })
-      .first()
-      .evaluate((el) => getComputedStyle(el).zIndex))
+    // ---- ① 视频按钮（一级按钮）：raw mouse → 文件框 → 上传 → 即渲染
+    // waitForEvent 必须先于点击注册：文件框在 click 动作内同步弹出
     const vidChooser = page.waitForEvent('filechooser', { timeout: 5_000 }).catch(() => null)
-    await rawClick(page, page.locator('.cherry-dropdown .cherry-dropdown-item').nth(2))
+    await rawClick(page, page.locator(".cherry-toolbar-video[title='insertVideo']"))
     const chooserV = await vidChooser
+    console.log(`[${width}] ①视频按钮 raw 点击（一级按钮，无下拉中转）`)
     console.log(`[${width}] ②视频文件框:`, chooserV ? '弹出(trusted 手势)' : '未弹出')
     console.log(`[${width}] ②激活警告:`, activationWarnings.length ? activationWarnings : '无（手势链完整）')
     expect(chooserV, '文件框必须弹出（否则真实浏览器同样不弹）').toBeTruthy()
@@ -56,10 +51,9 @@ for (const width of [1280, 375]) {
     await expect(page.locator('.cherry-previewer video').first()).toBeVisible({ timeout: 10_000 })
     console.log(`[${width}] ④预览即时渲染: <video> 可见`)
 
-    // ---- ② 图片按钮（insert 下拉第 1 项）：raw mouse → 文件框 → 上传 → 即渲染
-    await rawClick(page, page.locator('.cherry-toolbar-insert'))
+    // ---- ② 图片按钮（一级按钮）：raw mouse → 文件框 → 上传 → 即渲染
     const imgChooser = page.waitForEvent('filechooser', { timeout: 5_000 }).catch(() => null)
-    await rawClick(page, page.locator('.cherry-dropdown .cherry-dropdown-item').first())
+    await rawClick(page, page.locator('.cherry-toolbar-image'))
     const chooserI = await imgChooser
     console.log(`[${width}] ⑤图片文件框:`, chooserI ? '弹出(trusted 手势)' : '未弹出')
     expect(chooserI).toBeTruthy()

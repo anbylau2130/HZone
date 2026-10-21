@@ -13,21 +13,50 @@ test('cherry editor: uploads + default toolbar + formula + preview toggle + full
   const panelBox = await page.locator('.journal-panel').boundingBox()
   console.log('journal panel width:', panelBox?.width, 'at 1280 viewport')
 
-  // ④ 官方默认工具栏：主行一级按钮（cherry class 用 iconName，大小写敏感）
-  for (const name of ['bold', 'italic', 'strike', 'color', 'header', 'pinyin', 'list', 'tips', 'insert', 'insertChart', 'command', 'search']) {
+  // ④ 显式全量工具栏：一级按钮可见（cherry class 用 iconName，大小写敏感）
+  for (const name of [
+    'bold',
+    'italic',
+    'strike',
+    'underline',
+    'sub',
+    'sup',
+    'header',
+    'color',
+    'list',
+    'ol',
+    'ul',
+    'checklist',
+    'blockquote',
+    'codeBlock',
+    'table',
+    'line',
+    'image',
+    'video',
+    'link',
+    'undo',
+    'redo',
+    'search',
+    'settings',
+    'chevrons',
+    'wordCount',
+    'switchPreview',
+    'command',
+    'fullscreen',
+  ]) {
     await expect(page.locator(`.cherry-toolbar-${name}`).first()).toBeVisible()
   }
-  await expect(page.locator('.cherry-toolbar-fullscreen')).toBeVisible()
 
-  // insert 折叠分组 12 项（image/audio/insertVideo/link/hr/br/code/formula/toc/table/line-table/bar-table）
-  await page.locator('.cherry-toolbar-insert').click()
+  // moreTools 折叠分组（ruby/detail/graph/formula/toc 等低频项）
+  await page.locator('.cherry-toolbar-chevrons').click()
   await expect(page.locator('.cherry-dropdown .cherry-dropdown-item').first()).toBeVisible()
-  console.log('insert dropdown items:', await page.locator('.cherry-dropdown .cherry-dropdown-item').count())
+  console.log('moreTools fold items:', await page.locator('.cherry-dropdown .cherry-dropdown-item').count())
+  await page.keyboard.press('Escape')
 
-  // ① 插图：insert 分组第 1 子项 → 文件框 → 上传 → 回填
+  // ① 插图（一级按钮）→ 文件框 → 上传 → 回填
   // 注意 waitForEvent 必须先于 click（文件框在 click 动作内同步弹出）
   const imgChooser = page.waitForEvent('filechooser', { timeout: 3_000 }).catch(() => null)
-  await page.locator('.cherry-dropdown .cherry-dropdown-item').first().click()
+  await page.locator('.cherry-toolbar-image').first().click()
   const chooser1 = await imgChooser
   expect(chooser1).toBeTruthy()
   await chooser1!.setFiles({
@@ -77,10 +106,9 @@ test('cherry editor: uploads + default toolbar + formula + preview toggle + full
   await expect(page.locator('.cherry.fullscreen')).toHaveCount(0)
   console.log('fullscreen enter+restore OK')
 
-  // ① 插视频（insert 分组第 3 子项）：文件框 → 上传 → 回填 <video>
-  await page.locator('.cherry-toolbar-insert').click()
+  // ① 插视频（一级按钮）：文件框 → 上传 → 回填 <video>
   const vidChooser = page.waitForEvent('filechooser', { timeout: 3_000 })
-  await page.locator('.cherry-dropdown .cherry-dropdown-item').nth(2).click()
+  await page.locator('.cherry-toolbar-video').first().click()
   const chooser2 = await vidChooser
   await chooser2.setFiles({
     name: 'clip.mp4',

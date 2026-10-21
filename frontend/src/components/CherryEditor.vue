@@ -141,6 +141,16 @@ class InsertVideoMenu extends MenuHookBase {
   }
 }
 
+// ---------- 「更多」折叠分组 ----------
+// 仅作分组按钮载体（name 决定图标与 class），点击弹出 level2 子菜单，自身无动作；
+// 子项由 toolbars.toolbar 的嵌套对象声明
+class MoreMenu extends MenuHookBase {
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
+    super(cherryOptions)
+    this.setName('moreTools', 'chevrons') // ch-icon-chevrons
+  }
+}
+
 function injectCherryCss() {
   if (document.getElementById('cherry-css')) return
   const style = document.createElement('style')
@@ -173,46 +183,50 @@ onMounted(() => {
       codemirror: { placeholder: props.placeholder }
     },
     toolbars: {
-      // cherry 原生默认工具栏（0.11.11，与官方 demo 同款）+ insert 分组内加自定义 insertVideo；
-      // 不手拼 toolbarRight（字数统计等错行根因），右侧由 cherry 原生布局接管
+      // 显式全量工具栏：格式类与媒体（图片/视频一级按钮）必须可见；低频项收进
+      // moreTools 折叠（0.11.11 原生嵌套分组）。toolbarRight 依次为统计/视图/设置/全屏。
+      // 注：types 无 inline-code 独立项（行内代码无工具栏 key）；line-table/bar-table
+      // 在 0.11.11 未注册菜单，列出后 cherry 原生跳过（drawMenus warn + skip，不崩）。
       toolbar: [
+        // 格式类
         'bold',
         'italic',
         'strikethrough',
-        '|',
-        'color',
+        'underline',
+        'sub',
+        'sup',
         'header',
-        'ruby',
+        'color',
         '|',
+        // 列表与引用
         'list',
-        'panel',
-        'detail',
-        {
-          insert: [
-            'image',
-            'audio',
-            'insertVideo',
-            'link',
-            'hr',
-            'br',
-            'code',
-            'formula',
-            'toc',
-            'table',
-            'line-table',
-            'bar-table'
-          ]
-        },
-        'graph',
-        'shortcutKey',
+        'ol',
+        'ul',
+        'checklist',
+        'quote',
+        '|',
+        // 代码与表格
+        'code',
+        'table',
+        'hr',
+        '|',
+        // 媒体一级按钮（图片/视频直接可见，不走折叠）
+        'image',
+        'insertVideo',
+        'link',
+        '|',
+        'undo',
+        'redo',
+        '|',
+        // 功能面板（search/settings 也在 toolbarRight 各留一份入口）
         'search',
-        'togglePreview'
+        { moreTools: ['ruby', 'detail', 'graph', 'formula', 'toc', 'br', 'audio', 'line-table', 'bar-table', 'copy', 'export'] }
       ],
       customMenu: {
-        insertVideo: InsertVideoMenu
+        insertVideo: InsertVideoMenu,
+        moreTools: MoreMenu
       },
-      // 默认工具栏无全屏按钮，右侧补一个（cherry 原生 key，单图标不破坏一行布局）
-      toolbarRight: ['fullScreen'],
+      toolbarRight: ['wordCount', 'switchModel', 'shortcutKey', 'settings', 'fullScreen'],
       sidebar: false
     },
     // 公式走 katex（默认 MathJax 无本地库不渲染）；katex 经 externals 挂载
@@ -338,6 +352,11 @@ defineExpose({ setMarkdown })
 .cherry-host :deep(.cherry-dialog) {
   z-index: 3000;
 }
+/* 全量工具栏（28 个一级按钮）在 1280 内容宽下超出 cherry 默认 0 12px 按钮内边距
+   的单行容量——压到 0 6px 保持单行不换行（图标间仍留 ≥12px 间距） */
+.cherry-host :deep(.cherry-toolbar .cherry-toolbar-button) {
+  padding: 0 6px;
+}
 /* 工具栏溢出横滚（移动端一行放不下时），隐藏滚动条保持观感 */
 .cherry-host :deep(.cherry-toolbar .toolbar-left) {
   overflow-x: auto;
@@ -345,5 +364,23 @@ defineExpose({ setMarkdown })
 }
 .cherry-host :deep(.cherry-toolbar .toolbar-left::-webkit-scrollbar) {
   display: none;
+}
+/* 窄屏（<768px）：全量按钮换行多行，cherry 容器固定高（挂载点内联 60vh + overflow:hidden）
+   会把溢出的工具行整个裁掉（按钮有布局盒但不可点）——窄屏放开容器高度让工具栏完整
+   展开，编辑/预览区改为定高。桌面 (>768px) 保持 60vh 单行 */
+@media (max-width: 767px) {
+  .cherry-host {
+    /* 覆盖 cherry 写在挂载点上的内联 height:60vh */
+    height: auto !important;
+  }
+  .cherry-host :deep(.cherry) {
+    height: auto;
+  }
+  .cherry-host :deep(.cherry .cherry-editor),
+  .cherry-host :deep(.cherry .cherry-previewer) {
+    /* cherry css 的 calc(100% - var(--height-toolbar)) 在容器 auto 高下失义，改定高 */
+    max-height: 55vh !important;
+    min-height: 320px !important;
+  }
 }
 </style>
