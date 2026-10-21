@@ -62,12 +62,12 @@ public static class CommentEndpoints
             await db.SaveChangesAsync(ct);
             var author = await db.Users
                 .Where(u => u.Id == authorId)
-                .Select(u => new { u.Id, u.Nickname, u.AvatarUrl })
+                .Select(u => new { u.Id, u.Nickname, u.AvatarUrl, u.Signature, u.CoverUrl })
                 .SingleAsync(ct);
             return Results.Created(
                 $"/contents/{id}/comments/{comment.Id}",
                 new CommentResponse(comment.Id, id,
-                    AuthorResponse.Of(author.Id, author.Nickname, author.AvatarUrl), text, now));
+                    AuthorResponse.Of(author.Id, author.Nickname, author.AvatarUrl, author.Signature, author.CoverUrl), text, now));
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
         // 评论列表：同样仅可见名单内可读，时间正序。
@@ -93,7 +93,9 @@ public static class CommentEndpoints
                     c.ContentId,
                     new AuthorResponse(c.AuthorId, c.Author.Nickname, c.Author.AvatarUrl == null
                         ? null
-                        : "/media/" + c.Author.AvatarUrl),
+                        : "/media/" + c.Author.AvatarUrl,
+                        c.Author.Signature,
+                        c.Author.CoverUrl == null ? null : "/media/" + c.Author.CoverUrl),
                     c.Text,
                     c.CreatedAt))
                 .ToListAsync(ct);

@@ -38,13 +38,20 @@ public record UpdateContentRequest(
 public record RecipientResponse(Guid UserId, string Nickname);
 
 /// <summary>
-/// 作者节点：AvatarUrl 存的是 User.AvatarUrl（媒体 storedName），
+/// 作者节点：AvatarUrl/CoverUrl 存的是 User.*Url（媒体 storedName），
 /// DTO 下发统一投影为 /media/{storedName}（与 MediaResponse 同口径）；未设置为 null。
 /// </summary>
-public record AuthorResponse(Guid Id, string Nickname, string? AvatarUrl = null)
+public record AuthorResponse(
+    Guid Id, string Nickname, string? AvatarUrl = null,
+    string? Signature = null, string? CoverUrl = null)
 {
-    public static AuthorResponse Of(Guid id, string nickname, string? avatarStoredName) =>
-        new(id, nickname, avatarStoredName is null ? null : $"/media/{avatarStoredName}");
+    public static AuthorResponse Of(
+        Guid id, string nickname, string? avatarStoredName,
+        string? signature = null, string? coverStoredName = null) =>
+        new(id, nickname,
+            avatarStoredName is null ? null : $"/media/{avatarStoredName}",
+            signature,
+            coverStoredName is null ? null : $"/media/{coverStoredName}");
 }
 
 public record MediaResponse(Guid Id, string Kind, string Url, string? ThumbUrl, long SizeBytes);

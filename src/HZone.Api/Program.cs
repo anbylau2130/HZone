@@ -100,6 +100,7 @@ app.MapCommentEndpoints();
 app.MapInboxEndpoints();
 app.MapMediaEndpoints();
 app.MapMeAvatarEndpoints();
+app.MapMeProfileEndpoints();
 app.MapExportImportEndpoints();
 app.MapFriendEndpoints();
 app.MapSetupEndpoints();

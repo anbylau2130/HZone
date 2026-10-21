@@ -27,9 +27,17 @@ public static class FriendEndpoints
 
             var friends = (await db.Users
                 .Where(u => friendIds.Contains(u.Id))
-                .Select(u => new { u.Id, u.Nickname, u.Email, u.AvatarUrl })
+                .Select(u => new { u.Id, u.Nickname, u.Email, u.AvatarUrl, u.Signature, u.CoverUrl })
                 .ToListAsync(ct))
-                .Select(u => new { u.Id, u.Nickname, u.Email, AvatarUrl = AuthEndpoints.MediaUrl(u.AvatarUrl) })
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Nickname,
+                    u.Email,
+                    AvatarUrl = AuthEndpoints.MediaUrl(u.AvatarUrl),
+                    u.Signature,
+                    CoverUrl = AuthEndpoints.MediaUrl(u.CoverUrl)
+                })
                 .ToList();
 
             return Results.Ok(friends);

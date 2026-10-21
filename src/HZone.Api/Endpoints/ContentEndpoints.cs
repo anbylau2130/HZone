@@ -517,9 +517,9 @@ public static class ContentEndpoints
     {
         var author = await db.Users
             .Where(u => u.Id == userId)
-            .Select(u => new { u.Id, u.Nickname, u.AvatarUrl })
+            .Select(u => new { u.Id, u.Nickname, u.AvatarUrl, u.Signature, u.CoverUrl })
             .SingleAsync(ct);
-        return AuthorResponse.Of(author.Id, author.Nickname, author.AvatarUrl);
+        return AuthorResponse.Of(author.Id, author.Nickname, author.AvatarUrl, author.Signature, author.CoverUrl);
     }
 
     /// <summary>
@@ -548,9 +548,9 @@ public static class ContentEndpoints
 
         var authors = (await db.Users
                 .Where(u => authorIds.Contains(u.Id))
-                .Select(u => new { u.Id, u.Nickname, u.AvatarUrl })
+                .Select(u => new { u.Id, u.Nickname, u.AvatarUrl, u.Signature, u.CoverUrl })
                 .ToListAsync(ct))
-            .ToDictionary(u => u.Id, u => (u.Nickname, u.AvatarUrl));
+            .ToDictionary(u => u.Id, u => (u.Nickname, u.AvatarUrl, u.Signature, u.CoverUrl));
         var recipientsByContent = (await db.ContentRecipients
                 .Where(r => ids.Contains(r.ContentId))
                 .Select(r => new { r.ContentId, r.RecipientUserId, r.User.Nickname })
@@ -577,7 +577,8 @@ public static class ContentEndpoints
         return items.Select(c => new ContentResponse(
             c.Id,
             c is Say ? "say" : "journal",
-            AuthorResponse.Of(c.AuthorId, authors[c.AuthorId].Nickname, authors[c.AuthorId].AvatarUrl),
+            AuthorResponse.Of(c.AuthorId, authors[c.AuthorId].Nickname, authors[c.AuthorId].AvatarUrl,
+                authors[c.AuthorId].Signature, authors[c.AuthorId].CoverUrl),
             c is Say s ? s.Text : null,
             c is Journal j ? j.Title : null,
             c is Journal j2 ? j2.MarkdownBody : null,

@@ -160,6 +160,8 @@ public static class AuthEndpoints
                     email = user.Email,
                     nickname = user.Nickname,
                     avatarUrl = MediaUrl(user.AvatarUrl),
+                    signature = user.Signature,
+                    coverUrl = MediaUrl(user.CoverUrl),
                     isAdmin = user.IsAdmin,
                 },
             });
@@ -183,6 +185,8 @@ public static class AuthEndpoints
                 email = user.Email,
                 nickname = user.Nickname,
                 avatarUrl = MediaUrl(user.AvatarUrl),
+                signature = user.Signature,
+                coverUrl = MediaUrl(user.CoverUrl),
                 isAdmin = user.IsAdmin,
             });
         }).AddEndpointFilter(SetupState.RequireInitialized);
