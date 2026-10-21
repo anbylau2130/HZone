@@ -3,6 +3,10 @@ import uni from '@dcloudio/vite-plugin-uni'
 
 export default defineConfig({
   plugins: [uni()],
+  // echarts/katex 体积大，预打包超时会让依赖请求 504——显式纳入预打包
+  optimizeDeps: {
+    include: ['echarts', 'katex']
+  },
   server: {
     port: 5173,
     proxy: {

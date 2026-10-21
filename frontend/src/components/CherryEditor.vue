@@ -22,6 +22,10 @@ import { uploadFile } from '../api/client'
 import { loadMediaUrl } from '../api/media'
 import { i18n, type AppLocale } from '../locale'
 import { useThemeStore } from '../stores/theme'
+// 公式（katex）/图表（echarts）离线渲染：cherry 经 options.externals 解析这两个库
+import Katex from 'katex'
+import 'katex/dist/katex.min.css'
+import * as ECharts from 'echarts'
 
 const props = defineProps<{ modelValue: string; placeholder?: string; preview?: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
@@ -133,16 +137,6 @@ class InsertVideoMenu extends MenuHookBase {
   }
 }
 
-// ---------- 「更多」折叠分组 ----------
-// 仅作分组按钮载体（name 决定图标与 class），点击弹出 level2 子菜单，自身无动作；
-// 子项（sub/sup/togglePreview）由 toolbars.toolbar 的嵌套对象声明
-class MoreMenu extends MenuHookBase {
-  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
-    super(cherryOptions)
-    this.setName('moreTools', 'chevrons') // ch-icon-chevrons
-  }
-}
-
 function injectCherryCss() {
   if (document.getElementById('cherry-css')) return
   const style = document.createElement('style')
@@ -158,6 +152,9 @@ function injectCherryCss() {
 onMounted(() => {
   if (!host.value) return
   injectCherryCss()
+  // echarts：cherry 内置 table-chart / echarts 代码块插件只从 window.echarts 解析
+  //（externals 不生效），挂到 window 才能让图表离线渲染
+  ;(window as unknown as { echarts: typeof ECharts }).echarts = ECharts
   cherry = new Cherry({
     id: hostId,
     value: props.modelValue,
@@ -172,52 +169,58 @@ onMounted(() => {
       codemirror: { placeholder: props.placeholder }
     },
     toolbars: {
+      // cherry 原生默认工具栏（0.11.11，与官方 demo 同款）+ insert 分组内加自定义 insertVideo；
+      // 不手拼 toolbarRight（字数统计等错行根因），右侧由 cherry 原生布局接管
       toolbar: [
         'bold',
         'italic',
         'strikethrough',
+        '|',
+        'color',
         'header',
+        'ruby',
         '|',
-        'ol',
-        'ul',
-        'checklist',
-        'quote',
-        '|',
-        'code',
-        'table',
-        'hr',
+        'list',
         'panel',
-        '|',
-        'image',
-        'insertVideo',
-        'link',
-        '|',
-        'undo',
-        'redo',
-        // 0.11.11 原生嵌套分组（level2MenusName）：{ key: [children] } 渲染为「更多」下拉；
-        // 低频但离线可用的能力收进折叠（对齐官方 demo 全量配置的取舍版本）
-        { moreTools: ['underline', 'sub', 'sup', 'color', 'size', 'justify', 'detail', 'ruby', 'copy', 'export'] }
-      ],
-      toolbarRight: [
-        'wordCount',
-        'toc',
-        'search',
-        'mobilePreview',
-        'switchModel',
-        'settings',
+        'detail',
+        {
+          insert: [
+            'image',
+            'audio',
+            'insertVideo',
+            'link',
+            'hr',
+            'br',
+            'code',
+            'formula',
+            'toc',
+            'table',
+            'line-table',
+            'bar-table'
+          ]
+        },
+        'graph',
         'shortcutKey',
-        'fullScreen'
+        'search',
+        'togglePreview'
       ],
       customMenu: {
-        insertVideo: InsertVideoMenu,
-        moreTools: MoreMenu
+        insertVideo: InsertVideoMenu
       },
-      // 关闭侧边栏与选中悬浮菜单（demo 的重交互项按白名单裁剪）
-      sidebar: false,
-      // toc 按钮依赖悬浮目录配置，false 会令按钮空转
-      toc: { updateLocationHash: false, defaultModel: 'pure', position: 'absolute' },
-      bubble: false,
-      float: false
+      // 默认工具栏无全屏按钮，右侧补一个（cherry 原生 key，单图标不破坏一行布局）
+      toolbarRight: ['fullScreen'],
+      sidebar: false
+    },
+    // 公式走 katex（默认 MathJax 无本地库不渲染）；katex 经 externals 挂载
+    engine: {
+      syntax: {
+        mathBlock: { engine: 'katex' },
+        inlineMath: { engine: 'katex' }
+      }
+    },
+    // katex 本地 externals：公式离线可用（cherry 从 options.externals 解析，无则回退 window.katex）
+    externals: {
+      katex: Katex
     },
     multipleFileSelection: true,
     callback: {
