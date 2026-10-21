@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** done（实施换 vditor 4.0.1：cherry 0.11.11 无即时渲染模式（types 仅 editOnly/previewOnly/edit&preview，官方文档确认 IR 是 vditor 特性），用户核心诉求即专业工具栏+即时渲染 → vditor mode:ir。其余按票执行）
+**Status:** done（用户拍板回 cherry-markdown 0.11.11。实况：cherry 无 typora 式即时渲染，取其内置双栏 edit&preview（编辑|实时预览同框，无分离预览窗）。其余按票：工具栏裁剪+自定义插视频菜单+fileUpload 鉴权直传+明暗跟随+setMarkdown 回填+destroy）
 
 - [x] cherry-markdown 集成（即时渲染+专业工具栏）
 - [x] 图片上传钩子+自定义视频插入

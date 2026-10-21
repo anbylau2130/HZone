@@ -125,9 +125,9 @@ function injectCherryCss() {
   if (document.getElementById('cherry-css')) return
   const style = document.createElement('style')
   style.id = 'cherry-css'
-  // 只替换图标字体的 src（@font-face 唯一），woff2 现代浏览器全覆盖
+  // 只替换图标字体的 src（@font-face 唯一；非压缩 css 的 "@font-face {" 带空格，\s* 兼容两种格式）
   style.textContent = cherryCss.replace(
-    /@font-face\{[^}]*\}/,
+    /@font-face\s*\{[^}]*\}/,
     `@font-face{font-family:"ch-icon";src:url("${chIconWoff2}") format("woff2")}`
   )
   document.head.appendChild(style)
