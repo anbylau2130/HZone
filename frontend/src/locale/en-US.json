@@ -162,7 +162,8 @@
     "uploading": "Uploading…",
     "recordPermissionDenied": "Camera unavailable — use “Add video” instead",
     "recordUnavailable": "Video recording is not supported in this browser",
-    "success": "Published"
+    "success": "Published",
+    "previewToggle": "Preview"
   },
   "weather": {
     "title": "Weather",

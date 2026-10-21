@@ -65,9 +65,16 @@
     <!-- 日志：标题独立（无圆角+分隔线）→ cherry-markdown 编辑器（内置工具栏+实时预览同框） -->
     <template v-else>
       <view class="panel journal-panel">
-        <input v-model="title" class="j-title" :placeholder="$t('publish.titlePlaceholder')" />
+        <view class="j-head-row">
+          <input v-model="title" class="j-title" :placeholder="$t('publish.titlePlaceholder')" />
+          <!-- #ifdef H5 -->
+          <view class="preview-toggle" :class="{ on: previewOn }" @click="previewOn = !previewOn">
+            <text class="pt-text">{{ $t('publish.previewToggle') }}</text>
+          </view>
+          <!-- #endif -->
+        </view>
         <!-- #ifdef H5 -->
-        <CherryEditor v-model="markdown" :placeholder="$t('publish.bodyPlaceholder')" />
+        <CherryEditor v-model="markdown" :placeholder="$t('publish.bodyPlaceholder')" :preview="previewOn" />
         <!-- #endif -->
         <!-- #ifndef H5 -->
         <textarea
@@ -123,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FriendPicker from '../../components/FriendPicker.vue'
 // #ifdef H5
@@ -191,6 +198,19 @@ const uploading = ref(false)
 const submitting = ref(false)
 
 const busy = computed(() => uploading.value || submitting.value)
+
+// ---------- 日志预览开关（仅 H5） ----------
+// CSS 类隐藏 .cherry-previewer（不依赖 cherry 内部 API），状态 localStorage 记忆
+// #ifdef H5
+const PREVIEW_KEY = 'hz-journal-preview'
+const previewOn = ref(localStorage.getItem(PREVIEW_KEY) !== 'off')
+watch(previewOn, (v) => {
+  localStorage.setItem(PREVIEW_KEY, v ? 'on' : 'off')
+})
+// #endif
+// #ifndef H5
+const previewOn = ref(true)
+// #endif
 
 // ---------- 日记头：公历日期+星期 + 农历（/me/stats）+ 天气快照入口 ----------
 const stats = ref<MeStats | null>(null)
@@ -589,7 +609,13 @@ async function submit() {
   min-height: 260px;
 }
 /* 日志：标题无圆角+分隔线，与编辑器明显分离 */
+.j-head-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .j-title {
+  flex: 1;
   height: 48px;
   font-size: 18px;
   font-weight: 600;
@@ -598,6 +624,28 @@ async function submit() {
   border-radius: 0;
   background: transparent;
   color: var(--hz-color-text);
+}
+/* 预览开关小按钮（仅 H5）：低调 pill，on 态 primary 描边+浅底 */
+.preview-toggle {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--hz-color-border);
+  border-radius: 999px;
+  background: var(--hz-color-bg);
+  cursor: pointer;
+  user-select: none;
+}
+.preview-toggle.on {
+  border-color: var(--hz-color-primary);
+  color: var(--hz-color-primary);
+  background: var(--hz-color-bg);
+}
+.pt-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.preview-toggle.on .pt-text {
+  color: var(--hz-color-primary);
 }
 .field {
   height: 44px;
@@ -843,8 +891,8 @@ async function submit() {
 }
 @media (min-width: 768px) {
   .page {
-    /* journal 模式：编辑器区域 56rem 宽（say 模式由下方 say-mode 覆盖为 42rem） */
-    padding: 32px max(24px, calc((100% - 56rem) / 2));
+    /* journal 模式占满左导航与 dock 之间的可用宽度，仅留 24px padding */
+    padding: 32px 24px;
   }
   /* say 短内容：单栏限宽居中（覆盖视口 padding 公式，否则 672px 盒子被 185px×2 的 padding 挤扁） */
   .page.say-mode {

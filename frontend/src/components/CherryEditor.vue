@@ -1,6 +1,11 @@
 <template>
-  <!-- cherry-markdown 挂载点：cherry 框架无关（依赖 dompurify 等，无 vue），组件只做 v-model 桥接 -->
-  <div ref="host" :id="hostId" class="cherry-host"></div>
+  <!-- cherry-markdown 挂载点：cherry 框架无关（依赖 dompurify 组件外注入，无 vue），组件只做 v-model 桥接 -->
+  <div
+    ref="host"
+    :id="hostId"
+    class="cherry-host"
+    :class="{ 'no-preview': !preview }"
+  ></div>
 </template>
 
 <script setup lang="ts">
@@ -18,7 +23,7 @@ import { loadMediaUrl } from '../api/media'
 import { i18n, type AppLocale } from '../locale'
 import { useThemeStore } from '../stores/theme'
 
-const props = defineProps<{ modelValue: string; placeholder?: string }>()
+const props = defineProps<{ modelValue: string; placeholder?: string; preview?: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
 const hostId = `cherry-hz-${Date.now().toString(36)}`
@@ -86,38 +91,55 @@ function fileUploadMulti(files: File[], callback: (urls: { url: string }[]) => v
 }
 
 // ---------- 自定义「插入视频」菜单 ----------
-// onClick 返回 Promise<string>：MenuBase.fire 会等 Promise 完成后把返回串替换进选区
-// （缓存机制 cacheOnce 的官方异步路径）；用户取消文件框则 Promise 悬置，不插入
+// input 创建与 click() 必须在用户手势内同步执行；Promise 只包异步上传回填。
+// resolve(null) 时 cherry 的 fire 跳过该选区替换（null → 保留原文），取消/失败不吞正文
 class InsertVideoMenu extends MenuHookBase {
   constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
     super(cherryOptions)
     this.setName('insertVideo', 'video') // ch-icon-video
   }
 
-  onClick() {
-    return new Promise<string>((resolve) => {
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = 'video/*'
-      input.style.display = 'none'
-      input.onchange = async () => {
+  onClick(): Promise<string | null> {
+    // 同步段：创建 input 并 click()（保住用户手势，文件框必弹）
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'video/*'
+    input.style.display = 'none'
+    input.multiple = false
+    let settled = false
+    const settle = (resolve: (v: string | null) => void, v: string | null) => {
+      if (settled) return
+      settled = true
+      resolve(v)
+    }
+    return new Promise<string | null>((resolve) => {
+      input.onchange = () => {
         const file = input.files?.[0]
         if (!file) {
-          resolve('')
+          settle(resolve, null)
           return
         }
-        try {
-          const url = await uploadOne(file)
-          resolve(`<video src="${url}" controls></video>\n`)
-        } catch {
-          uploadFailedToast()
-          resolve('')
-        }
+        uploadOne(file)
+          .then((url) => settle(resolve, `<video src="${url}" controls></video>\n`))
+          .catch(() => {
+            uploadFailedToast()
+            settle(resolve, null)
+          })
       }
       // 用户取消文件框：浏览器触发 cancel 事件，必须 resolve 否则 Promise 悬置（菜单反复触发文件框）
-      input.addEventListener('cancel', () => resolve(''))
+      input.addEventListener('cancel', () => settle(resolve, null))
       input.click()
     })
+  }
+}
+
+// ---------- 「更多」折叠分组 ----------
+// 仅作分组按钮载体（name 决定图标与 class），点击弹出 level2 子菜单，自身无动作；
+// 子项（sub/sup/togglePreview）由 toolbars.toolbar 的嵌套对象声明
+class MoreMenu extends MenuHookBase {
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
+    super(cherryOptions)
+    this.setName('moreTools', 'chevrons') // ch-icon-chevrons
   }
 }
 
@@ -154,12 +176,13 @@ onMounted(() => {
         'bold',
         'italic',
         'strikethrough',
+        'underline',
         'header',
         '|',
-        'quote',
         'ol',
         'ul',
         'checklist',
+        'quote',
         '|',
         'code',
         'table',
@@ -171,11 +194,13 @@ onMounted(() => {
         '|',
         'undo',
         'redo',
-        '|',
-        'fullScreen'
+        // 0.11.11 原生嵌套分组（level2MenusName）：{ key: [children] } 渲染为「更多」下拉
+        { moreTools: ['sub', 'sup', 'togglePreview'] }
       ],
+      toolbarRight: ['fullScreen'],
       customMenu: {
-        insertVideo: InsertVideoMenu
+        insertVideo: InsertVideoMenu,
+        moreTools: MoreMenu
       },
       // 关闭侧边栏/悬浮目录等重项（任务书：裁掉非白名单功能）
       sidebar: false,
@@ -274,5 +299,21 @@ defineExpose({ setMarkdown })
 .cherry-host :deep(.cherry-previewer img),
 .cherry-host :deep(.cherry-previewer video) {
   max-width: 100%;
+}
+/* 预览开关：CSS 类隐藏预览窗（不依赖 cherry 内部 API），编辑栏自动占满 */
+.cherry-host.no-preview :deep(.cherry-previewer) {
+  display: none;
+}
+.cherry-host.no-preview :deep(.cherry-editor) {
+  /* cherry 以内联 style 写 width:50%（同 height 内联套路），必须 !important 覆盖 */
+  width: 100% !important;
+}
+/* 工具栏溢出横滚（移动端一行放不下时），隐藏滚动条保持观感 */
+.cherry-host :deep(.cherry-toolbar .toolbar-left) {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cherry-host :deep(.cherry-toolbar .toolbar-left::-webkit-scrollbar) {
+  display: none;
 }
 </style>
