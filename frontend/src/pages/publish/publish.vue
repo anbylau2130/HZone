@@ -72,6 +72,14 @@
           <button class="pick small" @click="insertWrap('**', '**')">{{ $t('publish.bold') }}</button>
           <button class="pick small" @click="insertHeading">{{ $t('publish.heading') }}</button>
         </view>
+        <!-- #ifdef H5 -->
+        <CodeMirrorEditor
+          ref="editorRef"
+          v-model="markdown"
+          :placeholder="$t('publish.bodyPlaceholder')"
+        />
+        <!-- #endif -->
+        <!-- #ifndef H5 -->
         <textarea
           v-model="markdown"
           class="area tall"
@@ -79,6 +87,7 @@
           :maxlength="-1"
           auto-height
         />
+        <!-- #endif -->
         <view class="md-preview" v-html="previewHtml" />
       </view>
       <view class="recipients">
@@ -129,6 +138,9 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import FriendPicker from '../../components/FriendPicker.vue'
+// #ifdef H5
+import CodeMirrorEditor from '../../components/CodeMirrorEditor.vue'
+// #endif
 import {
   createSay,
   createJournal,
@@ -185,6 +197,9 @@ const mode = ref<'say' | 'journal'>('say')
 const sayText = ref('')
 const title = ref('')
 const markdown = ref('')
+// #ifdef H5
+const editorRef = ref<InstanceType<typeof CodeMirrorEditor> | null>(null)
+// #endif
 const mediaItems = ref<PickedMedia[]>([])
 const pickedFriends = ref<FriendInfo[]>([])
 const pickerVisible = ref(false)
@@ -486,32 +501,25 @@ onHide(() => {
 })
 // #endif
 
-// ---------- 日志工具栏：光标处插入 markdown（H5 读真实 textarea 的 selection） ----------
+// ---------- 日志工具栏：光标处插入 markdown（H5 走 CodeMirror 光标/选区，App 走 textarea 尾部插入） ----------
 function insertWrap(prefix: string, suffix = '') {
-  const value = markdown.value
-  let start = value.length
-  let end = value.length
   // #ifdef H5
-  const el = document.querySelector<HTMLTextAreaElement>('.journal-panel textarea')
-  if (el) {
-    start = el.selectionStart ?? value.length
-    end = el.selectionEnd ?? value.length
-  }
+  editorRef.value?.wrap(prefix, suffix)
   // #endif
-  markdown.value = value.slice(0, start) + prefix + value.slice(start, end) + suffix + value.slice(end)
+  // #ifndef H5
+  const value = markdown.value
+  markdown.value = value + prefix + suffix
+  // #endif
 }
 
 function insertHeading() {
-  const value = markdown.value
-  let pos = value.length
   // #ifdef H5
-  const el = document.querySelector<HTMLTextAreaElement>('.journal-panel textarea')
-  if (el) {
-    pos = el.selectionStart ?? value.length
-  }
+  editorRef.value?.insertLineStart('## ')
   // #endif
-  const lineStart = value.lastIndexOf('\n', Math.max(0, pos - 1)) + 1
-  markdown.value = value.slice(0, lineStart) + '## ' + value.slice(lineStart)
+  // #ifndef H5
+  const value = markdown.value
+  markdown.value = '## ' + value
+  // #endif
 }
 
 // ---------- 日志附件上传：复用 /api/media，返回 url 以 markdown 语法插入光标处 ----------

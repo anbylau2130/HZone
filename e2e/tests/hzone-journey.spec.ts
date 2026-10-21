@@ -111,7 +111,10 @@ test('journey 3: journal publish visible on friend profile', async ({ browser })
   // 去切换器后 kind 由入口 query 决定：直达 journal 入口
   await pageA.goto('/#/pages/publish/publish?kind=journal')
   await fillUniInput(pageA, '标题', JOURNAL_TITLE)
-  await pageA.locator('uni-textarea textarea').fill('正文第一段，写给 Bob 看。')
+  // CodeMirror 6 编辑器（H5）：contenteditable 输入，textarea 已替换
+  const cm = pageA.locator('.cm-content')
+  await cm.click()
+  await pageA.keyboard.type('正文第一段，写给 Bob 看。')
   await uniButton(pageA, '选择好友').click()
   await pageA.locator('.sheet .row', { hasText: bob.nickname }).click()
   await uniButton(pageA, '确定').click()
