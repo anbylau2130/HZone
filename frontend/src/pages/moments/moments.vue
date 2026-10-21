@@ -163,8 +163,7 @@ function pickCover() {
   input.accept = 'image/*'
   input.onchange = () => {
     const file = input.files?.[0]
-    if (file) uploadCoverFile(URL.createObjectURL(file))
-    if (file) uploadCoverFile(URL.createObjectURL(file))
+    if (file) uploadCoverFile(file)
   }
   input.click()
   // #endif
@@ -178,7 +177,7 @@ function pickCover() {
   // #endif
 }
 
-async function uploadCoverFile(path: string) {
+async function uploadCoverFile(path: string | Blob) {
   try {
     await uploadCover(path)
     await auth.fetchMe()

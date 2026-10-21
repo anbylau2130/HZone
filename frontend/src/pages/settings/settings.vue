@@ -101,7 +101,7 @@ function pickAvatar() {
   input.accept = 'image/*'
   input.onchange = () => {
     const file = input.files?.[0]
-    if (file) uploadAvatarFile(URL.createObjectURL(file))
+    if (file) uploadAvatarFile(file)
   }
   input.click()
   // #endif
@@ -115,7 +115,7 @@ function pickAvatar() {
   // #endif
 }
 
-async function uploadAvatarFile(path: string) {
+async function uploadAvatarFile(path: string | Blob) {
   busy.value = true
   try {
     await uploadAvatar(path)
@@ -163,7 +163,7 @@ function pickCover() {
   input.accept = 'image/*'
   input.onchange = () => {
     const file = input.files?.[0]
-    if (file) uploadCoverFile(URL.createObjectURL(file))
+    if (file) uploadCoverFile(file)
   }
   input.click()
   // #endif
@@ -177,7 +177,7 @@ function pickCover() {
   // #endif
 }
 
-async function uploadCoverFile(path: string) {
+async function uploadCoverFile(path: string | Blob) {
   busy.value = true
   try {
     await uploadCover(path)

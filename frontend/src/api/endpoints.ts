@@ -277,8 +277,8 @@ export function removeFriend(userId: string) {
 // ---------- 头像（composer-polish 票 05） ----------
 
 /** POST /me/avatar：multipart 上传图片，服务端压缩存储并更新头像；返回 /media/ 相对路径。 */
-export function uploadAvatar(filePath: string) {
-  return uploadFile<{ avatarUrl: string }>('/api/me/avatar', filePath)
+export function uploadAvatar(file: string | Blob) {
+  return uploadFile<{ avatarUrl: string }>('/api/me/avatar', file)
 }
 
 /** DELETE /me/avatar：清空头像 → 204。 */
@@ -297,8 +297,8 @@ export function updateMyProfile(signature: string | null) {
 }
 
 /** POST /me/cover：multipart 上传封面图，服务端压缩存储并更新封面；返回 /media/ 相对路径。 */
-export function uploadCover(filePath: string) {
-  return uploadFile<{ coverUrl: string }>('/api/me/cover', filePath)
+export function uploadCover(file: string | Blob) {
+  return uploadFile<{ coverUrl: string }>('/api/me/cover', file)
 }
 
 /** DELETE /me/cover：清空封面 → 204。 */

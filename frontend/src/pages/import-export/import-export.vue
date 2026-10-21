@@ -134,16 +134,14 @@ function doImport() {
   input.onchange = async () => {
     const file = input.files?.[0]
     if (!file) return
-    // uni.uploadFile(H5) 只接受字符串路径，File 对象转 blob URL 再传。
-    const blobPath = URL.createObjectURL(file)
     importing.value = true
     try {
-      await uploadFile('/api/import', blobPath)
+      // File 直传（uploadFile H5 fetch 分支），不经 blob: URL 中转
+      await uploadFile('/api/import', file)
       uni.showToast({ title: t('ie.importSuccess'), icon: 'success' })
     } catch {
       // 错误提示由请求层统一 toast
     } finally {
-      URL.revokeObjectURL(blobPath)
       importing.value = false
     }
   }
