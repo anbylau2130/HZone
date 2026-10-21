@@ -252,13 +252,13 @@
     "exportBtn": "导出 zip",
     "exported": "导出已开始下载",
     "importSection": "导入 zip",
-    "importDesc": "从导出包恢复；导入的内容默认私密，可再批量编辑 @ 名单",
+    "importDesc": "从导出包恢复；导入的内容默认私密，可再批量编辑 {'@'} 名单",
     "importBtn": "选择 zip 并导入",
     "importSuccess": "导入成功",
-    "batchSection": "批量编辑 @ 名单",
-    "batchDesc": "勾选内容，选择好友，为其追加 @",
+    "batchSection": "批量编辑 {'@'} 名单",
+    "batchDesc": "勾选内容，选择好友，为其追加 {'@'}",
     "batchPick": "选择好友",
-    "batchSubmit": "追加 @",
+    "batchSubmit": "追加 {'@'}",
     "batchDone": "已更新 {n} 条内容"
   },
   "admin": {
