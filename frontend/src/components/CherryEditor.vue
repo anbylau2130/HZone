@@ -94,13 +94,26 @@ function fileUploadMulti(files: File[], callback: (urls: { url: string }[]) => v
   })
 }
 
-// ---------- 自定义「插入视频」菜单 ----------
-// input 创建与 click() 必须在用户手势内同步执行；Promise 只包异步上传回填。
-// resolve(null) 时 cherry 的 fire 跳过该选区替换（null → 保留原文），取消/失败不吞正文
-class InsertVideoMenu extends MenuHookBase {
-  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
+// ---------- 自定义媒体插入菜单（image/video 共用） ----------
+// 不用 cherry 原生 image/video 菜单：实测缺陷——同一会话第二笔媒体插入会被上一笔的
+// cacheOnce 语法包裹/吞掉（cherry 0.11.11 cacheOnce×异步回调交错）。自定义菜单走
+// MenuHookBase（官方自定义菜单机制）：input 创建与 click() 在用户手势同一同步栈，
+// Promise 只包异步上传回填；resolve(null) 时 fire 跳过选区替换（取消/失败不吞正文）
+class InsertMediaMenu extends MenuHookBase {
+  private readonly accept: string
+  private readonly build: (url: string, name: string) => string
+
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0], kind: 'image' | 'video') {
     super(cherryOptions)
-    this.setName('insertVideo', 'video') // ch-icon-video
+    if (kind === 'image') {
+      this.accept = 'image/*'
+      this.build = (url, name) => `![${name}](${url})\n`
+      this.setName('insertImage', 'image') // ch-icon-image
+    } else {
+      this.accept = 'video/*'
+      this.build = (url) => `<video src="${url}" controls></video>\n`
+      this.setName('insertVideo', 'video') // ch-icon-video
+    }
   }
 
   onClick(): Promise<string | null> {
@@ -109,7 +122,7 @@ class InsertVideoMenu extends MenuHookBase {
     // Promise 只包异步上传回填；resolve(null) 时 fire 跳过选区替换（取消/失败不吞正文）
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = 'video/*'
+    input.accept = this.accept
     input.style.display = 'none'
     input.multiple = false
     let settled = false
@@ -126,7 +139,7 @@ class InsertVideoMenu extends MenuHookBase {
           return
         }
         uploadOne(file)
-          .then((url) => settle(resolve, `<video src="${url}" controls></video>\n`))
+          .then((url) => settle(resolve, this.build(url, file.name)))
           .catch(() => {
             uploadFailedToast()
             settle(resolve, null)
@@ -141,13 +154,15 @@ class InsertVideoMenu extends MenuHookBase {
   }
 }
 
-// ---------- 「更多」折叠分组 ----------
-// 仅作分组按钮载体（name 决定图标与 class），点击弹出 level2 子菜单，自身无动作；
-// 子项由 toolbars.toolbar 的嵌套对象声明
-class MoreMenu extends MenuHookBase {
+class InsertImageMenu extends InsertMediaMenu {
   constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
-    super(cherryOptions)
-    this.setName('moreTools', 'chevrons') // ch-icon-chevrons
+    super(cherryOptions, 'image')
+  }
+}
+
+class InsertVideoMenu extends InsertMediaMenu {
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
+    super(cherryOptions, 'video')
   }
 }
 
@@ -183,51 +198,44 @@ onMounted(() => {
       codemirror: { placeholder: props.placeholder }
     },
     toolbars: {
-      // 显式全量工具栏：格式类与媒体（图片/视频一级按钮）必须可见；低频项收进
-      // moreTools 折叠（0.11.11 原生嵌套分组）。toolbarRight 依次为统计/视图/设置/全屏。
-      // 注：types 无 inline-code 独立项（行内代码无工具栏 key）；line-table/bar-table
-      // 在 0.11.11 未注册菜单，列出后 cherry 原生跳过（drawMenus warn + skip，不崩）。
+      // 照抄官方 demo（index-demo.js）的 toolbars 块，仅按 0.11.11 与离线可用性裁剪：
+      // drawIo/pdf/word/file 为外部服务不抄；demo 的 customMenuA/B/C 换成 insertVideo
+      // （MenuHookBase 自定义菜单，塞进 strikethrough 折叠组）；insert 组用 cherry 原生
+      // video（demo 同款，走 callback.fileUpload/fileUploadMulti 鉴权直传）。
       toolbar: [
-        // 格式类
         'bold',
         'italic',
-        'strikethrough',
-        'underline',
-        'sub',
-        'sup',
-        'header',
-        'color',
+        { strikethrough: ['strikethrough', 'underline', 'sub', 'sup', 'ruby'] },
+        'size',
         '|',
-        // 列表与引用
-        'list',
+        'color',
+        'header',
+        '|',
         'ol',
         'ul',
         'checklist',
-        'quote',
+        'panel',
+        'timeline',
+        'align',
+        'detail',
         '|',
-        // 代码与表格
-        'code',
-        'table',
-        'hr',
+        'formula',
+        { insert: ['insertImage', 'audio', 'insertVideo', 'link', 'hr', 'br', 'code', 'inlineCode', 'formula', 'toc', 'table'] },
+        'graph',
+        'proTable',
         '|',
-        // 媒体一级按钮（图片/视频直接可见，不走折叠）
-        'image',
-        'insertVideo',
-        'link',
-        '|',
-        'undo',
-        'redo',
-        '|',
-        // 功能面板（search/settings 也在 toolbarRight 各留一份入口）
+        'shortcutKey',
         'search',
-        { moreTools: ['ruby', 'detail', 'graph', 'formula', 'toc', 'br', 'audio', 'line-table', 'bar-table', 'copy', 'export'] }
+        'togglePreview'
       ],
+      toolbarRight: ['fullScreen', '|', 'wordCount'],
+      bubble: ['bold', 'italic', 'underline', 'strikethrough', 'sub', 'sup', 'quote', 'ruby', '|', 'size', 'color'],
+      sidebar: ['mobilePreview', 'copy', 'theme', 'codeTheme'],
+      toc: { defaultModel: 'full' },
       customMenu: {
-        insertVideo: InsertVideoMenu,
-        moreTools: MoreMenu
-      },
-      toolbarRight: ['wordCount', 'switchModel', 'shortcutKey', 'settings', 'fullScreen'],
-      sidebar: false
+        insertImage: InsertImageMenu,
+        insertVideo: InsertVideoMenu
+      }
     },
     // 公式走 katex（默认 MathJax 无本地库不渲染）；katex 经 externals 挂载
     engine: {
@@ -240,7 +248,10 @@ onMounted(() => {
     externals: {
       katex: Katex
     },
-    multipleFileSelection: true,
+    // false：走 cherry 单文件菜单路径（xv 直插 replaceSelection，无 cacheOnce 二次回填）。
+    // true（多选）路径实测第二笔媒体插入会被上一笔的缓存语法包裹/吞掉（cherry 0.11.11
+    // cacheOnce 与异步回调交错的缺陷），多图场景用多次点击或粘贴替代
+    multipleFileSelection: false,
     callback: {
       fileUpload,
       fileUploadMulti

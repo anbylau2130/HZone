@@ -102,8 +102,15 @@ const kindLabel = computed(() =>
   content.value?.kind === 'journal' ? t('timeline.kindJournal') : t('timeline.kindSay')
 )
 
-// 日志正文渲染完整 Markdown（marked 默认转义输出）
-const mdHtml = computed(() => marked.parse(content.value?.markdownBody ?? '') as string)
+// 日志正文渲染完整 Markdown。marked 不理解 cherry 的音视频扩展语法
+//（编辑器原生 video 项插入 !video[name](url) / !audio[alt](url)），读侧转回 HTML
+const mdHtml = computed(() => {
+  const md = (content.value?.markdownBody ?? '').replace(
+    /!(video|audio)\[([^\]]*)\]\(([^)]+)\)/g,
+    (_m, tag, alt, url) => `<${tag} src="${url}" ${tag === 'video' ? 'controls' : ''}>${alt}</${tag}>`
+  )
+  return marked.parse(md) as string
+})
 
 // 农历+天气全显条（homepage-v2）：`乙巳年 腊月初一 · 大雪 ｜ 杭州 · 晴 · 12°C`
 const contextLine = computed(() => {
