@@ -62,9 +62,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { marked } from 'marked'
+// @ts-ignore cherry 可选 addon（自带 mermaid 渲染引擎，零外部导入；与编辑器共用）
+import CherryMermaidPlugin from 'cherry-markdown/dist/addons/cherry-code-block-mermaid-plugin.esm.js'
 import { setNavTitle } from '../../locale'
 import { useI18n } from 'vue-i18n'
 import MediaGrid from '../../components/MediaGrid.vue'
@@ -111,6 +113,34 @@ const mdHtml = computed(() => {
   )
   return marked.parse(md) as string
 })
+
+// ```mermaid 代码块用 cherry 自包含 addon 渲染成流程图（阅读侧与编辑器同引擎）
+let mermaidSeq = 0
+let mermaidRenderer: { render: (code: string, index: number, id: string, cfg?: object) => string } | null = null
+async function renderMermaidBlocks() {
+  const blocks = document.querySelectorAll('.md-body pre > code.language-mermaid')
+  if (!blocks.length) return
+  if (!mermaidRenderer) {
+    // addon 实例化不含 cherry 内部状态（渲染引擎自包含）；语法错误走 fallback 保留源码
+    mermaidRenderer = new (CherryMermaidPlugin as unknown as {
+      new (): { render: (code: string, index: number, id: string, cfg?: object) => string }
+    })()
+  }
+  for (const code of blocks) {
+    const src = code.textContent ?? ''
+    const id = `mermaid-hz-${++mermaidSeq}`
+    try {
+      const html = mermaidRenderer.render(src, Date.now(), id)
+      const wrap = document.createElement('div')
+      wrap.className = 'mermaid-figure'
+      wrap.innerHTML = html
+      ;(code.parentElement as HTMLElement).replaceWith(wrap)
+    } catch {
+      // 语法错误保留源码展示，不吞内容
+    }
+  }
+}
+watch(mdHtml, () => nextTick(() => void renderMermaidBlocks()), { immediate: true })
 
 // 农历+天气全显条（homepage-v2）：`乙巳年 腊月初一 · 大雪 ｜ 杭州 · 晴 · 12°C`
 const contextLine = computed(() => {
