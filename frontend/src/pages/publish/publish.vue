@@ -175,6 +175,8 @@ const { t } = useI18n()
 
 interface PickedMedia {
   localPath: string
+  /** H5 直传的原始 File（不经 blob: URL 中转，上传更可靠）；App 端为空走路径上传 */
+  file?: Blob
   mediaId?: string
   kind: 'image' | 'video'
 }
@@ -300,7 +302,7 @@ function pickImage() {
   // #ifdef H5
   openH5FilePicker('image/*', remaining, (files) => {
     uploadAll(
-      files.map((f) => URL.createObjectURL(f)),
+      files.map((f) => ({ preview: URL.createObjectURL(f), file: f })),
       'image'
     )
   })
@@ -309,7 +311,7 @@ function pickImage() {
   uni.chooseImage({
     count: remaining,
     success: (res) => {
-      uploadAll(res.tempFilePaths, 'image')
+      uploadAll(res.tempFilePaths.map((p) => ({ preview: p })), 'image')
     }
   })
   // #endif
@@ -322,13 +324,13 @@ function pickVideo() {
   }
   // #ifdef H5
   openH5FilePicker('video/*', 1, (files) => {
-    if (files.length) uploadAll([URL.createObjectURL(files[0])], 'video')
+    if (files.length) uploadAll([{ preview: URL.createObjectURL(files[0]), file: files[0] }], 'video')
   })
   // #endif
   // #ifndef H5
   uni.chooseVideo({
     success: (res) => {
-      uploadAll([res.tempFilePath], 'video')
+      uploadAll([{ preview: res.tempFilePath }], 'video')
     }
   })
   // #endif
@@ -359,15 +361,16 @@ function removeMedia(localPath: string) {
   // #endif
 }
 
-async function uploadAll(paths: string[], kind: 'image' | 'video') {
+async function uploadAll(items: { preview: string; file?: Blob }[], kind: 'image' | 'video') {
   uploading.value = true
   try {
-    for (const p of paths) {
-      const asset = await uploadFile<{ id: string }>('/api/media', p)
-      mediaItems.value.push({ localPath: p, mediaId: asset.id, kind })
+    for (const it of items) {
+      const asset = await uploadFile<{ id: string }>('/api/media', it.file ?? it.preview)
+      mediaItems.value.push({ localPath: it.preview, file: it.file, mediaId: asset.id, kind })
     }
   } catch {
-    // 上传失败提示已由请求层统一 toast；失败的文件不入列
+    // 上传失败：请求层已 toast 具体错误，这里兜底提示保证用户可感知
+    uni.showToast({ title: t('publish.uploadFailed'), icon: 'none' })
   } finally {
     uploading.value = false
   }
@@ -449,7 +452,7 @@ function finalizeRecord() {
   mediaRecorder = null
   if (blob.size === 0) return
   // 视频独占：清掉已有媒体（上面 start 已挡，这里兜底）
-  mediaItems.value = [{ localPath: URL.createObjectURL(blob), kind: 'video' }]
+  mediaItems.value = [{ localPath: URL.createObjectURL(blob), file: blob, kind: 'video' }]
 }
 
 function pickRecordMime(): string | undefined {
@@ -547,8 +550,7 @@ async function insertUploadedMedia(files: (File | string)[], kind: 'image' | 'vi
   uploading.value = true
   try {
     for (const f of files) {
-      const path = typeof f === 'string' ? f : URL.createObjectURL(f)
-      const asset = await uploadFile<{ id: string; url: string }>('/api/media', path)
+      const asset = await uploadFile<{ id: string; url: string }>('/api/media', f)
       if (kind === 'image') {
         insertWrap(`![${t('publish.imageAlt')}](${asset.url})`)
       } else {
@@ -556,7 +558,8 @@ async function insertUploadedMedia(files: (File | string)[], kind: 'image' | 'vi
       }
     }
   } catch {
-    // 上传失败提示已由请求层统一 toast
+    // 上传失败：请求层已 toast 具体错误，这里兜底提示保证用户可感知
+    uni.showToast({ title: t('publish.uploadFailed'), icon: 'none' })
   } finally {
     uploading.value = false
   }
@@ -577,7 +580,7 @@ async function submit() {
       try {
         for (const m of mediaItems.value) {
           if (!m.mediaId) {
-            const asset = await uploadFile<{ id: string }>('/api/media', m.localPath)
+            const asset = await uploadFile<{ id: string }>('/api/media', m.file ?? m.localPath)
             m.mediaId = asset.id
           }
         }
@@ -707,8 +710,12 @@ async function submit() {
   width: auto;
   margin: 0;
 }
+/* 预览对所有宽度可见：日志页要读作 markdown 编辑器（输入即渲染），
+   手机宽度限高可滚动，避免把提交按钮挤出首屏 */
 .md-preview {
-  display: none;
+  display: block;
+  max-height: 30vh;
+  overflow-y: auto;
 }
 .field {
   height: 44px;

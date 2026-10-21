@@ -123,13 +123,46 @@ export function request<T = unknown>(path: string, options: RequestOptions = {})
 /**
  * multipart 上传（POST，字段名固定 'file'），带 Bearer；响应按 JSON 解析。
  * 媒体上传（POST /media）与 zip 导入（POST /import）共用。
+ * H5 下传 File/Blob 走 fetch 直传（不经 blob: URL 中转——uni.uploadFile 的
+ * urlToFile 依赖 XHR 拉 blob:，部分浏览器/隐私环境不可靠）；传字符串路径
+ * 或 App 端仍走 uni.uploadFile。
  */
-export function uploadFile<T = unknown>(path: string, filePath: string): Promise<T> {
+export function uploadFile<T = unknown>(path: string, file: string | Blob): Promise<T> {
   const token = getToken()
+  // #ifdef H5
+  if (typeof file !== 'string') {
+    return fetch(path, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: (() => {
+        const form = new FormData()
+        form.append('file', file, file instanceof File ? file.name : 'file')
+        return form
+      })()
+    }).then(async (res) => {
+      const text = await res.text()
+      let data: unknown = text
+      try {
+        data = JSON.parse(text)
+      } catch {
+        /* 非 JSON 响应按原文返回 */
+      }
+      if (res.status >= 200 && res.status < 300) {
+        return data as T
+      }
+      const message = extractMessage(data) ?? i18n.global.t('common.requestFailed')
+      uni.showToast({ title: message, icon: 'none' })
+      const err = new Error(message) as ApiError
+      err.status = res.status
+      err.data = data
+      throw err
+    })
+  }
+  // #endif
   return new Promise<T>((resolve, reject) => {
     uni.uploadFile({
       url: path,
-      filePath,
+      filePath: file as string,
       name: 'file',
       header: token ? { Authorization: `Bearer ${token}` } : {},
       success: (res) => {

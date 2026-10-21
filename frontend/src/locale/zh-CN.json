@@ -154,6 +154,7 @@
     "addImages": "添加图片",
     "addVideo": "添加视频",
     "mediaRule": "最多 9 张图片，或 1 个视频",
+    "uploadFailed": "上传失败，请重试",
     "videoOnlySingle": "视频只能单独发一个",
     "maxImagesReached": "图片最多 9 张",
     "recipients": "{'@'} 谁",

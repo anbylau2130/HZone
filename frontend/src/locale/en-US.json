@@ -151,6 +151,7 @@
     "addImages": "Add images",
     "addVideo": "Add video",
     "mediaRule": "Up to 9 images, or 1 video",
+    "uploadFailed": "Upload failed, please retry",
     "videoOnlySingle": "A video must be posted alone",
     "maxImagesReached": "At most 9 images",
     "recipients": "Share with",
