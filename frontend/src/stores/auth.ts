@@ -9,6 +9,16 @@ import {
   clearSession,
   type HZUser
 } from '../api/client'
+import { applyLocalePreference } from '../locale'
+import { useThemeStore } from './theme'
+
+// 账号偏好下发后的应用（PRD 6.9）：主题进 theme store（含本地存储覆盖），
+// 语言进 i18n + hz_locale。冲突策略：账号偏好优先于本地（多端一致）。
+function applyAccountPreferences(prefs?: Record<string, unknown> | null) {
+  if (!prefs || typeof prefs !== 'object') return
+  useThemeStore().applyAccount(prefs)
+  applyLocalePreference(prefs.locale)
+}
 
 export interface RegisterPayload {
   inviteCode: string
@@ -34,6 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
     saveSession(res.token, res.user)
     token.value = res.token
     user.value = res.user
+    applyAccountPreferences(res.user.preferences)
   }
 
   async function register(payload: RegisterPayload) {
@@ -59,6 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
     const me = await request<HZUser>('/api/auth/me')
     user.value = me
     saveUser(me)
+    applyAccountPreferences(me.preferences)
     return me
   }
 

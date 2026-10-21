@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using HZone.Core.Entities;
 using HZone.Core.Interfaces;
 using HZone.Infrastructure;
@@ -163,8 +164,38 @@ public static class AuthEndpoints
                     signature = user.Signature,
                     coverUrl = MediaUrl(user.CoverUrl),
                     isAdmin = user.IsAdmin,
+                    preferences = PreferencesValue(user.Preferences),
                 },
             });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // 账号级偏好（PRD 6.9）：body 任意 JSON 对象（≤4KB）整包落库，后端不解析结构。
+        app.MapPut("/me/preferences", [Authorize] async (
+            JsonElement request,
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            if (request.ValueKind != JsonValueKind.Object)
+            {
+                return Results.BadRequest(new { error = "preferences must be a JSON object" });
+            }
+
+            var json = request.GetRawText();
+            if (json.Length > 4096)
+            {
+                return Results.BadRequest(new { error = "preferences must be at most 4KB" });
+            }
+
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Id == CurrentUserId(principal), ct);
+            if (user is null)
+            {
+                return Results.NotFound(new { error = "user not found" });
+            }
+
+            user.Preferences = json;
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(request);
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
         app.MapGet("/auth/me", [Authorize] async (
@@ -188,6 +219,7 @@ public static class AuthEndpoints
                 signature = user.Signature,
                 coverUrl = MediaUrl(user.CoverUrl),
                 isAdmin = user.IsAdmin,
+                preferences = PreferencesValue(user.Preferences),
             });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
@@ -293,6 +325,20 @@ public static class AuthEndpoints
     /// <summary>User.AvatarUrl（storedName）→ /media/{storedName}；未设置为 null。</summary>
     internal static string? MediaUrl(string? avatarStoredName) =>
         avatarStoredName is null ? null : $"/media/{avatarStoredName}";
+
+    /// <summary>User.Preferences（JSON 字符串）→ 下发的 JSON 对象；未设置为 null。存储串损坏时按未设置处理。</summary>
+    internal static JsonElement? PreferencesValue(string? preferences)
+    {
+        if (string.IsNullOrEmpty(preferences)) return null;
+        try
+        {
+            return JsonDocument.Parse(preferences).RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 }
 
 public sealed record RegisterRequest(string InviteCode, string Email, string Password, string Nickname);

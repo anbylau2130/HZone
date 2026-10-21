@@ -368,6 +368,10 @@ namespace HZone.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Preferences")
+                        .HasMaxLength(4096)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Signature")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");

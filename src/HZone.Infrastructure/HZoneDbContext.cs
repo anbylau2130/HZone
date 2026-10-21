@@ -30,6 +30,7 @@ public class HZoneDbContext : DbContext
             e.HasIndex(u => u.Email).IsUnique();
             e.Property(u => u.Email).HasMaxLength(320);
             e.Property(u => u.Signature).HasMaxLength(100);
+            e.Property(u => u.Preferences).HasMaxLength(4096);
         });
 
         modelBuilder.Entity<Friendship>(e =>

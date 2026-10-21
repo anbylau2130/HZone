@@ -25,6 +25,12 @@ public class User
     /// </summary>
     public string? CoverUrl { get; set; }
 
+    /// <summary>
+    /// 账号级偏好（PRD 6.9）：整包 JSON 字符串（{ mode, presetId, overrides, locale }），
+    /// 后端不解析结构，仅限长 ≤4KB（PUT /me/preferences 写入）。null = 从未设置。
+    /// </summary>
+    public string? Preferences { get; set; }
+
     public bool EmailVerified { get; set; }
 
     public bool IsAdmin { get; set; }

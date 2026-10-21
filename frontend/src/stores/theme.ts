@@ -9,8 +9,22 @@ import {
 import { getPreset } from '../theme/presets'
 import { applyTheme } from '../theme/applyTheme'
 import { isValidHex } from '../utils/contrast'
+import { schedulePreferencesSync } from '../utils/prefSync'
 
 const STORAGE_KEY = 'hz_theme'
+
+// 与 theme/presets.ts 的预置主题列表一致（账号偏好下发值合法性检查用）
+const PRESET_IDS = ['default', 'warm', 'green', 'space']
+
+/** 任意来源（本地存储 / 账号偏好下发）的主题值 → 合法 PersistedTheme（PRD 6.9）。 */
+function sanitizeTheme(input: unknown): PersistedTheme {
+  const parsed = (input ?? {}) as Partial<PersistedTheme>
+  return {
+    mode: parsed.mode === 'dark' ? 'dark' : 'light',
+    presetId: PRESET_IDS.includes(parsed.presetId ?? '') ? (parsed.presetId as string) : 'default',
+    overrides: sanitizeOverrides(parsed.overrides)
+  }
+}
 
 export interface PersistedTheme {
   mode: ThemeMode
@@ -22,14 +36,7 @@ function readStoredTheme(): PersistedTheme {
   try {
     const raw = uni.getStorageSync(STORAGE_KEY) as string | ''
     if (!raw) return { mode: 'light', presetId: 'default', overrides: {} }
-    const parsed = JSON.parse(raw) as Partial<PersistedTheme>
-    return {
-      mode: parsed.mode === 'dark' ? 'dark' : 'light',
-      presetId: ['default', 'warm', 'green', 'space'].includes(parsed.presetId ?? '')
-        ? (parsed.presetId as string)
-        : 'default',
-      overrides: sanitizeOverrides(parsed.overrides)
-    }
+    return sanitizeTheme(JSON.parse(raw))
   } catch {
     return { mode: 'light', presetId: 'default', overrides: {} }
   }
@@ -77,12 +84,18 @@ export const useThemeStore = defineStore('theme', () => {
 
   const colors = computed<ColorTokens>(() => composeColors(mode.value, presetId.value, overrides.value))
 
-  function persist() {
+  function persistLocal() {
     uni.setStorageSync(STORAGE_KEY, JSON.stringify({
       mode: mode.value,
       presetId: presetId.value,
       overrides: overrides.value
     }))
+  }
+
+  // 本地落盘后防抖上送账号偏好（未登录时 schedulePreferencesSync 直接跳过）
+  function persist() {
+    persistLocal()
+    schedulePreferencesSync()
   }
 
   function apply() {
@@ -124,5 +137,18 @@ export const useThemeStore = defineStore('theme', () => {
     persist()
   }
 
-  return { mode, presetId, overrides, colors, apply, preview, setMode, setPreset, setOverrides, reset }
+  // 账号偏好下发后的应用入口（PRD 6.9）：登录/fetchMe 拉到 preferences 时调用。
+  // 冲突策略：账号偏好优先于本地——直接覆盖本地存储，保持多端一致。
+  // 只写本地（persistLocal），不再触发上送（数据源就是服务端，回送是无效循环）。
+  function applyAccount(prefs: Record<string, unknown> | null | undefined) {
+    if (!prefs || typeof prefs !== 'object') return
+    const sanitized = sanitizeTheme(prefs)
+    mode.value = sanitized.mode
+    presetId.value = sanitized.presetId
+    overrides.value = sanitized.overrides
+    apply()
+    persistLocal()
+  }
+
+  return { mode, presetId, overrides, colors, apply, preview, setMode, setPreset, setOverrides, reset, applyAccount }
 })

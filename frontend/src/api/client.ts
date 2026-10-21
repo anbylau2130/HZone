@@ -13,6 +13,8 @@ export interface HZUser {
   signature?: string | null
   /** 封面 /media/ 相对路径；null = 未设置（moments-wechat 票 01）。 */
   coverUrl?: string | null
+  /** 账号级偏好（PRD 6.9）：{ mode, presetId, overrides, locale }；null = 从未设置。 */
+  preferences?: Record<string, unknown> | null
   isAdmin: boolean
 }
 
