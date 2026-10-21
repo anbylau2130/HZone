@@ -32,6 +32,10 @@
 - 导航：六 tab 首页/随记/日志/收到/主题/设置；搜索上移；我的时间线并入首页；设置页=hub 入口、主题页=外观定制
 - EnsureCreated 不加列的教训与 EF Migrations 待办已记（见上）
 
+## 编辑器选型结论（2026-10-21，重要）
+
+**uni-app H5 前端选第三方组件的铁律：绝不能依赖原版 `vue` 包。** uni-app 用分支 Vue（@dcloudio/uni-h5-vue），任何直依赖 vue 的组件库（md-editor-v3 等）都会双实例冲突挂载即崩（缺 Comment/EMPTY_ARR 导出，console 实锤）。专业编辑器定版 **CodeMirror 6**（框架无关，d494266）。同类候选先查 package.json 是否有 vue dependency。
+
 ## moments-wechat 批次（2026-10-21 完成）
 
 - 01 签名/封面字段+端点（d28ad38，111/111）｜ 02 朋友圈 UI+profile 复用+个人资料区（b98847f，12/12）
