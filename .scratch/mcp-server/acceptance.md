@@ -14,7 +14,8 @@
 
 ## 同批次修复（用户报告）
 
-- 05b91e4：日志编辑器 markdown 体验与媒体上传（t35 调试代理定位：H5 文件选择手势链路 + blob: 路径喂 uni.uploadFile 不可靠 + 光标插入失效；改 fetch 直传 File、失败必 toast、原生 selection 插入；12/12 回归绿）
+- 05b91e4：日志编辑器 markdown 体验与媒体上传。根因实锤：① .md-preview 在 <768px display:none——手机上只有裸 textarea 无渲染反馈（"不像 markdown 编辑器"的真因）；② 上传走 blob: 地址喂 uni.uploadFile，其 urlToFile 靠 XHR 拉 blob: URL，是浏览器兼容最脆弱一环（部分环境静默失败）。修复：预览全宽度显示（手机 30vh 滚动）；uploadFile 放宽收 Blob 走 fetch+FormData 直传；失败双层 toast
+- 追加收敛（进行中→见下）：avatar/cover 上传与 zip 导入三处同链路改 fetch 直传
 
 ## 已知限制
 
