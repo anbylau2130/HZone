@@ -4,21 +4,17 @@
       <view class="topbar">
         <text class="topbar-title">{{ $t('journals.title') }}</text>
         <view class="topbar-actions">
-          <!-- 卡片/表格/阅读视图切换（localStorage 记忆） -->
+          <!-- 卡片/表格/阅读视图切换（阅读在前、默认阅读；localStorage 记忆） -->
           <view v-if="items.length > 0" class="view-toggle">
+            <text class="vt" :class="{ on: viewMode === 'read' }" @click="setViewMode('read')">
+              {{ $t('journals.viewRead') }}
+            </text>
             <text class="vt" :class="{ on: viewMode === 'card' }" @click="setViewMode('card')">
               {{ $t('journals.viewCard') }}
             </text>
             <text class="vt" :class="{ on: viewMode === 'table' }" @click="setViewMode('table')">
               {{ $t('journals.viewTable') }}
             </text>
-            <text class="vt" :class="{ on: viewMode === 'read' }" @click="setViewMode('read')">
-              {{ $t('journals.viewRead') }}
-            </text>
-          </view>
-          <view v-if="items.length > 0" class="write-btn" @click="goPublish">
-            <text class="write-plus">＋</text>
-            <text>{{ $t('journals.write') }}</text>
           </view>
         </view>
       </view>
@@ -115,15 +111,14 @@ onShow(() => {
   pagination.refresh()
 })
 
-// ---------- 卡片/表格/阅读视图切换（localStorage 记忆） ----------
+// ---------- 视图切换：阅读（默认）/卡片/表格，localStorage 记忆 ----------
 const VIEW_KEY = 'hz-journals-view'
-type ViewMode = 'card' | 'table' | 'read'
 const savedView = localStorage.getItem(VIEW_KEY)
-const viewMode = ref<ViewMode>(
-  savedView === 'table' || savedView === 'read' ? savedView : 'card'
+const viewMode = ref<'card' | 'table' | 'read'>(
+  savedView === 'card' || savedView === 'table' ? savedView : 'read'
 )
 
-function setViewMode(mode: ViewMode) {
+function setViewMode(mode: 'card' | 'table' | 'read') {
   viewMode.value = mode
   localStorage.setItem(VIEW_KEY, mode)
 }
@@ -234,6 +229,7 @@ function formatWords(n: number): string {
   display: inline-flex;
 }
 .fab {
+  /* 悬浮写日志：全端常驻（此前桌面隐藏，用户够不到入口） */
   position: fixed;
   right: 20px;
   bottom: calc(70px + env(safe-area-inset-bottom) + 16px);
@@ -247,6 +243,7 @@ function formatWords(n: number): string {
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
   z-index: 10;
+  cursor: pointer;
 }
 .cards {
   display: flex;
@@ -438,10 +435,11 @@ function formatWords(n: number): string {
     padding: 18px 20px 14px;
   }
   .write-btn {
-    display: flex;
-  }
-  .fab {
     display: none;
+  }
+  /* 桌面 fab 常驻：抬离底部栏；≥1200 再左移避开右侧 300px 工具坞 */
+  .fab {
+    bottom: 28px;
   }
   .write-btn.empty-cta {
     display: inline-flex;
@@ -451,6 +449,9 @@ function formatWords(n: number): string {
 @media (min-width: 1200px) {
   .page {
     margin-right: 300px;
+  }
+  .fab {
+    right: 324px;
   }
 }
 </style>

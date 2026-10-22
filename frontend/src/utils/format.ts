@@ -78,11 +78,16 @@ function cnDayLabel(key: string, todayKey: string, yestKey: string): string {
     : i18n.global.t('moments.yearMonth', { y, m: mm, d: dd })
 }
 
-/** Markdown 摘要：去掉标题井号/强调符号/链接语法等标记，只留纯文本（列表项换行→空格）。 */
+/** Markdown 摘要：去掉围栏代码块/图片/链接/标题井号/强调符号等标记，只留纯文本（列表项换行→空格）。 */
 export function stripMarkdown(md: string): string {
   return md
+    // 围栏代码块整段移除（含 mermaid/graph 源码——对预览是噪音）
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // cherry 属性块残留（drawio 的 {data-type=.. data-xml=..}，base64 大串也在此）
+    .replace(/\{data-type=[^}]*\}/g, '')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/[*_`~>]+/g, '')
     .replace(/^\s*[-+]\s+/gm, '')

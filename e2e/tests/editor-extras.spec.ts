@@ -36,6 +36,11 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
 
   await loginViaUi(page, user)
   await page.goto('/#/pages/journals/journals')
+  // 默认即阅读视图（无记忆时）：直接是最新一篇
+  await expect(page.locator('.r-title')).toHaveText('表格视图测试', { timeout: 15_000 })
+
+  // 切卡片：卡可见
+  await page.locator('.view-toggle .vt', { hasText: '卡片' }).click()
   await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 })
 
   // 切表格：表头 + 数据行 + 字数/操作列
@@ -48,11 +53,8 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
   await expect(page.locator('.cherry-editor .cm-content')).toBeVisible({ timeout: 20_000 })
   await expect(page.locator('.j-title input')).toHaveValue('表格视图测试')
 
-  // 视图偏好 localStorage 记忆：重进仍为表格
+  // 回列表切阅读视图：翻篇与"默认最新"断言
   await page.goto('/#/pages/journals/journals')
-  await expect(page.locator('.table .thead')).toBeVisible({ timeout: 15_000 })
-
-  // 阅读视图：默认最新一篇，按钮翻篇，计数与标题联动
   await page.locator('.view-toggle .vt', { hasText: '阅读' }).click()
   await expect(page.locator('.r-title')).toHaveText('表格视图测试', { timeout: 15_000 })
   await expect(page.locator('.r-count')).toHaveText(/^1 \/ \d+/)
@@ -62,6 +64,10 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
   // 第一篇（最新）可回退
   await page.locator('.r-btn', { hasText: '上一篇' }).click()
   await expect(page.locator('.r-count')).toHaveText(/^1 \/ \d+/, { timeout: 10_000 })
+
+  // 视图偏好 localStorage 记忆：重进仍为阅读
+  await page.goto('/#/pages/journals/journals')
+  await expect(page.locator('.r-title')).toBeVisible({ timeout: 15_000 })
 })
 
 test('image alt size syntax renders at requested size on detail', async ({ page }) => {

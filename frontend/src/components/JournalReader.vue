@@ -34,6 +34,11 @@
     <view v-else-if="finished && index === items.length - 1" class="r-hint">
       <text class="r-hint-text">{{ $t('common.noMore') }}</text>
     </view>
+
+    <!-- 回顶：正文很长（滚动够深）才现身，平滑滚回 -->
+    <view v-show="showTop" class="r-top" @click="toTop">
+      <text class="r-top-text">Top</text>
+    </view>
   </view>
 </template>
 
@@ -110,14 +115,23 @@ watch(
   }
 )
 
-// 预取：距已加载末尾 ≤3 篇即拉下一页（翻到时早已就绪）
+// 预取：距已加载末尾 ≤5 篇即拉下一页（阅读是连续流，永远不让用户等翻页）
 watch(
   [index, () => props.items.length, () => props.finished],
   ([i, len, done]) => {
-    if (!done && len - (i + 1) <= 3) emit('load-more')
+    if (!done && len - (i + 1) <= 5) emit('load-more')
   },
   { immediate: true }
 )
+
+// 回顶按钮：页面滚动超一屏（600px）才显示
+const showTop = ref(false)
+function onScroll() {
+  showTop.value = window.scrollY > 600
+}
+function toTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 // 横滑翻篇（水平位移 ≥60px 且明显大于垂直位移，不与页面滚动打架）
 let tsX = 0
@@ -143,8 +157,14 @@ function onKey(e: KeyboardEvent) {
   if (e.key === 'ArrowLeft') prev()
   else if (e.key === 'ArrowRight') next()
 }
-onMounted(() => document.addEventListener('keydown', onKey))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
+onMounted(() => {
+  document.addEventListener('keydown', onKey)
+  window.addEventListener('scroll', onScroll, { passive: true })
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKey)
+  window.removeEventListener('scroll', onScroll)
+})
 </script>
 
 <style scoped>
@@ -228,12 +248,47 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
 }
+/* 回顶按钮：悬浮右下（写日志 fab 上方），淡入淡出 */
+.r-top {
+  position: fixed;
+  right: 20px;
+  bottom: calc(70px + env(safe-area-inset-bottom) + 88px);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--hz-color-surface);
+  border: 1px solid var(--hz-color-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.r-top-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hz-color-text-secondary);
+}
+.r-top:hover {
+  transform: translateY(-2px);
+}
 @media (min-width: 768px) {
   .article {
     padding: 32px 36px 24px;
   }
   .r-title {
     font-size: 24px;
+  }
+  .r-top {
+    bottom: 100px;
+  }
+}
+@media (min-width: 1200px) {
+  /* 与写日志 fab 同列对齐（避开右侧 300px 工具坞） */
+  .r-top {
+    right: 324px;
   }
 }
 </style>

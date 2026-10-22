@@ -121,6 +121,14 @@
 - **布局修正**：容器 42rem→60rem，桌面 `repeat(auto-fill, minmax(300px,1fr))` 自适应列（旧固定 2 栏×21rem 窄卡）；align-items:stretch 同行等高。度量验证：1440/1000px=2 列(428/358px)、780px=1 列，meta 全贴底、等高成立
 - 终态：**Playwright 23/23** + tsc 0 错
 
+## 阅读视图打磨轮（2026-10-22）
+
+- 日志页默认视图=阅读（无记忆时）；切换顺序 阅读/卡片/表格；顶栏"写日志"按钮移除，fab 悬浮＋全端常驻（桌面 ≥1200 右移 324px 避开工具坞）
+- 阅读预取窗口 3→5 篇（连续流不给用户翻页等待）；Top 回顶按钮（滚动 >600px 才现身，平滑回顶；短文不出现——uni H5 页面滚动确在 window 上）
+- stripMarkdown 补围栏代码块（```/~~~）与 cherry 属性块剥离：卡片预览不再泄漏 mermaid/graph 源码；字数统计同步纯净化
+- 踩坑记录：uni-app `<view ref>` 返回组件实例非 DOM 元素（querySelectorAll/addEventListener 不可用），需要 DOM 的组件必须用 `<div ref>`（MarkdownBody 已注释）
+- 终态：e2e 23/23（默认阅读视图断言更新）
+
 ## 一键验收
 
 ```bash
