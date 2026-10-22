@@ -839,8 +839,9 @@ async function submit() {
   background: var(--hz-color-bg);
 }
 .media-grid {
+  /* 缩略格固定 72px（与随记页内编辑器一致）：编辑随记时图不再占满整行 */
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 72px);
   gap: 6px;
 }
 .cell {

@@ -142,9 +142,11 @@ function pick(emoji: string) {
   max-height: 180px;
 }
 .grid {
+  /* 固定列宽 + 左对齐：格子不随面板拉伸（此前 1fr 列在宽面板里左右空隙巨大） */
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 1px;
+  grid-template-columns: repeat(8, 36px);
+  justify-content: start;
+  gap: 1px 2px;
 }
 .cell {
   height: 32px;
@@ -175,7 +177,7 @@ function pick(emoji: string) {
 /* 窄屏 6 列（拇指命中率优先） */
 @media (max-width: 480px) {
   .grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, 40px);
   }
   .cell {
     height: 36px;
