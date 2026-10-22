@@ -1,8 +1,19 @@
 <template>
-  <!-- 随记页内快速写说说（不跳 publish 页）：轻编辑器 = 文本 + 表情 + 图片 -->
-  <view class="composer">
+  <!-- 随记页内快速写说说（不跳 publish 页）：轻编辑器 = 文本 + 表情 + 图片。
+       传入 edit 即为原地编辑某条随记（保存走 PUT，取消还原） -->
+  <view class="composer" :class="{ editing: isEdit }">
     <textarea
+      v-if="isEdit"
       v-model="text"
+      ref="areaRef"
+      class="c-area"
+      :maxlength="-1"
+      auto-height
+    />
+    <textarea
+      v-else
+      v-model="text"
+      ref="areaRef"
       class="c-area"
       :placeholder="$t('publish.sayPlaceholder')"
       :maxlength="-1"
@@ -23,21 +34,32 @@
         <text class="c-ico-txt">📷</text>
       </view>
       <view class="c-spacer" />
+      <button v-if="isEdit" class="c-cancel" :disabled="busy" @click="emit('cancel')">
+        {{ $t('common.cancel') }}
+      </button>
       <button class="c-send" :disabled="!canSend || busy" @click="send">
-        {{ busy ? $t('common.loading') : $t('publish.submit') }}
+        {{ busy ? $t('common.loading') : isEdit ? $t('common.save') : $t('publish.submit') }}
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import EmojiPicker from './EmojiPicker.vue'
-import { createSay, type ContentItem } from '../api/endpoints'
+import { createSay, updateContent, type ContentItem } from '../api/endpoints'
 import { uploadFile } from '../api/client'
+import { loadMediaUrl } from '../api/media'
 import { useI18n } from 'vue-i18n'
 
-const emit = defineEmits<{ (e: 'published', c: ContentItem): void }>()
+// 编辑模式：传入已有随记则回填（随记页原地编辑，不跳 publish）；
+// 保存走 PUT（recipientIds/weather 不传 = 后端保持原值），新建走 POST
+const props = defineProps<{ edit?: ContentItem | null }>()
+const emit = defineEmits<{
+  (e: 'published', c: ContentItem): void
+  (e: 'updated', c: ContentItem): void
+  (e: 'cancel'): void
+}>()
 
 const { t } = useI18n()
 const text = ref('')
@@ -52,11 +74,45 @@ interface PickedMedia {
 
 const mediaItems = ref<PickedMedia[]>([])
 const canSend = computed(() => text.value.trim().length > 0 || mediaItems.value.length > 0)
+const isEdit = computed(() => !!props.edit)
 
-// 表情插入到光标处，选完即收起（H5 取内层 textarea 选区；App 追加）
-function onEmoji(emoji: string) {
+// 编辑回填：文本 + 已有媒体（带 mediaId 重提交；预览换授权 blob）
+watch(
+  () => props.edit,
+  (c) => {
+    if (!c) return
+    text.value = c.text ?? ''
+    mediaItems.value = []
+    for (const m of c.media ?? []) {
+      if (m.kind !== 'image' && m.kind !== 'video') continue
+      mediaItems.value.push({ preview: m.url, mediaId: m.id })
+      loadMediaUrl(m.url)
+        .then((u) => {
+          const target = mediaItems.value.find((x) => x.mediaId === m.id)
+          if (target) target.preview = u
+        })
+        .catch(() => {})
+    }
+  },
+  { immediate: true }
+)
+
+// 本组件实例的内层 textarea（页面可能同时存在新建+编辑两个实例，
+// 不能用全局 .c-area 选择器——会插错框）
+const areaRef = ref<unknown>(null)
+function innerTextarea(): HTMLTextAreaElement | null {
   // #ifdef H5
-  const ta = document.querySelector('.c-area textarea') as HTMLTextAreaElement | null
+  const el = (areaRef.value as { $el?: HTMLElement } | null)?.$el ?? (areaRef.value as HTMLElement | null)
+  return (el?.querySelector?.('textarea') as HTMLTextAreaElement | null) ?? null
+  // #endif
+  // #ifndef H5
+  return null
+  // #endif
+}
+
+// 表情插入到光标处，选完即收起
+function onEmoji(emoji: string) {
+  const ta = innerTextarea()
   if (ta) {
     const s = ta.selectionStart ?? text.value.length
     const e = ta.selectionEnd ?? s
@@ -69,7 +125,6 @@ function onEmoji(emoji: string) {
     })
     return
   }
-  // #endif
   text.value += emoji
   emojiOpen.value = false
 }
@@ -130,6 +185,15 @@ async function send() {
       }
     }
     const mediaIds = mediaItems.value.map((m) => m.mediaId).filter((id): id is string => !!id)
+
+    if (props.edit) {
+      // 原地保存：媒体整体重绑（移除格子=解绑）；recipientIds/weather 不传，后端保持原值
+      const updated = await updateContent(props.edit.id, { text: text.value, mediaIds })
+      uni.showToast({ title: t('publish.saved'), icon: 'success' })
+      emit('updated', updated)
+      return
+    }
+
     const created = await createSay(text.value, [], mediaIds)
     // 成功即清空，准备下一条
     text.value = ''
@@ -151,8 +215,7 @@ async function send() {
 
 defineExpose({
   focus() {
-    const ta = document.querySelector('.c-area textarea') as HTMLTextAreaElement | null
-    ta?.focus()
+    innerTextarea()?.focus()
   }
 })
 </script>
@@ -244,5 +307,19 @@ defineExpose({
 }
 .c-send[disabled] {
   opacity: 0.55;
+}
+/* 编辑态：主色调描边突出"正在编辑这条"；取消按钮弱化 */
+.composer.editing {
+  border-color: var(--hz-color-primary);
+}
+.c-cancel {
+  height: 34px;
+  line-height: 34px;
+  padding: 0 16px;
+  font-size: var(--hz-font-size-sm);
+  background: var(--hz-color-bg);
+  color: var(--hz-color-text-secondary);
+  border: 1px solid var(--hz-color-border);
+  border-radius: 999px;
 }
 </style>

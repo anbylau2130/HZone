@@ -51,16 +51,24 @@
               <view class="head-spacer" />
               <CardOwnerActions v-if="isMine(c)" @edit="goEdit(c)" @delete="remove(c)" />
             </view>
-            <text class="text">{{ c.text }}</text>
-            <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
-            <RecipientsBar :recipients="c.recipients" />
-            <view class="entry-foot">
-              <text class="foot-btn">{{ $t('detail.commentCount', { n: c.commentCount }) }}</text>
-              <view class="head-spacer" />
-              <view v-if="weatherChip(c)" class="weather-chip">
-                <text class="weather-chip-text">{{ weatherChip(c) }}</text>
-              </view>
+
+            <!-- 原地编辑：✎ 后该条变成编辑器（不跳 publish 页） -->
+            <view v-if="editingId === c.id" class="entry-edit" @click.stop>
+              <SayComposer :edit="c" @updated="onSayUpdated" @cancel="editingId = ''" />
             </view>
+
+            <template v-else>
+              <text class="text">{{ c.text }}</text>
+              <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
+              <RecipientsBar :recipients="c.recipients" />
+              <view class="entry-foot">
+                <text class="foot-btn">{{ $t('detail.commentCount', { n: c.commentCount }) }}</text>
+                <view class="head-spacer" />
+                <view v-if="weatherChip(c)" class="weather-chip">
+                  <text class="weather-chip-text">{{ weatherChip(c) }}</text>
+                </view>
+              </view>
+            </template>
           </view>
         </view>
       </view>
@@ -118,9 +126,17 @@ function weatherChip(c: ContentItem) {
   return weatherChipText(c.weather ?? null)
 }
 
+// ✎ 原地编辑当前条（不跳 publish）；日志类仍去 publish（cherry 编辑器）
+const editingId = ref('')
+
 function goEdit(c: ContentItem) {
-  // 编辑一律去 publish 编辑页（与创建同一页面）；detail 内联编辑已废弃
-  uni.navigateTo({ url: `/pages/publish/publish?id=${c.id}&kind=${c.kind}` })
+  editingId.value = c.id
+}
+
+// 原地保存成功：本地替换该条内容
+function onSayUpdated(updated: ContentItem) {
+  items.value = items.value.map((x) => (x.id === updated.id ? updated : x))
+  editingId.value = ''
 }
 
 function remove(c: ContentItem) {
@@ -310,6 +326,9 @@ async function uploadCoverFile(path: string | Blob) {
 .entry:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+.entry-edit {
+  margin-top: 6px;
 }
 .entry-head {
   display: flex;
