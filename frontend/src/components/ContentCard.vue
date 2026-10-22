@@ -132,7 +132,8 @@ title: t('common.delete'),
   color: var(--hz-color-text);
 }
 .text {
-  font-size: var(--hz-font-size-base);
+  /* 随记正文 16px：比基准大一档（用户反馈要大一点） */
+  font-size: 16px;
   color: var(--hz-color-text);
   white-space: pre-wrap;
   word-break: break-word;

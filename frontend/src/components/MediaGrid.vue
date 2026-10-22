@@ -102,6 +102,8 @@ onBeforeUnmount(stopAv)
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
+  /* 九宫格限宽：容器再宽图也不放大（此前桌面宽卡里单图近 220px，过大） */
+  max-width: 300px;
 }
 .cell {
   aspect-ratio: 1;

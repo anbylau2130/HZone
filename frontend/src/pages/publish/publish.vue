@@ -222,7 +222,8 @@ const title = ref('')
 const markdown = ref('')
 const emojiOpen = ref(false)
 
-// 表情插入到光标处（H5：取 uni-textarea 内层真实 textarea 的选区；App 端追加到末尾）
+// 表情插入到光标处（H5：取 uni-textarea 内层真实 textarea 的选区；App 端追加到末尾）。
+// 选中即收起面板（连发场景可再点开）
 function insertEmoji(emoji: string) {
   // #ifdef H5
   const ta = document.querySelector('.say-area textarea') as HTMLTextAreaElement | null
@@ -230,6 +231,7 @@ function insertEmoji(emoji: string) {
     const s = ta.selectionStart ?? sayText.value.length
     const e = ta.selectionEnd ?? s
     sayText.value = sayText.value.slice(0, s) + emoji + sayText.value.slice(e)
+    emojiOpen.value = false
     nextTick(() => {
       ta.focus()
       const pos = s + emoji.length
@@ -239,6 +241,7 @@ function insertEmoji(emoji: string) {
   }
   // #endif
   sayText.value += emoji
+  emojiOpen.value = false
 }
 
 const mediaItems = ref<PickedMedia[]>([])

@@ -90,15 +90,15 @@ function pick(emoji: string) {
 </script>
 
 <style scoped>
-/* 表情面板：与媒体区块同款的软面板（bg 底 + 细边框），tabs 用分类图标自带语义 */
+/* 表情面板：紧凑排布（小格子高密度网格），与媒体区块同款软面板 */
 .emoji-panel {
   border: 1px solid var(--hz-color-border);
   border-radius: var(--hz-radius-md);
   background: var(--hz-color-bg);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px 10px 10px;
+  gap: 4px;
+  padding: 6px 8px 8px;
   animation: emoji-in 0.16s ease-out;
   transform-origin: bottom;
 }
@@ -116,7 +116,7 @@ function pick(emoji: string) {
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--hz-color-border);
-  padding-bottom: 6px;
+  padding-bottom: 4px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -125,11 +125,11 @@ function pick(emoji: string) {
 }
 .tab {
   flex-shrink: 0;
-  width: 34px;
-  height: 30px;
-  line-height: 30px;
+  width: 30px;
+  height: 26px;
+  line-height: 26px;
   text-align: center;
-  font-size: 17px;
+  font-size: 15px;
   border-radius: var(--hz-radius-md);
   opacity: 0.55;
   transition: opacity 0.12s ease, background 0.12s ease;
@@ -139,31 +139,32 @@ function pick(emoji: string) {
   background: var(--hz-color-surface);
 }
 .grid-wrap {
-  max-height: 216px;
+  max-height: 180px;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
+  gap: 1px;
 }
 .cell {
-  aspect-ratio: 1;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  border-radius: var(--hz-radius-md);
+  font-size: 19px;
+  border-radius: 6px;
   cursor: pointer;
   transition: transform 0.1s ease, background 0.1s ease;
 }
 .cell:hover {
   background: var(--hz-color-surface);
-  transform: scale(1.18);
+  transform: scale(1.15);
 }
 .cell:active {
-  transform: scale(0.92);
+  transform: scale(0.9);
 }
 .empty {
-  padding: 28px 0;
+  padding: 20px 0;
   display: flex;
   justify-content: center;
 }
@@ -171,10 +172,14 @@ function pick(emoji: string) {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
 }
-/* 窄屏 4 列大格子（拇指命中率优先） */
+/* 窄屏 6 列（拇指命中率优先） */
 @media (max-width: 480px) {
   .grid {
     grid-template-columns: repeat(6, 1fr);
+  }
+  .cell {
+    height: 36px;
+    font-size: 21px;
   }
 }
 </style>

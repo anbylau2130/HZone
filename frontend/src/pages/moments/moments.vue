@@ -4,7 +4,7 @@
       <view class="topbar">
         <text class="topbar-title">{{ $t('moments.title') }}</text>
         <view class="topbar-actions">
-          <view v-if="items.length > 0" class="write-btn" @click="goPublish">
+          <view v-if="items.length > 0" class="write-btn" @click="focusComposer">
             <text class="write-plus">＋</text>
             <text>{{ $t('moments.write') }}</text>
           </view>
@@ -26,12 +26,15 @@
         @cover-pick="pickCover"
       />
 
+      <!-- 页内快速写说说（不跳 publish）：文本+表情+图片，发布后直接进下方信息流 -->
+      <SayComposer ref="composerRef" @published="onPublished" />
+
       <view v-if="pagination.loading.value && !items.length" class="hint">
         <text class="hint-text">{{ $t('common.loading') }}</text>
       </view>
       <view v-else-if="!items.length" class="hint empty">
         <text class="hint-text">{{ $t('moments.empty') }}</text>
-        <view class="write-btn empty-cta" @click="goPublish">
+        <view class="write-btn empty-cta" @click="focusComposer">
           <text class="write-plus">＋</text>
           <text>{{ $t('moments.write') }}</text>
         </view>
@@ -73,12 +76,12 @@
     <AppSidebar current="moments" />
     <ToolDock />
     <AppTabBar current="moments" />
-    <view class="fab" @click="goPublish">＋</view>
+    <view class="fab" @click="focusComposer">＋</view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import MediaGrid from '../../components/MediaGrid.vue'
@@ -88,6 +91,7 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
 import ProfileHeader from '../../components/ProfileHeader.vue'
 import CardOwnerActions from '../../components/CardOwnerActions.vue'
+import SayComposer from '../../components/SayComposer.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, deleteContent, uploadCover, type ContentItem } from '../../api/endpoints'
 import { formatRelativeTime, groupByCnDate } from '../../utils/format'
@@ -150,8 +154,17 @@ function openDetail(c: ContentItem) {
   uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
 }
 
-function goPublish() {
-  uni.navigateTo({ url: '/pages/publish/publish?kind=say' })
+// 写随记入口：滚到页内编辑器并聚焦（不再跳 publish 页）
+const composerRef = ref<InstanceType<typeof SayComposer> | null>(null)
+
+function focusComposer() {
+  uni.pageScrollTo({ scrollTop: 0, duration: 200 })
+  composerRef.value?.focus()
+}
+
+// 快速发布成功：插到信息流最前（今日分组直接能看到）
+function onPublished(c: ContentItem) {
+  items.value = [c, ...items.value]
 }
 
 function goSearch() {
@@ -312,7 +325,8 @@ async function uploadCoverFile(path: string | Blob) {
 }
 .text {
   margin-top: 4px;
-  font-size: var(--hz-font-size-base);
+  /* 随记正文 16px（比基准大一档） */
+  font-size: 16px;
   color: var(--hz-color-text);
   white-space: pre-wrap;
   word-break: break-word;

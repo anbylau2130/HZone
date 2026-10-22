@@ -220,7 +220,7 @@ async function postComment() {
   color: var(--hz-color-text);
 }
 .text {
-  font-size: var(--hz-font-size-base);
+  font-size: 16px;
   color: var(--hz-color-text);
   white-space: pre-wrap;
   word-break: break-word;
