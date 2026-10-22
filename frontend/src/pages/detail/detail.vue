@@ -291,7 +291,8 @@ async function postComment() {
 /* 正文渲染样式随 MarkdownBody 组件走（.md-body） */
 @media (min-width: 768px) {
   .page {
-    max-width: calc(48rem + 32px);
+    /* 桌面/web 拉满屏宽方便阅读（移动端无此规则，保持原样） */
+    max-width: none;
     margin: 0 auto;
     padding: 24px 16px;
   }

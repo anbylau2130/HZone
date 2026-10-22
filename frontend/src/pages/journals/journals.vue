@@ -1,6 +1,6 @@
 <template>
   <view class="page">
-    <view class="container">
+    <view class="container" :class="{ 'container-wide': viewMode === 'read' }">
       <view class="topbar">
         <text class="topbar-title">{{ $t('journals.title') }}</text>
         <view class="topbar-actions">
@@ -424,6 +424,10 @@ function formatWords(n: number): string {
     max-width: 60rem;
     margin: 0 auto;
     width: 100%;
+  }
+  /* 阅读视图撑满可用宽度（侧边栏/工具坞之间），卡片/表格仍 60rem 居中 */
+  .container-wide {
+    max-width: none;
   }
   .cards {
     display: grid;
