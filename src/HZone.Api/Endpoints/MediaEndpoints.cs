@@ -18,10 +18,19 @@ public static class MediaEndpoints
     public const long DefaultImageLimit = 10L * 1024 * 1024;
     public const long DefaultVideoLimit = 200L * 1024 * 1024;
     public const long DefaultAudioLimit = 50L * 1024 * 1024;
+    public const long DefaultFileLimit = 20L * 1024 * 1024;
     public const int DefaultVideoMaxSeconds = 300;
     private const int MainImageMaxSide = 1920;
     private const int ThumbMaxSide = 320;
     private const int JpegQuality = 75;
+
+    // 附件扩展名白名单（插入文件功能）：不含可执行与 html/svg 等可内联执行的类型，
+    // 下载时强制 attachment，避免用户上传的 HTML 同域内联造成存储型 XSS。
+    private static readonly HashSet<string> FileExtensionAllowlist = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf", ".zip", ".txt", ".csv", ".md",
+        ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    };
 
     private static readonly System.Text.RegularExpressions.Regex ValidStoredName =
         new("^[A-Za-z0-9._-]{1,128}$", System.Text.RegularExpressions.RegexOptions.Compiled);
@@ -49,7 +58,7 @@ public static class MediaEndpoints
                 return Results.BadRequest(new { error = "multipart form with 'file' field required" });
             }
 
-            var kind = ClassifyKind(file.ContentType);
+            var kind = ClassifyKind(file.ContentType, file.FileName);
             if (kind is null)
             {
                 return Results.BadRequest(new { error = "unsupported content type" });
@@ -90,6 +99,19 @@ public static class MediaEndpoints
                 thumbStoredName = await storage.SaveAsync(thumbStream, file.FileName, "image/jpeg", ct);
                 sizeBytes = mainBytes.Length;
                 contentType = "image/jpeg";
+            }
+            else if (kind == MediaKind.File)
+            {
+                // 普通附件：原样存储（无转码/无缩略图），上限 media.maxFileBytes。
+                if (file.Length > limit)
+                {
+                    return Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge,
+                        title: "media too large");
+                }
+
+                await using var raw = file.OpenReadStream();
+                storedName = await storage.SaveAsync(raw, file.FileName, file.ContentType, ct);
+                sizeBytes = file.Length;
             }
             else
             {
@@ -171,6 +193,23 @@ public static class MediaEndpoints
             if (asset is not null)
             {
                 contentType = asset.ContentType;
+                // 普通附件强制 attachment 下载：Content-Type 是客户端上传值，放任内联
+                // 渲染（尤其 html/svg）会成为同域存储型 XSS 载体。
+                try
+                {
+                    var stream = await storage.OpenAsync(storedName);
+                    return asset.Kind == MediaKind.File
+                        ? Results.File(stream, contentType, asset.OriginalName)
+                        : Results.File(stream, contentType);
+                }
+                catch (FileNotFoundException)
+                {
+                    return Results.NotFound(new { error = "media not found" });
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return Results.NotFound(new { error = "media not found" });
+                }
             }
             else
             {
@@ -200,17 +239,24 @@ public static class MediaEndpoints
         });
     }
 
-    internal static MediaKind? ClassifyKind(string? contentType)
+    internal static MediaKind? ClassifyKind(string? contentType, string? fileName = null)
     {
-        if (string.IsNullOrEmpty(contentType))
+        // Content-Type 前缀判定媒体类。
+        if (!string.IsNullOrEmpty(contentType))
         {
-            return null;
+            if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return MediaKind.Image;
+            if (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)) return MediaKind.Video;
+            if (contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)) return MediaKind.Audio;
         }
 
-        // Content-Type 前缀判定 MediaKind。
-        if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return MediaKind.Image;
-        if (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)) return MediaKind.Video;
-        if (contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)) return MediaKind.Audio;
+        // 附件：按扩展名白名单判定（浏览器对无扩展名/未知类型文件可能给空或
+        // application/octet-stream，扩展名是更可靠的意图信号）。
+        var ext = Path.GetExtension(fileName ?? string.Empty);
+        if (!string.IsNullOrEmpty(ext) && FileExtensionAllowlist.Contains(ext))
+        {
+            return MediaKind.File;
+        }
+
         return null;
     }
 
@@ -250,6 +296,7 @@ public static class MediaEndpoints
         {
             MediaKind.Image => "media.maxImageBytes",
             MediaKind.Video => "media.maxVideoBytes",
+            MediaKind.File => "media.maxFileBytes",
             _ => "media.maxAudioBytes",
         };
 
@@ -263,6 +310,7 @@ public static class MediaEndpoints
             {
                 MediaKind.Image => DefaultImageLimit,
                 MediaKind.Video => DefaultVideoLimit,
+                MediaKind.File => DefaultFileLimit,
                 _ => DefaultAudioLimit,
             };
     }

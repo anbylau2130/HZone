@@ -137,7 +137,14 @@
     "title": "Journals",
     "desc": "Longer reads and deeper thoughts",
     "empty": "No journals yet. Write your first one!",
-    "write": "Write a journal"
+    "write": "Write a journal",
+    "viewCard": "Cards",
+    "viewTable": "Table",
+    "colDate": "Date",
+    "colTitle": "Title",
+    "colWords": "Words",
+    "colActions": "Actions",
+    "view": "View"
   },
   "publish": {
     "sayPlaceholder": "What's on your mind…",
@@ -165,7 +172,9 @@
     "recordUnavailable": "Video recording is not supported in this browser",
     "success": "Published",
     "previewToggle": "Preview",
-    "saved": "Saved"
+    "saved": "Saved",
+    "openLocal": "Open local file",
+    "openLocalConfirm": "Current content will be replaced by the opened file. Continue?"
   },
   "weather": {
     "title": "Weather",

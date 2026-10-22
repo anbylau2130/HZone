@@ -103,7 +103,9 @@ async function decline(id: string) {
 
 function remove(f: FriendInfo) {
   uni.showModal({
-    title: t('friends.remove'),
+    confirmText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+title: t('friends.remove'),
     content: t('friends.removeConfirm', { name: f.nickname }),
     success: async (res) => {
       if (res.confirm) {

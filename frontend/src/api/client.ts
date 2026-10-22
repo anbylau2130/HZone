@@ -94,9 +94,10 @@ export function request<T = unknown>(path: string, options: RequestOptions = {})
           resolve(res.data as T)
           return
         }
-        // 已登录态失效（401 且带过 token）：清会话并回登录页。
-        // 登录接口自身的 401 不带 token，不会触发跳转，正常走错误 toast。
-        if (status === 401 && token) {
+        // 会话失效（401）：无论本次是否带 token（带 = 过期，不带 = 未登录死链进入）
+        // 都清会话回登录页，避免停留在受保护页反复 401 卡死。/auth/* 自身（密码错等）
+        // 除外——那里 401 是业务错误，正常 toast 即可。
+        if (status === 401 && !path.startsWith('/api/auth/') && !path.startsWith('/auth/')) {
           clearSession()
           const pages = getCurrentPages()
           const current = pages[pages.length - 1]

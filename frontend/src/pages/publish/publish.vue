@@ -151,7 +151,7 @@ import {
   type MeStats,
   type WeatherSnapshotInput
 } from '../../api/endpoints'
-import { uploadFile } from '../../api/client'
+import { uploadFile, getToken } from '../../api/client'
 import { loadMediaUrl } from '../../api/media'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
@@ -180,6 +180,11 @@ let weatherAutoDone = false
 // 支持 ?kind=say / ?kind=journal 预选发布类型（随记/日志分页入口跳入）；
 // ?id= 进入编辑模式——编辑复用创建页全套编辑器（story：编辑与创建同一页面）
 onLoad((query) => {
+  // 与 home 同款守卫：无 token 深链/残留标签页直接进发布页会一路 401 卡死
+  if (!getToken()) {
+    uni.reLaunch({ url: '/pages/login/login' })
+    return
+  }
   const q = (query ?? {}) as Record<string, string>
   if (q.kind === 'journal') {
     mode.value = 'journal'
@@ -189,6 +194,8 @@ onLoad((query) => {
   if (q.id) {
     editingId.value = q.id
     loadForEdit()
+  } else {
+    restoreDraft()
   }
 })
 
@@ -251,10 +258,68 @@ async function loadForEdit() {
         })
         .catch(() => {})
     }
+    restoreDraft()
   } catch {
     // 请求层已 toast；停留在空编辑页，用户可返回
   }
 }
+
+// ---------- 草稿自动保存（会话过期被踢回登录/误退出不丢稿） ----------
+// 编辑模式草稿=中断现场（比服务端内容新，恢复时覆盖）；创建模式只填空字段。
+// 提交成功即清；drawio 的 base64 大稿（>1MB）不入草稿，护 localStorage 限额。
+const draftKey = computed(() =>
+  editingId.value
+    ? `hz-draft-journal-e-${editingId.value}`
+    : mode.value === 'journal'
+      ? 'hz-draft-journal'
+      : 'hz-draft-say'
+)
+
+let draftTimer: ReturnType<typeof setTimeout> | null = null
+function saveDraft() {
+  if (draftTimer) clearTimeout(draftTimer)
+  draftTimer = setTimeout(() => {
+    try {
+      const raw = JSON.stringify(
+        mode.value === 'journal'
+          ? { title: title.value, markdown: markdown.value }
+          : { text: sayText.value }
+      )
+      if (raw.length > 1_000_000) return
+      localStorage.setItem(draftKey.value, raw)
+    } catch {
+      // 满额等异常静默：草稿是尽力而为
+    }
+  }, 800)
+}
+
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(draftKey.value)
+    if (!raw) return
+    const d = JSON.parse(raw) as { title?: string; markdown?: string; text?: string }
+    if (editingId.value) {
+      if (typeof d.title === 'string') title.value = d.title
+      if (typeof d.markdown === 'string') markdown.value = d.markdown
+      if (typeof d.text === 'string') sayText.value = d.text
+    } else {
+      if (d.title && !title.value) title.value = d.title
+      if (d.markdown && !markdown.value) markdown.value = d.markdown
+      if (d.text && !sayText.value) sayText.value = d.text
+    }
+  } catch {
+    // 损坏草稿忽略
+  }
+}
+
+function clearDraft() {
+  localStorage.removeItem(draftKey.value)
+}
+
+watch([title, markdown, sayText], () => {
+  // 回填/恢复也会触发，但 debounce 只留最后一次值，无需区分来源
+  if (title.value || markdown.value || sayText.value) saveDraft()
+})
 
 // ---------- 日志预览开关（仅 H5） ----------
 // CSS 类隐藏 .cherry-previewer（不依赖 cherry 内部 API），状态 localStorage 记忆
@@ -607,6 +672,7 @@ async function submit() {
       title: editingId.value ? t('publish.saved') : t('publish.success'),
       icon: 'success'
     })
+    clearDraft() // 已落库，草稿使命完成
     setTimeout(() => {
       uni.navigateBack()
     }, 600)

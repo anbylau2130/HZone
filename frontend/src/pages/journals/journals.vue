@@ -3,9 +3,20 @@
     <view class="container">
       <view class="topbar">
         <text class="topbar-title">{{ $t('journals.title') }}</text>
-        <view v-if="items.length > 0" class="write-btn" @click="goPublish">
-          <text class="write-plus">＋</text>
-          <text>{{ $t('journals.write') }}</text>
+        <view class="topbar-actions">
+          <!-- 卡片/表格视图切换（localStorage 记忆） -->
+          <view v-if="items.length > 0" class="view-toggle">
+            <text class="vt" :class="{ on: viewMode === 'card' }" @click="setViewMode('card')">
+              {{ $t('journals.viewCard') }}
+            </text>
+            <text class="vt" :class="{ on: viewMode === 'table' }" @click="setViewMode('table')">
+              {{ $t('journals.viewTable') }}
+            </text>
+          </view>
+          <view v-if="items.length > 0" class="write-btn" @click="goPublish">
+            <text class="write-plus">＋</text>
+            <text>{{ $t('journals.write') }}</text>
+          </view>
         </view>
       </view>
 
@@ -20,7 +31,7 @@
         </view>
       </view>
 
-      <view v-if="items.length" class="cards">
+      <view v-if="items.length && viewMode === 'card'" class="cards">
         <view
           v-for="c in items"
           :key="c.id"
@@ -30,6 +41,25 @@
           <text class="title">{{ c.title }}</text>
           <text class="summary">{{ summary(c) }}</text>
           <text class="date">{{ formatDateTime(c.createdAt) }}</text>
+        </view>
+      </view>
+
+      <!-- 表格视图：日期/标题/字数/操作，行点击进详情 -->
+      <view v-if="items.length && viewMode === 'table'" class="table">
+        <view class="trow thead">
+          <text class="tcell c-date">{{ $t('journals.colDate') }}</text>
+          <text class="tcell c-title">{{ $t('journals.colTitle') }}</text>
+          <text class="tcell c-words">{{ $t('journals.colWords') }}</text>
+          <text class="tcell c-op">{{ $t('journals.colActions') }}</text>
+        </view>
+        <view v-for="c in items" :key="c.id" class="trow" @click="openDetail(c)">
+          <text class="tcell c-date">{{ formatDateTime(c.createdAt) }}</text>
+          <text class="tcell c-title">{{ c.title }}</text>
+          <text class="tcell c-words">{{ wordCount(c) }}</text>
+          <view class="tcell c-op" @click.stop>
+            <text class="op" @click="openDetail(c)">{{ $t('journals.view') }}</text>
+            <text class="op" @click="editJournal(c)">{{ $t('common.edit') }}</text>
+          </view>
         </view>
       </view>
 
@@ -49,6 +79,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
@@ -69,8 +100,24 @@ onShow(() => {
   pagination.refresh()
 })
 
+// ---------- 卡片/表格视图切换（localStorage 记忆） ----------
+const VIEW_KEY = 'hz-journals-view'
+const viewMode = ref<'card' | 'table'>(
+  localStorage.getItem(VIEW_KEY) === 'table' ? 'table' : 'card'
+)
+
+function setViewMode(mode: 'card' | 'table') {
+  viewMode.value = mode
+  localStorage.setItem(VIEW_KEY, mode)
+}
+
 function openDetail(c: ContentItem) {
   uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
+}
+
+// 表格视图直达编辑页（与创建同一页面）
+function editJournal(c: ContentItem) {
+  uni.navigateTo({ url: `/pages/publish/publish?id=${c.id}&kind=journal` })
 }
 
 function goPublish() {
@@ -83,6 +130,10 @@ function goSearch() {
 
 function summary(c: ContentItem): string {
   return stripMarkdown(c.markdownBody ?? '')
+}
+
+function wordCount(c: ContentItem): number {
+  return stripMarkdown(c.markdownBody ?? '').length
 }
 </script>
 
@@ -197,6 +248,81 @@ function summary(c: ContentItem): string {
   display: flex;
   justify-content: center;
   padding: 4px 0 12px;
+}
+/* 视图切换：两个小 pill 并排，on 态 primary */
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--hz-color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--hz-color-surface);
+}
+.vt {
+  padding: 4px 12px;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.vt.on {
+  background: var(--hz-color-primary);
+  color: #fff;
+}
+/* 表格视图：view 网格模拟（跨端不用 <table>） */
+.table {
+  background: var(--hz-color-surface);
+  border-radius: var(--hz-radius-sm);
+  overflow: hidden;
+}
+.trow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hz-color-border);
+  cursor: pointer;
+}
+.trow:last-child {
+  border-bottom: none;
+}
+.trow.thead {
+  background: var(--hz-color-bg);
+  cursor: default;
+}
+.trow.thead .tcell {
+  color: var(--hz-color-text-secondary);
+  font-size: var(--hz-font-size-sm);
+}
+.tcell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--hz-font-size-base);
+  color: var(--hz-color-text);
+}
+.c-date {
+  flex: 0 0 132px;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.c-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+.c-words {
+  flex: 0 0 56px;
+  text-align: right;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.c-op {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+}
+.op {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-interactive);
+  cursor: pointer;
 }
 .hint {
   padding: 40px 0;

@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { marked } from 'marked'
 // mermaid 渲染引擎（与编辑器同款本地打包入口；default 导入——render/initialize 只在
@@ -88,6 +88,7 @@ import {
 } from '../../api/endpoints'
 import { useAuthStore } from '../../stores/auth'
 import { loadMediaUrl } from '../../api/media'
+import { downloadBlob } from '../../api/client'
 
 const { t, te } = useI18n()
 const auth = useAuthStore()
@@ -118,6 +119,31 @@ const mdHtml = computed(() => {
       /!\[([^\]]*)\]\((data:image[^)]+)\)\{data-type=drawio[^}]*\}/g,
       '<img src="$2" alt="$1" data-type="drawio">'
     )
+    // cherry 图片 alt 扩展语法（尺寸 #300px#200px / 对齐 #center / 装饰 #border…，规则
+    // 对齐 cherry imgAltHelper）：marked 只把 alt 当普通文本，尺寸对齐会丢——转成带
+    // style 的 <img>；无任何扩展 token 的图片原样留给 marked
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (m, alt: string, url: string) => {
+      const sizes = alt.match(/#([0-9]+(?:px|em|pt|pc|in|mm|cm|ex|%)|auto)/g) ?? []
+      const styles: string[] = []
+      if (sizes[0]) styles.push(`width:${sizes[0].slice(1)}`)
+      if (sizes[1]) styles.push(`height:${sizes[1].slice(1)}`)
+      const align = alt.match(/#(center|right|left|float-right|float-left)/i)?.[1]?.toLowerCase()
+      if (align === 'center') styles.push('display:block', 'margin:0 auto')
+      else if (align === 'right') styles.push('display:block', 'margin-left:auto')
+      else if (align === 'float-right') styles.push('float:right')
+      else if (align === 'float-left') styles.push('float:left')
+      if (/#(border|B)/.test(alt)) styles.push('border:1px solid #888', 'padding:2px', 'box-sizing:border-box')
+      if (/#(shadow|S)/.test(alt)) styles.push('box-shadow:0 2px 15px -5px rgba(0,0,0,.5)')
+      if (/#(radius|R)/.test(alt)) styles.push('border-radius:15px')
+      if (!styles.length) return m
+      const cleanAlt = alt
+        .replace(
+          /#[0-9]+(?:px|em|pt|pc|in|mm|cm|ex|%)|#auto|#(?:center|right|left|float-right|float-left)|#(?:border|shadow|radius|B|S|R)/gi,
+          ''
+        )
+        .trim()
+      return `<img src="${url}" alt="${cleanAlt}" style="${styles.join(';')}">`
+    })
     .replace(
       /!(video|audio)\[([^\]]*)\]\(([^)]+)\)/g,
       (_m, tag, alt, url) => `<${tag} src="${url}" controls>${alt}</${tag}>`
@@ -166,6 +192,23 @@ function swapMediaSrcs() {
 
 watch(mdHtml, () => nextTick(() => void renderMermaidBlocks()), { immediate: true })
 watch(mdHtml, () => nextTick(swapMediaSrcs), { immediate: true })
+
+// 附件链接（[名字](/media/..)）点击 → 带 Bearer 下载（<a> 发不了授权头，默认导航必 401）
+function onMdLinkClick(e: Event) {
+  const target = e.target as HTMLElement | null
+  const anchor = target?.closest?.('a[href^="/media/"]')
+  if (!anchor) return
+  e.preventDefault()
+  e.stopPropagation()
+  const href = anchor.getAttribute('href') ?? ''
+  void downloadBlob(href, anchor.textContent?.trim() || 'attachment')
+}
+onMounted(() => {
+  document.addEventListener('click', onMdLinkClick, true)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onMdLinkClick, true)
+})
 
 // 农历+天气全显条（homepage-v2）：`乙巳年 腊月初一 · 大雪 ｜ 杭州 · 晴 · 12°C`
 const contextLine = computed(() => {
@@ -252,7 +295,9 @@ async function saveEdit() {
 
 function remove() {
   uni.showModal({
-    title: t('common.delete'),
+    confirmText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+title: t('common.delete'),
     content: t('detail.deleteConfirm'),
     success: async (res) => {
       if (!res.confirm) return

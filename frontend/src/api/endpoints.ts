@@ -24,7 +24,7 @@ export interface RecipientInfo {
 
 export interface MediaItem {
   id: string
-  kind: 'image' | 'video' | 'audio'
+  kind: 'image' | 'video' | 'audio' | 'file'
   url: string
   thumbUrl?: string | null
   sizeBytes: number

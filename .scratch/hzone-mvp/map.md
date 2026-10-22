@@ -101,6 +101,18 @@
 - console 噪音定性（不修）：/media 401 = blob 换取前的瞬态请求（swapMediaSrc/observer 已兜住）；mermaid usePlugin 警告 = 仅 HMR 重执行模块时旧实例在场，产线路由不受影响
 - 终态：**Playwright 19/19** + tsc 0 错
 
+## 四件套轮（2026-10-22，用户：401 修复+列表视图切换+图片尺寸 parity+编辑器三功能）
+
+- **401 死角**（POST /contents/journals 401 根因）：守卫只在 home，publish 深链无 token 进入→发布 401→旧 client.ts 只在"带 token 的 401"才跳登录→死循环 toast。修：① client.ts 任何 401（/auth/* 除外）都清会话跳登录；② publish onLoad 无 token 即 reLaunch（home 同款）；③ publish 草稿自动保存/恢复（编辑模式草稿=中断现场覆盖服务端内容；提交成功清除；>1MB 的 drawio base64 稿不入草稿护 localStorage）
+- **图片尺寸 parity**：cherry 图片尺寸/对齐/装饰语法在 **alt** 里（`![配图 #120px#60px](url)`，imgAltHelper），编辑预览按 alt 生成 style、读侧 marked 只当文本→尺寸丢失。修：detail.vue mdHtml 预处理按 cherry 同款 token 规则转 `<img style>`（尺寸/center/right/float/边框/阴影/圆角），#token 从 alt 剥掉
+- **日志列表卡片/表格切换**：journals.vue 顶栏双 pill 切换（localStorage 记忆）；表格=日期/标题/字数/操作（查看+编辑直达 publish 编辑页）
+- **编辑器三功能**（官方案例对齐）：
+  - 打开本地 .md：OpenLocalFileMenu 自研（官方 File 菜单走 kO() 真机不可弹文件框，同媒体菜单套路 input 挂 body）；空编辑器直接整篇替换、有内容先确认；工具栏按钮类名取**图标名**（cherry-toolbar-folder-open，非菜单名——e2e 踩坑）
+  - 导出：启用 cherry 内置 export 菜单（pdf=window.print/截图=内置 html2canvas/md/html/word=前端 blob，全客户端零外呼）
+  - 插入文件：后端 MediaKind.File=3（扩展名白名单 pdf/zip/txt/csv/md/office；上限 media.maxFileBytes 默认 20MB；GET 对 File 类强制 attachment 下载防存储型 XSS——Content-Type 是客户端值）；前端 InsertFileMenu 上传后插 `[名字](/media/..)` 链接；detail/编辑器预览点击 /media 链接捕获拦截→downloadBlob 授权下载（e2e 断言 download 事件+原文件名）
+- **顺带修**：uni.showModal 按钮显示未翻译原键（uni.showModal.confirm）——uni H5 框架 i18n 缺失，5 处调用点全部显式传 confirmText/cancelText
+- 终态：**Playwright 23/23**（新增 editor-extras 4 条：401 守卫/视图切换/图片尺寸/三功能含下载）+ dotnet 116/116 + tsc 0 错
+
 ## 一键验收
 
 ```bash

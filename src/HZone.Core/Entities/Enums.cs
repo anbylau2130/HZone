@@ -17,7 +17,9 @@ public enum MediaKind
 {
     Image = 0,
     Video = 1,
-    Audio = 2
+    Audio = 2,
+    /// <summary>普通附件（pdf/zip/office 等，见 MediaEndpoints 白名单）：以附件下载方式提供，不内联渲染。</summary>
+    File = 3
 }
 
 public enum EmailTokenPurpose

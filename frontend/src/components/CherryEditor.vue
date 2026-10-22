@@ -26,7 +26,7 @@ import cherryCss from 'cherry-markdown/dist/cherry-markdown.css?raw'
 // 图标字体：?raw 注入的 css 里相对字体路径会按页面 URL 解析而 404（图标全变方块），
 // 用 Vite ?url 拿到打包后的字体地址，注入时替换 @font-face 的 src
 import chIconWoff2 from 'cherry-markdown/dist/fonts/ch-icon.woff2?url'
-import { uploadFile } from '../api/client'
+import { uploadFile, downloadBlob } from '../api/client'
 import { loadMediaUrl } from '../api/media'
 import { i18n, type AppLocale } from '../locale'
 import { useThemeStore } from '../stores/theme'
@@ -112,7 +112,7 @@ function fileUploadMulti(files: File[], callback: (urls: { url: string }[]) => v
 // ——base64 dataURL 必须保留在正文里：cherry 的"预览区点击图片重新编辑"内部正则
 // 只认 data:image/..;base64 形态，换成 /media 路径会静默失去再编辑能力。
 
-// ---------- 自定义媒体插入菜单（image/audio/video 共用） ----------
+// ---------- 自定义媒体插入菜单（image/audio/video/file 共用） ----------
 // 不用 cherry 原生 image/video/audio 菜单，两个原因：
 // ① 原生缺陷——同一会话第二笔媒体插入会被上一笔的 cacheOnce 语法包裹/吞掉
 // （cherry 0.11.11 cacheOnce×异步回调交错）；
@@ -120,11 +120,14 @@ function fileUploadMulti(files: File[], callback: (urls: { url: string }[]) => v
 // 静默不弹文件框（真机"点了没反应"根因）。自定义菜单走 MenuHookBase（官方自定义
 // 菜单机制），input 先挂到 body（fixed 定位移出视口，display:none 同样不可点）
 // 再 click()，全程留在用户手势同步栈；resolve(null) 时 fire 跳过选区替换
+// 附件扩展名白名单与后端 MediaEndpoints.FileExtensionAllowlist 对齐
+const FILE_ACCEPT = '.pdf,.zip,.txt,.csv,.md,.doc,.docx,.xls,.xlsx,.ppt,.pptx'
+
 class InsertMediaMenu extends MenuHookBase {
   private readonly accept: string
   private readonly build: (url: string, name: string) => string
 
-  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0], kind: 'image' | 'audio' | 'video') {
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0], kind: 'image' | 'audio' | 'video' | 'file') {
     super(cherryOptions)
     if (kind === 'image') {
       this.accept = 'image/*'
@@ -135,6 +138,11 @@ class InsertMediaMenu extends MenuHookBase {
       // 语法对齐 cherry 原生音频：!audio[名字](url)（cherry 音频无专属图标，官方同用 video）
       this.build = (url, name) => `!audio[${name}](${url})\n`
       this.setName('insertAudio', 'video')
+    } else if (kind === 'file') {
+      this.accept = FILE_ACCEPT
+      // 附件以普通链接插入；/media 需要鉴权，读侧/预览侧点击走 downloadBlob（见下）
+      this.build = (url, name) => `[${name}](${url})\n`
+      this.setName('insertFile', 'link')
     } else {
       this.accept = 'video/*'
       this.build = (url) => `<video src="${url}" controls></video>\n`
@@ -210,6 +218,77 @@ class InsertVideoMenu extends InsertMediaMenu {
   }
 }
 
+class InsertFileMenu extends InsertMediaMenu {
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
+    super(cherryOptions, 'file')
+  }
+}
+
+// ---------- 打开本地 .md（官方 File 菜单的真机不可用版自研替代） ----------
+// 官方 File 菜单走 kO()（未挂 DOM input.click()，真机静默失败）；这里同媒体菜单
+// 套路：input 挂 body 同步 click()，FileReader 读文本后整篇替换（编辑器有内容
+// 时先确认），与"打开文件"语义一致（官方是插入到光标处）
+class OpenLocalFileMenu extends MenuHookBase {
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
+    super(cherryOptions)
+    this.setName('openLocalFile', 'folder-open')
+  }
+
+  onClick(): Promise<string | null> {
+    return new Promise((resolve) => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.md,.markdown,.txt'
+      input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;'
+      document.body.appendChild(input)
+      let settled = false
+      const settle = (v: string | null) => {
+        if (settled) return
+        settled = true
+        input.remove()
+        resolve(v)
+      }
+      input.addEventListener('cancel', () => settle(null))
+      input.onchange = () => {
+        const file = input.files?.[0]
+        if (!file) {
+          settle(null)
+          return
+        }
+        const cherryApi = (
+          this as unknown as { $cherry?: { getValue(): string; setMarkdown(v: string): void } }
+        ).$cherry
+        file
+          .text()
+          .then((text) => {
+            if (!cherryApi) {
+              settle(null)
+              return
+            }
+            const replace = () => cherryApi.setMarkdown(text)
+            if (cherryApi.getValue().trim()) {
+              uni.showModal({
+                confirmText: i18n.global.t('common.confirm'),
+                cancelText: i18n.global.t('common.cancel'),
+title: i18n.global.t('publish.openLocal'),
+                content: i18n.global.t('publish.openLocalConfirm'),
+                success: (res) => {
+                  if (res.confirm) replace()
+                  settle(null)
+                }
+              })
+            } else {
+              replace()
+              settle(null)
+            }
+          })
+          .catch(() => settle(null))
+      }
+      input.click()
+    })
+  }
+}
+
 function injectCherryCss() {
   if (document.getElementById('cherry-css')) return
   const style = document.createElement('style')
@@ -281,6 +360,7 @@ onMounted(() => {
         'header',
         '|',
         'drawIo',
+        'openLocalFile',
         '|',
         'ol',
         'ul',
@@ -291,7 +371,7 @@ onMounted(() => {
         'detail',
         '|',
         'formula',
-        { insert: ['insertImage', 'insertAudio', 'insertVideo', 'link', 'hr', 'br', 'code', 'inlineCode', 'formula', 'toc', 'table'] },
+        { insert: ['insertImage', 'insertAudio', 'insertVideo', 'insertFile', 'link', 'hr', 'br', 'code', 'inlineCode', 'formula', 'toc', 'table'] },
         'graph',
         'proTable',
         '|',
@@ -299,14 +379,16 @@ onMounted(() => {
         'search',
         'togglePreview'
       ],
-      toolbarRight: ['fullScreen', '|', 'wordCount'],
+      toolbarRight: ['export', '|', 'fullScreen', '|', 'wordCount'],
       bubble: ['bold', 'italic', 'underline', 'strikethrough', 'sub', 'sup', 'quote', 'ruby', '|', 'size', 'color'],
       sidebar: ['mobilePreview', 'copy', 'theme', 'codeTheme'],
       toc: { defaultModel: 'full' },
       customMenu: {
         insertImage: InsertImageMenu,
         insertAudio: InsertAudioMenu,
-        insertVideo: InsertVideoMenu
+        insertVideo: InsertVideoMenu,
+        insertFile: InsertFileMenu,
+        openLocalFile: OpenLocalFileMenu
       }
     },
     // 公式走 katex（默认 MathJax 无本地库不渲染）；katex 经 externals 挂载
@@ -340,7 +422,22 @@ onMounted(() => {
   // afterChange 覆盖不到的 DOM 变化（粘贴图片链接、撤销等）兜底换 src
   observer = new MutationObserver(swapMediaSrc)
   observer.observe(host.value, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] })
+
+  // 附件链接（插入文件产出的 [名字](/media/..)）带不上鉴权头：预览区点击改走
+  // downloadBlob（带 Bearer fetch → blob → 浏览器下载），捕获阶段拦截默认导航
+  host.value.addEventListener('click', onHostClick, true)
 })
+
+// 预览区 /media 附件链接 → 授权下载（图片/音视频已换 blob src，不进这条路径）
+function onHostClick(e: Event) {
+  const target = e.target as HTMLElement | null
+  const anchor = target?.closest?.('a[href^="/media/"]')
+  if (!anchor) return
+  e.preventDefault()
+  e.stopPropagation()
+  const href = anchor.getAttribute('href') ?? ''
+  void downloadBlob(href, anchor.textContent?.trim() || 'attachment')
+}
 
 // 外部回填（编辑已有内容）：值不同才 setMarkdown，避免光标跳动/回环
 //（defineExpose 泛型拿到的是组件实例，这里用结构化类型桥接）

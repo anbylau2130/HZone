@@ -125,7 +125,9 @@ function goEdit(c: ContentItem) {
 
 function remove(c: ContentItem) {
   uni.showModal({
-    title: t('common.delete'),
+    confirmText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+title: t('common.delete'),
     content: t('detail.deleteConfirm'),
     success: async (res) => {
       if (!res.confirm) return
