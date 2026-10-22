@@ -57,7 +57,9 @@
         <!-- #endif -->
         <button class="pick" @click="pickerVisible = true">{{ $t('publish.chooseRecipients') }}</button>
         <view class="toolbar-spacer" />
-        <button class="btn-inline" :disabled="busy" @click="submit">{{ $t('publish.submit') }}</button>
+        <button class="btn-inline" :disabled="busy" @click="submit">
+          {{ editingId ? $t('common.save') : $t('publish.submit') }}
+        </button>
       </view>
       <text class="hint">{{ $t('publish.mediaRule') }}</text>
     </view>
@@ -93,7 +95,9 @@
         </view>
         <button class="pick small" @click="pickerVisible = true">{{ $t('publish.chooseRecipients') }}</button>
       </view>
-      <button class="btn" :disabled="busy" @click="submit">{{ $t('publish.submit') }}</button>
+      <button class="btn" :disabled="busy" @click="submit">
+        {{ editingId ? $t('common.save') : $t('publish.submit') }}
+      </button>
     </template>
 
     <FriendPicker v-model:visible="pickerVisible" @confirm="onFriendsConfirmed" />
@@ -139,19 +143,25 @@ import CherryEditor from '../../components/CherryEditor.vue'
 import {
   createSay,
   createJournal,
+  getContent,
   getMyStats,
+  updateContent,
   type FriendInfo,
+  type LunarInfo,
   type MeStats,
   type WeatherSnapshotInput
 } from '../../api/endpoints'
 import { uploadFile } from '../../api/client'
+import { loadMediaUrl } from '../../api/media'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import { CONDITION_ICONS, WEATHER_CONDITIONS, getWeather, type WeatherSnapshot } from '../../utils/weather'
 import { formatLunar } from '../../utils/lunar'
 
 onShow(() => {
-  setNavTitle('hub.publish')
+  setNavTitle(editingId.value ? 'hub.edit' : 'hub.publish')
+  // 编辑模式：日记头日期/农历/天气由 loadForEdit 回填原内容快照，不拉今日统计
+  if (editingId.value) return
   refreshDiaryHead()
   // 进入时自动获取天气（模块级缓存，一次会话只探一次）；失败静默降级为手动选择
   if (!weatherAutoDone) {
@@ -167,13 +177,18 @@ onShow(() => {
 // 页面实例内只自动获取一次（用户清除后不再回填）
 let weatherAutoDone = false
 
-// 支持 ?kind=say / ?kind=journal 预选发布类型（随记/日志分页入口跳入）
+// 支持 ?kind=say / ?kind=journal 预选发布类型（随记/日志分页入口跳入）；
+// ?id= 进入编辑模式——编辑复用创建页全套编辑器（story：编辑与创建同一页面）
 onLoad((query) => {
   const q = (query ?? {}) as Record<string, string>
   if (q.kind === 'journal') {
     mode.value = 'journal'
   } else if (q.kind === 'say') {
     mode.value = 'say'
+  }
+  if (q.id) {
+    editingId.value = q.id
+    loadForEdit()
   }
 })
 
@@ -188,6 +203,7 @@ interface PickedMedia {
 }
 
 const mode = ref<'say' | 'journal'>('say')
+const editingId = ref('')
 const sayText = ref('')
 const title = ref('')
 const markdown = ref('')
@@ -198,6 +214,47 @@ const uploading = ref(false)
 const submitting = ref(false)
 
 const busy = computed(() => uploading.value || submitting.value)
+
+// ---------- 编辑模式：?id= 加载原内容回填（创建页即编辑页） ----------
+const editLunar = ref<LunarInfo | null>(null)
+
+async function loadForEdit() {
+  try {
+    const c = await getContent(editingId.value)
+    mode.value = c.kind === 'journal' ? 'journal' : 'say'
+    // 日记头还原原发布时刻，而非编辑时的今天
+    now.value = new Date(c.createdAt)
+    editLunar.value = c.lunar ?? null
+    title.value = c.title ?? ''
+    markdown.value = c.markdownBody ?? ''
+    sayText.value = c.text ?? ''
+    if (c.weather?.condition) {
+      weather.value = {
+        city: c.weather.city ?? '',
+        condition: c.weather.condition as WeatherSnapshot['condition'],
+        tempC: c.weather.tempC ?? 0
+      }
+    }
+    pickedFriends.value = c.recipients.map((r) => ({ id: r.userId, nickname: r.nickname, email: '' }))
+    for (const m of c.media ?? []) {
+      if (m.kind === 'audio') continue // 随记只有图/视频，防御跳过
+      mediaItems.value.push({
+        localPath: m.url,
+        mediaId: m.id,
+        kind: m.kind === 'video' ? 'video' : 'image'
+      })
+      // /media 预览带不上鉴权头——换授权 blob（失败保留原 src，可提交只是裂图）
+      loadMediaUrl(m.url)
+        .then((u) => {
+          const target = mediaItems.value.find((x) => x.mediaId === m.id)
+          if (target) target.localPath = u
+        })
+        .catch(() => {})
+    }
+  } catch {
+    // 请求层已 toast；停留在空编辑页，用户可返回
+  }
+}
 
 // ---------- 日志预览开关（仅 H5） ----------
 // CSS 类隐藏 .cherry-previewer（不依赖 cherry 内部 API），状态 localStorage 记忆
@@ -233,7 +290,9 @@ const dateLine = computed(() => {
   return `${date} ${t(`home.weekday${d.getDay()}`)}`
 })
 
-const lunarLine = computed(() => formatLunar(stats.value?.today))
+const lunarLine = computed(() =>
+  editingId.value ? formatLunar(editLunar.value) : formatLunar(stats.value?.today)
+)
 
 // ---------- 天气（homepage-v2）：快照随发布提交，可改可清 ----------
 const weather = ref<WeatherSnapshot | null>(null)
@@ -485,6 +544,24 @@ onHide(() => {
 
 // ---------- 日志附件上传：cherry 工具栏/自定义菜单接管（见 components/CherryEditor.vue） ----------
 
+/** 补传本地媒体（如刚录制的视频尚无 mediaId），false = 失败已提示可中止提交。 */
+async function uploadPendingMedia(): Promise<boolean> {
+  uploading.value = true
+  try {
+    for (const m of mediaItems.value) {
+      if (!m.mediaId) {
+        const asset = await uploadFile<{ id: string }>('/api/media', m.file ?? m.localPath)
+        m.mediaId = asset.id
+      }
+    }
+    return true
+  } catch {
+    return false // 上传失败提示已由请求层统一 toast
+  } finally {
+    uploading.value = false
+  }
+}
+
 async function submit() {
   if (busy.value) return
   const recipientIds = pickedFriends.value.map((f) => f.id)
@@ -495,32 +572,41 @@ async function submit() {
         uni.showToast({ title: t('publish.sayEmpty'), icon: 'none' })
         return
       }
-      // 补传本地媒体（如刚录制的视频尚无 mediaId）
-      uploading.value = true
-      try {
-        for (const m of mediaItems.value) {
-          if (!m.mediaId) {
-            const asset = await uploadFile<{ id: string }>('/api/media', m.file ?? m.localPath)
-            m.mediaId = asset.id
-          }
-        }
-      } catch {
-        return // 上传失败提示已由请求层统一 toast
-      } finally {
-        uploading.value = false
-      }
+      if (!(await uploadPendingMedia())) return
       const mediaIds = mediaItems.value
         .map((m) => m.mediaId)
         .filter((id): id is string => Boolean(id))
-      await createSay(sayText.value, recipientIds, mediaIds, toSnapshot())
+      if (editingId.value) {
+        // 媒体整体重绑：移除格子 = 解绑，保留项带原 mediaId 原样提交
+        await updateContent(editingId.value, {
+          text: sayText.value,
+          mediaIds,
+          recipientIds,
+          weather: toSnapshot()
+        })
+      } else {
+        await createSay(sayText.value, recipientIds, mediaIds, toSnapshot())
+      }
     } else {
       if (!title.value.trim() || !markdown.value.trim()) {
         uni.showToast({ title: t('publish.journalEmpty'), icon: 'none' })
         return
       }
-      await createJournal(title.value, markdown.value, recipientIds, toSnapshot())
+      if (editingId.value) {
+        await updateContent(editingId.value, {
+          title: title.value,
+          markdownBody: markdown.value,
+          recipientIds,
+          weather: toSnapshot()
+        })
+      } else {
+        await createJournal(title.value, markdown.value, recipientIds, toSnapshot())
+      }
     }
-    uni.showToast({ title: t('publish.success'), icon: 'success' })
+    uni.showToast({
+      title: editingId.value ? t('publish.saved') : t('publish.success'),
+      icon: 'success'
+    })
     setTimeout(() => {
       uni.navigateBack()
     }, 600)

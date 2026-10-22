@@ -113,10 +113,17 @@ export function getContent(id: string) {
   return request<ContentItem>(`/api/contents/${id}`)
 }
 
-/** 只传显式要改的字段（null/undefined = 不修改）。 */
+/** 只传显式要改的字段（null/undefined = 不修改）；mediaIds/recipientIds/weather 传了即整体替换。 */
 export function updateContent(
   id: string,
-  payload: { text?: string; title?: string; markdownBody?: string }
+  payload: {
+    text?: string
+    title?: string
+    markdownBody?: string
+    mediaIds?: string[]
+    recipientIds?: string[]
+    weather?: WeatherSnapshotInput
+  }
 ) {
   return request<ContentItem>(`/api/contents/${id}`, { method: 'PUT', data: { ...payload } })
 }

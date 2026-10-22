@@ -65,7 +65,12 @@ const weatherChip = computed(() => {
 })
 
 function goEdit() {
-  uni.navigateTo({ url: '/pages/detail/detail?id=' + props.content.id + '&edit=1' })
+  // 日志：直达 publish 编辑页（与创建同一页面）；随记：detail 内联改短文本
+  const url =
+    props.content.kind === 'journal'
+      ? '/pages/publish/publish?id=' + props.content.id + '&kind=journal'
+      : '/pages/detail/detail?id=' + props.content.id + '&edit=1'
+  uni.navigateTo({ url })
 }
 
 async function remove() {

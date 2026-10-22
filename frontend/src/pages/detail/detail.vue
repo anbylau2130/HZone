@@ -63,7 +63,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { marked } from 'marked'
 // mermaid 渲染引擎（与编辑器同款本地打包入口；default 导入——render/initialize 只在
 // default 导出上；addon 不直接用：其 render 对 mermaid 11 异步版返回 fallback 占位、
@@ -204,14 +204,26 @@ async function load() {
   try {
     content.value = await getContent(contentId.value)
     comments.value = (await listComments(contentId.value)).items
+    loadedOnce = true
     if (autoEdit) startEdit()
   } catch {
     // 错误提示由请求层统一 toast；不可见/不存在时留在本页
   }
 }
 
+// 编辑/保存跳到 publish 页，返回本页时 onLoad 不会重跑——onShow 刷新正文
+let loadedOnce = false
+onShow(() => {
+  if (loadedOnce) load()
+})
+
 function startEdit() {
   if (!content.value) return
+  // 日志：编辑复用创建页（cherry 全套编辑器），与"发布日志"同一页面
+  if (content.value.kind === 'journal') {
+    uni.navigateTo({ url: '/pages/publish/publish?id=' + contentId.value + '&kind=journal' })
+    return
+  }
   editing.value = true
   editTitle.value = content.value.title ?? ''
   editBody.value = content.value.kind === 'journal'

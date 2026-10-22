@@ -88,6 +88,19 @@
 - spec 教训：cherry spec 中段有 page.reload()（预览开关持久化验证）会清空草稿，"前序内容存活"断言必须放 reload 之前
 - 终态：**Playwright 18/18** + tsc 0 错 + build:h5 通过；浏览器 tour 详情页断言含"图片真实解码"（naturalWidth>0，防元素在但 401）
 
+## 编辑=创建同页轮（2026-10-22，用户指令：日志编辑复用创建页）
+
+- 旧态：日志编辑是 detail 页内联裸 textarea（detail?edit=1），与创建页（cherry 全套编辑器）割裂
+- 改法：
+  - publish.vue 支持 `?id=`：loadForEdit 回填标题/正文/天气快照/收件人/say 媒体（/media 预览换授权 blob）；日记头还原原发布日期+农历（editLunar）而非今天；submit 分流 create/update（后端 PUT 本就支持 mediaIds/recipientIds/weather 整体替换，前端 wrapper 此前只放了 text/title/markdownBody——扩了载荷类型）；按钮/导航栏文案切"保存/编辑内容"（新增 i18n hub.edit/publish.saved）
+  - detail.vue：日志 startEdit → navigateTo publish?id&kind=journal；随记保留内联短文本编辑；加 onShow(loadedOnce) 刷新——编辑保存 navigateBack 返回时 onLoad 不重跑，不刷则停留在旧正文
+  - ContentCard/moments goEdit 按 kind 分流：日志直达 publish，随记仍 detail?edit=1
+  - say 媒体编辑语义 = 整体重绑（移除格子=解绑，保留项原 mediaId 原样提交），与后端 PUT 语义一致
+- e2e：新增 edit-journal.spec（第 19 条）：API 造日志→detail 点✎→断言落 publish 页+cherry 回填→改标题/正文→保存→detail 自动刷新+API 复核落库
+- 浏览器实测：用户本人在内置浏览器实操编辑页（playwright MCP 快照恰好截到）：编辑内容标题/原日期农历天气/cherry 全工具栏/原 drawio 图回填/保存按钮全部正确
+- console 噪音定性（不修）：/media 401 = blob 换取前的瞬态请求（swapMediaSrc/observer 已兜住）；mermaid usePlugin 警告 = 仅 HMR 重执行模块时旧实例在场，产线路由不受影响
+- 终态：**Playwright 19/19** + tsc 0 错
+
 ## 一键验收
 
 ```bash

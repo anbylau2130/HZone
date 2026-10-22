@@ -111,7 +111,8 @@
     "search": "Search",
     "pats": "PATs",
     "importExport": "Import / Export",
-    "admin": "Admin"
+    "admin": "Admin",
+    "edit": "Edit Content"
   },
   "tabs": {
     "index": "Home",
@@ -163,7 +164,8 @@
     "recordPermissionDenied": "Camera unavailable — use “Add video” instead",
     "recordUnavailable": "Video recording is not supported in this browser",
     "success": "Published",
-    "previewToggle": "Preview"
+    "previewToggle": "Preview",
+    "saved": "Saved"
   },
   "weather": {
     "title": "Weather",
