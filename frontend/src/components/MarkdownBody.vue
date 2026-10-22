@@ -9,6 +9,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 // mermaid 渲染引擎（与编辑器同款本地打包入口；default 导入——render/initialize 只在
 // default 导出上；addon 脱离 cherry 不可用，读侧直接 Mermaid.render）
 import Mermaid from 'mermaid/dist/mermaid.esm.min.mjs'
@@ -58,12 +59,19 @@ const html = computed(() => {
       /!(video|audio)\[([^\]]*)\]\(([^)]+)\)/g,
       (_m, tag, alt, url) => `<${tag} src="${url}" controls>${alt}</${tag}>`
     )
+  // marked 默认不消毒，产物直出 v-html。日志正文是好友间注入面（好友日志里藏
+  // <img onerror=...> 等内联事件即存储型 XSS），渲染前必须消毒。DOMPurify 默认
+  // 全量 HTML 白名单已覆盖 img/video/audio/source 标签与 src/alt/controls/style/class
+  // 属性，data-* 属性（drawio 的 data-type）与媒体标签上的 data: URI（drawio 产物）
+  // 默认放行；mermaid 是消毒后另插的 DOM，不走 v-html 管线，不额外开 id
+  const rendered = DOMPurify.sanitize(marked.parse(md) as string)
   // /media 直出的 src 先换 1x1 透明占位（真实地址挪到 data-hz-media）：
   // <img>/<video>/<audio> 发不了 Authorization 头，直接请求必 401（控制台噪音），
-  // 占位后由 swapMediaSrcs 带 token 换成 blob src，全程零 401
+  // 占位后由 swapMediaSrcs 带 token 换成 blob src，全程零 401。
+  // 顺序：消毒在前、占位替换在后——正则作用于消毒产物，新添的 data-hz-media 不会被剥掉
   const PLACEHOLDER =
     'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-  return (marked.parse(md) as string).replace(
+  return rendered.replace(
     /src="(\/media\/[^"]*)"/g,
     (_m, url: string) => `src="${PLACEHOLDER}" data-hz-media="${url}"`
   )
@@ -137,6 +145,12 @@ onBeforeUnmount(() => {
   color: var(--hz-color-text);
   line-height: 1.8;
   word-break: break-word;
+  /* flex 子项（阅读卡 .article 是 flex column）：不放开 min-width，
+     超宽内容的 min-content 会把自身连同卡片一起撑破（阅读模式溢出 bug） */
+  min-width: 0;
+  max-width: 100%;
+  /* 兜底裁剪：mermaid/表格/raw HTML 等无法预知宽度的元素不溢出卡片 */
+  overflow-x: hidden;
   /* 正文媒体防溢出：无约束时大图/大视频会横向撑破卡片 */
   :deep(img),
   :deep(video) {
@@ -148,6 +162,20 @@ onBeforeUnmount(() => {
   }
   :deep(figure) {
     margin: 8px 0;
+  }
+  /* 可横向滚动元素：裁剪兜底之上，仍能完整看到内容 */
+  :deep(svg),
+  :deep(.mermaid-figure) {
+    max-width: 100%;
+    height: auto;
+  }
+  :deep(pre) {
+    overflow-x: auto;
+  }
+  :deep(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
   }
 }
 </style>
