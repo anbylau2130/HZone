@@ -58,7 +58,15 @@ const html = computed(() => {
       /!(video|audio)\[([^\]]*)\]\(([^)]+)\)/g,
       (_m, tag, alt, url) => `<${tag} src="${url}" controls>${alt}</${tag}>`
     )
-  return marked.parse(md) as string
+  // /media 直出的 src 先换 1x1 透明占位（真实地址挪到 data-hz-media）：
+  // <img>/<video>/<audio> 发不了 Authorization 头，直接请求必 401（控制台噪音），
+  // 占位后由 swapMediaSrcs 带 token 换成 blob src，全程零 401
+  const PLACEHOLDER =
+    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+  return (marked.parse(md) as string).replace(
+    /src="(\/media\/[^"]*)"/g,
+    (_m, url: string) => `src="${PLACEHOLDER}" data-hz-media="${url}"`
+  )
 })
 
 // ```mermaid 代码块渲染成流程图（读侧直接走 mermaid.render，异步换入 DOM）
@@ -87,17 +95,16 @@ async function renderMermaidBlocks() {
   }
 }
 
-// 正文里的 /media/*（插图/音频/video 标签）带不上 Authorization 头——渲染后换成
-// loadMediaUrl 的授权 blob url（模块级缓存；换成 blob: 后不再命中选择器，不会循环）
+// 正文里的 /media/*（占位图挂 data-hz-media）：带 Authorization 换 loadMediaUrl
+// blob src（模块级缓存；换取后移除标记属性，不会重复处理）
 function swapMediaSrcs() {
   if (!root.value) return
-  for (const el of Array.from(
-    root.value.querySelectorAll('img[src^="/media/"], video[src^="/media/"], audio[src^="/media/"]')
-  )) {
-    const raw = el.getAttribute('src') ?? ''
+  for (const el of Array.from(root.value.querySelectorAll('[data-hz-media]'))) {
+    const raw = el.getAttribute('data-hz-media') ?? ''
+    el.removeAttribute('data-hz-media')
     loadMediaUrl(raw)
       .then((u) => {
-        if (el.getAttribute('src') === raw) el.setAttribute('src', u)
+        el.setAttribute('src', u)
       })
       .catch(() => {})
   }
