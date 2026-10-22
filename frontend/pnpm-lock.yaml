@@ -179,6 +179,9 @@ importers:
       crelt:
         specifier: ^1.0.7
         version: 1.0.7
+      dompurify:
+        specifier: ^3.4.17
+        version: 3.4.17
       echarts:
         specifier: ^6.1.0
         version: 6.1.0

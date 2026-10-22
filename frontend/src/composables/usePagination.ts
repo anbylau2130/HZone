@@ -21,17 +21,27 @@ export function usePagination<T>(
 
   const finished = computed(() => loaded.value && items.value.length >= total.value)
 
+  // 请求序号（竞态防护）：loadMore 在途时切筛选/搜索触发 refresh，旧 loadMore 响应
+  // 晚到会覆盖新列表——refresh 不做 loading 短路（直接打断在途请求发新的），
+  // 每个响应落地前比对序号，过期响应整体丢弃，不写 items/total/finished
+  let requestSeq = 0
+
   async function load(reset: boolean) {
-    if (loading.value) return
+    // loadMore 保持防重入；refresh 例外——必须能打断在途请求立刻生效
+    if (!reset && loading.value) return
     if (loaded.value && !reset && finished.value) return
+    const seq = ++requestSeq
     loading.value = true
     try {
       const page = await fetcher(reset ? 0 : items.value.length, pageSize)
+      // 过期响应（已被更新的请求取代）：整体丢弃
+      if (seq !== requestSeq) return
       items.value = reset ? page.items : [...items.value, ...page.items]
       total.value = page.total
       loaded.value = true
     } finally {
-      loading.value = false
+      // 只有最新请求才动 loading：被打断的旧请求结束后新请求仍在途，不能误清
+      if (seq === requestSeq) loading.value = false
     }
   }
 
