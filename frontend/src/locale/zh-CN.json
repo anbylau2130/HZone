@@ -146,8 +146,7 @@
     "colDate": "日期",
     "colTitle": "标题",
     "colWords": "字数",
-    "colActions": "操作",
-    "view": "查看"
+    "colActions": "操作"
   },
   "publish": {
     "sayPlaceholder": "说点什么…",

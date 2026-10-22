@@ -45,20 +45,19 @@
         </view>
       </view>
 
-      <!-- 表格视图：日期/标题/字数/操作，行点击进详情 -->
+      <!-- 表格视图：标题在最前（点击进查阅页），行点击同样进详情；字数 ≥1000 用 k 单位 -->
       <view v-if="items.length && viewMode === 'table'" class="table">
         <view class="trow thead">
-          <text class="tcell c-date">{{ $t('journals.colDate') }}</text>
           <text class="tcell c-title">{{ $t('journals.colTitle') }}</text>
+          <text class="tcell c-date">{{ $t('journals.colDate') }}</text>
           <text class="tcell c-words">{{ $t('journals.colWords') }}</text>
           <text class="tcell c-op">{{ $t('journals.colActions') }}</text>
         </view>
         <view v-for="c in items" :key="c.id" class="trow" @click="openDetail(c)">
-          <text class="tcell c-date">{{ formatDateTime(c.createdAt) }}</text>
           <text class="tcell c-title">{{ c.title }}</text>
-          <text class="tcell c-words">{{ wordCount(c) }}</text>
+          <text class="tcell c-date">{{ formatDateTime(c.createdAt) }}</text>
+          <text class="tcell c-words">{{ formatWords(wordCount(c)) }}</text>
           <view class="tcell c-op" @click.stop>
-            <text class="op" @click="openDetail(c)">{{ $t('journals.view') }}</text>
             <text class="op" @click="editJournal(c)">{{ $t('common.edit') }}</text>
           </view>
         </view>
@@ -147,6 +146,14 @@ function weatherChip(c: ContentItem): string {
 
 function wordCount(c: ContentItem): number {
   return stripMarkdown(c.markdownBody ?? '').length
+}
+
+// 字数展示：≥1000 用 k 单位（1 位小数去尾零，≥100k 取整），避免长数字撑宽列
+function formatWords(n: number): string {
+  if (n < 1000) return String(n)
+  const k = n / 1000
+  const s = k >= 100 ? String(Math.round(k)) : k.toFixed(1).replace(/\.0$/, '')
+  return `${s}k`
 }
 </script>
 
@@ -342,18 +349,18 @@ function wordCount(c: ContentItem): number {
   font-size: var(--hz-font-size-base);
   color: var(--hz-color-text);
 }
-.c-date {
-  flex: 0 0 132px;
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-}
 .c-title {
   flex: 1;
   min-width: 0;
   font-weight: 600;
 }
+.c-date {
+  flex: 0 0 132px;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
 .c-words {
-  flex: 0 0 56px;
+  flex: 0 0 48px;
   text-align: right;
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
