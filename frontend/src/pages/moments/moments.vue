@@ -324,7 +324,6 @@ async function uploadCoverFile(path: string | Blob) {
 .entry {
   border-bottom: 1px solid var(--hz-color-border);
   padding-bottom: 12px;
-  cursor: pointer;
 }
 .entry:last-child {
   border-bottom: none;
@@ -347,11 +346,14 @@ async function uploadCoverFile(path: string | Blob) {
 }
 .text {
   margin-top: 4px;
-  /* 随记正文 16px（比基准大一档） */
+  /* 随记正文 16px（比基准大一档）；可选中复制（悬停显示文本光标而非手型） */
   font-size: 16px;
   color: var(--hz-color-text);
   white-space: pre-wrap;
   word-break: break-word;
+  cursor: auto;
+  user-select: text;
+  -webkit-user-select: text;
 }
 .entry-foot {
   margin-top: 6px;
