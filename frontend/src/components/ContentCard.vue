@@ -1,11 +1,15 @@
 <template>
   <view class="card" @click="$emit('open', content)">
+    <!-- 头部一行：头像+作者/类型 … 日期+编辑/删除贴右上角 -->
     <view class="head">
       <AvatarCircle :nickname="content.author.nickname" :avatar-url="content.author.avatarUrl" :size="44" />
       <view class="head-mid">
         <text class="author">{{ content.author.nickname }}</text>
         <text class="kind">{{ kindLabel }}</text>
       </view>
+      <view class="head-spacer" />
+      <text class="date">{{ formatRelativeTime(content.createdAt) }}</text>
+      <CardOwnerActions v-if="isAuthor" @edit="goEdit" @delete="remove" />
     </view>
 
     <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
@@ -13,17 +17,10 @@
     <MediaGrid v-if="hasMedia" :media="content.media" />
     <RecipientsBar :recipients="content.recipients" />
 
-    <view class="meta">
-      <text class="meta-time">
-        {{ formatDateTime(content.createdAt) }} · {{ formatRelativeTime(content.createdAt) }}
-        </text>
-      <text v-if="weatherChip" class="weather-chip">{{ weatherChip }}</text>
-      <view class="meta-spacer" />
-      <CardOwnerActions v-if="isAuthor" @edit="goEdit" @delete="remove" />
-    </view>
-
     <view class="foot">
       <text class="foot-item">{{ $t('detail.commentCount', { n: content.commentCount }) }}</text>
+      <view class="foot-spacer" />
+      <text v-if="weatherChip" class="weather-chip">{{ weatherChip }}</text>
     </view>
   </view>
 </template>
@@ -35,7 +32,7 @@ import MediaGrid from './MediaGrid.vue'
 import RecipientsBar from './RecipientsBar.vue'
 import CardOwnerActions from './CardOwnerActions.vue'
 import AvatarCircle from './AvatarCircle.vue'
-import { formatDateTime, formatRelativeTime } from '../utils/format'
+import { formatRelativeTime } from '../utils/format'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
 import { deleteContent } from '../api/endpoints'
 import type { ContentItem } from '../api/endpoints'
@@ -110,6 +107,15 @@ title: t('common.delete'),
   display: flex;
   flex-direction: column;
   gap: 1px;
+  min-width: 0;
+}
+.head-spacer {
+  flex: 1;
+}
+.date {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  flex-shrink: 0;
 }
 .author {
   font-size: var(--hz-font-size-base);
@@ -131,30 +137,23 @@ title: t('common.delete'),
   white-space: pre-wrap;
   word-break: break-word;
 }
-.meta {
+.foot {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-}
-.meta-time {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-}
-.weather-chip {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-}
-.meta-spacer {
-  flex: 1;
-}
-.foot {
   border-top: 1px solid var(--hz-color-border);
   padding-top: 8px;
 }
 .foot-item {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-interactive);
+}
+.foot-spacer {
+  flex: 1;
+}
+.weather-chip {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
 }
 @media (min-width: 768px) {
   .card {
