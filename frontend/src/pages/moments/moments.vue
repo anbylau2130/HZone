@@ -45,7 +45,8 @@
           <text class="date-label">{{ g.label }}</text>
         </view>
         <view class="items-col">
-          <view v-for="c in g.items" :key="c.id" class="entry" @click="openDetail(c)">
+          <!-- 正文与整条点击均不跳转（朋友圈式就地阅读）；进详情/评论走底部评论入口 -->
+          <view v-for="c in g.items" :key="c.id" class="entry">
             <view class="entry-head">
               <text class="time">{{ formatRelativeTime(c.createdAt) }}</text>
               <view class="head-spacer" />
@@ -62,7 +63,9 @@
               <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
               <RecipientsBar :recipients="c.recipients" />
               <view class="entry-foot">
-                <text class="foot-btn">{{ $t('detail.commentCount', { n: c.commentCount }) }}</text>
+                <text class="foot-btn" @click.stop="openDetail(c)">
+                  💬 {{ $t('detail.commentCount', { n: c.commentCount }) }}
+                </text>
                 <view class="head-spacer" />
                 <view v-if="weatherChip(c)" class="weather-chip">
                   <text class="weather-chip-text">{{ weatherChip(c) }}</text>
@@ -357,6 +360,7 @@ async function uploadCoverFile(path: string | Blob) {
   gap: 8px;
 }
 .foot-btn {
+  cursor: pointer;
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-interactive);
 }
