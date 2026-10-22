@@ -48,15 +48,24 @@ function addPostMessageListener(graphEditor) {
       return;
     }
     switch (event.data.eventName) {
-      case 'setData':
-        var value = event.data.value;
-        var doc = mxUtils.parseXml(value);
+      case 'setData': {
+        var value = event.data.value || '';
         var documentName = 'cherry-drawio-' + new Date().getTime();
-        editorUIInstance.editor.setGraphXml(null);
-        graphEditor.graph.importGraphModel(doc.documentElement);
+        // 空串防护：cherry 新建画图时 setData 传空 xml，而 Chromium 的
+        // DOMParser.parseFromString('', 'text/xml') 会返回根为 <html> 的兜底文档，
+        // 直接 importGraphModel 会触发 mxCodec allowlist 报错（html not allowed）。
+        // 只接受真正的 mxGraphModel 根，其余（空串/解析失败）按空画布处理。
+        if (value.replace(/\s+/g, '') !== '') {
+          var doc = mxUtils.parseXml(value);
+          if (doc && doc.documentElement && doc.documentElement.nodeName === 'mxGraphModel') {
+            editorUIInstance.editor.setGraphXml(null);
+            graphEditor.graph.importGraphModel(doc.documentElement);
+          }
+        }
         graphEditor.setFilename(documentName);
         window.parent.postMessage({ eventName: 'setData:success', value: '' }, '*');
         break;
+      }
       case 'getData':
         editorUIInstance.editor.graph.stopEditing();
         var xmlData = mxUtils.getXml(editorUIInstance.editor.getGraphXml());
