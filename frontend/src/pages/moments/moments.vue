@@ -8,12 +8,30 @@
             <text class="write-plus">＋</text>
             <text>{{ $t('moments.write') }}</text>
           </view>
-          <view class="search-btn" @click="goSearch">
+          <!-- 搜索在页内完成（不再跳搜索页） -->
+          <view class="search-btn" @click="toggleSearch">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <circle cx="11" cy="11" r="7" />
               <line x1="16.5" y1="16.5" x2="21" y2="21" />
             </svg>
           </view>
+        </view>
+      </view>
+
+      <!-- 页内搜索条：输入即筛（400ms 防抖），清空/关闭恢复全部 -->
+      <view v-if="searchOpen" class="search-row">
+        <input
+          v-model="keyword"
+          class="search-field"
+          :placeholder="$t('search.placeholder')"
+          confirm-type="search"
+          @confirm="refreshNow"
+        />
+        <view v-if="keyword" class="search-clear" @click="keyword = ''">
+          <text class="search-clear-txt">×</text>
+        </view>
+        <view class="search-close" @click="closeSearch">
+          <text class="search-close-txt">{{ $t('common.cancel') }}</text>
         </view>
       </view>
 
@@ -31,6 +49,10 @@
 
       <view v-if="pagination.loading.value && !items.length" class="hint">
         <text class="hint-text">{{ $t('common.loading') }}</text>
+      </view>
+      <!-- 搜索无结果：只提示，不给写随记引导 -->
+      <view v-else-if="!items.length && keyword.trim()" class="hint">
+        <text class="hint-text">{{ $t('common.empty') }}</text>
       </view>
       <view v-else-if="!items.length" class="hint empty">
         <text class="hint-text">{{ $t('moments.empty') }}</text>
@@ -92,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import MediaGrid from '../../components/MediaGrid.vue'
@@ -104,7 +126,13 @@ import ProfileHeader from '../../components/ProfileHeader.vue'
 import CardOwnerActions from '../../components/CardOwnerActions.vue'
 import SayComposer from '../../components/SayComposer.vue'
 import { usePagination } from '../../composables/usePagination'
-import { listMyContents, deleteContent, uploadCover, type ContentItem } from '../../api/endpoints'
+import {
+  listMyContents,
+  searchContents,
+  deleteContent,
+  uploadCover,
+  type ContentItem
+} from '../../api/endpoints'
 import { formatRelativeTime, groupByCnDate } from '../../utils/format'
 import { weatherChipText } from '../../utils/weather'
 import { useAuthStore } from '../../stores/auth'
@@ -113,8 +141,43 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const auth = useAuthStore()
 
-const pagination = usePagination<ContentItem>((offset, limit) => listMyContents('say', offset, limit))
+// ---------- 页内搜索（不跳搜索页）：关键词走 /search（自己的随记），空=全部 ----------
+const searchOpen = ref(false)
+const keyword = ref('')
+
+const pagination = usePagination<ContentItem>((offset, limit) => {
+  const kw = keyword.value.trim()
+  return kw ? searchContents(kw, 'say', offset, limit) : listMyContents('say', offset, limit)
+})
 const { items, finished, loadMore } = pagination
+
+function toggleSearch() {
+  searchOpen.value = !searchOpen.value
+  if (searchOpen.value) {
+    nextTick(() => {
+      document.querySelector('.search-field input')?.focus?.()
+    })
+  }
+}
+
+function closeSearch() {
+  searchOpen.value = false
+  if (keyword.value) {
+    keyword.value = ''
+    pagination.refresh()
+  }
+}
+
+function refreshNow() {
+  pagination.refresh()
+}
+
+// 输入防抖 400ms 即时筛选；清空恢复全部
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(keyword, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => pagination.refresh(), 400)
+})
 
 // 中国区日期倒序分组（moments-wechat 票 02）
 const groups = computed(() => groupByCnDate(items.value))
@@ -181,13 +244,9 @@ function focusComposer() {
   composerRef.value?.focus()
 }
 
-// 快速发布成功：插到信息流最前（今日分组直接能看到）
+// 快速发布成功：插到信息流最前（搜索态下不插——结果集由关键词决定）
 function onPublished(c: ContentItem) {
-  items.value = [c, ...items.value]
-}
-
-function goSearch() {
-  uni.navigateTo({ url: '/pages/search/search?kind=say' })
+  if (!keyword.value.trim()) items.value = [c, ...items.value]
 }
 
 // 封面上传（仅本人可点）：H5 原生 input[type=file]（同设置页头像模式），App 走 uni.chooseImage
@@ -234,6 +293,46 @@ async function uploadCoverFile(path: string | Blob) {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+/* 页内搜索条 */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.search-field {
+  flex: 1;
+  height: 36px;
+  border: 1px solid var(--hz-color-border);
+  border-radius: 999px;
+  padding: 0 14px;
+  font-size: var(--hz-font-size-base);
+  color: var(--hz-color-text);
+  background: var(--hz-color-surface);
+}
+.search-clear {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--hz-color-bg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.search-clear-txt {
+  font-size: 16px;
+  color: var(--hz-color-text-secondary);
+}
+.search-close {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.search-close-txt {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
 }
 .topbar {
   display: flex;
