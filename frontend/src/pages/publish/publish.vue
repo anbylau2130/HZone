@@ -14,15 +14,16 @@
       </view>
     </view>
 
-    <!-- 随记：textarea → 媒体独立区块 → 工具行（媒体与输入区视觉分离） -->
+    <!-- 随记：textarea → 表情面板 → 媒体独立区块 → 工具行（媒体与输入区视觉分离） -->
     <view v-if="mode === 'say'" class="panel">
       <textarea
         v-model="sayText"
-        class="area"
+        class="area say-area"
         :placeholder="$t('publish.sayPlaceholder')"
         :maxlength="-1"
         auto-height
       />
+      <EmojiPicker v-if="emojiOpen" @select="insertEmoji" />
       <view v-if="mediaItems.length || uploading" class="media-block">
         <text class="media-title">{{ $t('publish.media') }}</text>
         <view class="media-grid">
@@ -40,6 +41,10 @@
         <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
       </view>
       <view class="toolbar">
+        <!-- 表情包开关（面板在输入区下方，连点即连插） -->
+        <view class="rec-btn" :class="{ on: emojiOpen }" @click="emojiOpen = !emojiOpen">
+          <text class="rec-ico">😊</text>
+        </view>
         <button class="pick" @click="pickImage">{{ $t('publish.addImages') }}</button>
         <!-- #ifdef H5 -->
         <view
@@ -134,9 +139,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FriendPicker from '../../components/FriendPicker.vue'
+import EmojiPicker from '../../components/EmojiPicker.vue'
 // #ifdef H5
 import CherryEditor from '../../components/CherryEditor.vue'
 // #endif
@@ -214,6 +220,27 @@ const editingId = ref('')
 const sayText = ref('')
 const title = ref('')
 const markdown = ref('')
+const emojiOpen = ref(false)
+
+// 表情插入到光标处（H5：取 uni-textarea 内层真实 textarea 的选区；App 端追加到末尾）
+function insertEmoji(emoji: string) {
+  // #ifdef H5
+  const ta = document.querySelector('.say-area textarea') as HTMLTextAreaElement | null
+  if (ta) {
+    const s = ta.selectionStart ?? sayText.value.length
+    const e = ta.selectionEnd ?? s
+    sayText.value = sayText.value.slice(0, s) + emoji + sayText.value.slice(e)
+    nextTick(() => {
+      ta.focus()
+      const pos = s + emoji.length
+      ta.setSelectionRange(pos, pos)
+    })
+    return
+  }
+  // #endif
+  sayText.value += emoji
+}
+
 const mediaItems = ref<PickedMedia[]>([])
 const pickedFriends = ref<FriendInfo[]>([])
 const pickerVisible = ref(false)

@@ -5,37 +5,21 @@
         <text class="author">{{ content.author.nickname }}</text>
         <text class="kind">{{ kindLabel }}</text>
         <text class="time">{{ formatDateTime(content.createdAt) }}</text>
-        <CardOwnerActions v-if="isAuthor && !editing" @edit="startEdit" @delete="remove" />
+        <!-- 编辑一律跳 publish 编辑页（与创建同页），本页纯阅读 -->
+        <CardOwnerActions v-if="isAuthor" @edit="startEdit" @delete="remove" />
       </view>
 
       <text v-if="contextLine" class="context-line">{{ contextLine }}</text>
 
-      <template v-if="!editing">
-        <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
-        <view
-          v-if="content.kind === 'journal' && content.markdownBody"
-          class="md-body"
-          v-html="mdHtml"
-        />
-        <text v-else-if="content.kind !== 'journal'" class="text">{{ content.text }}</text>
-        <MediaGrid :media="content.media" />
-        <RecipientsBar :recipients="content.recipients" />
-      </template>
-
-      <template v-else>
-        <input v-if="content.kind === 'journal'" v-model="editTitle" class="field" :placeholder="$t('publish.titlePlaceholder')" />
-        <textarea
-          v-model="editBody"
-          class="area"
-          :placeholder="$t('publish.bodyPlaceholder')"
-          :maxlength="-1"
-          auto-height
-        />
-        <view class="edit-actions">
-          <button class="mini" @click="saveEdit">{{ $t('common.save') }}</button>
-          <button class="mini ghost" @click="cancelEdit">{{ $t('common.cancel') }}</button>
-        </view>
-      </template>
+      <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
+      <view
+        v-if="content.kind === 'journal' && content.markdownBody"
+        class="md-body"
+        v-html="mdHtml"
+      />
+      <text v-else-if="content.kind !== 'journal'" class="text">{{ content.text }}</text>
+      <MediaGrid :media="content.media" />
+      <RecipientsBar :recipients="content.recipients" />
 
     </view>
 
@@ -79,7 +63,6 @@ import { formatLunar } from '../../utils/lunar'
 import { CONDITION_ICONS, type WeatherCondition } from '../../utils/weather'
 import {
   getContent,
-  updateContent,
   deleteContent,
   listComments,
   createComment,
@@ -97,11 +80,6 @@ const contentId = ref('')
 const content = ref<ContentItem | null>(null)
 const comments = ref<CommentItem[]>([])
 const commentText = ref('')
-const editing = ref(false)
-const editTitle = ref('')
-const editBody = ref('')
-// 列表卡编辑图标跳转 detail?edit=1：加载完成后直接进编辑态
-let autoEdit = false
 
 const isAuthor = computed(() => content.value?.author.id === auth.user?.id)
 const kindLabel = computed(() =>
@@ -238,7 +216,6 @@ onLoad((query) => {
   setNavTitle('detail.title')
   const q = (query ?? {}) as Record<string, string>
   contentId.value = q.id ?? ''
-  autoEdit = q.edit === '1'
   load()
 })
 
@@ -248,13 +225,12 @@ async function load() {
     content.value = await getContent(contentId.value)
     comments.value = (await listComments(contentId.value)).items
     loadedOnce = true
-    if (autoEdit) startEdit()
   } catch {
     // 错误提示由请求层统一 toast；不可见/不存在时留在本页
   }
 }
 
-// 编辑/保存跳到 publish 页，返回本页时 onLoad 不会重跑——onShow 刷新正文
+// 编辑跳 publish 页（创建同页），返回本页时 onLoad 不会重跑——onShow 刷新正文
 let loadedOnce = false
 onShow(() => {
   if (loadedOnce) load()
@@ -262,35 +238,10 @@ onShow(() => {
 
 function startEdit() {
   if (!content.value) return
-  // 日志：编辑复用创建页（cherry 全套编辑器），与"发布日志"同一页面
-  if (content.value.kind === 'journal') {
-    uni.navigateTo({ url: '/pages/publish/publish?id=' + contentId.value + '&kind=journal' })
-    return
-  }
-  editing.value = true
-  editTitle.value = content.value.title ?? ''
-  editBody.value = content.value.kind === 'journal'
-    ? (content.value.markdownBody ?? '')
-    : (content.value.text ?? '')
-}
-
-function cancelEdit() {
-  editing.value = false
-}
-
-async function saveEdit() {
-  if (!content.value) return
-  try {
-    const payload =
-      content.value.kind === 'journal'
-        ? { title: editTitle.value, markdownBody: editBody.value }
-        : { text: editBody.value }
-    content.value = await updateContent(contentId.value, payload)
-    editing.value = false
-    uni.showToast({ title: t('common.saved'), icon: 'success' })
-  } catch {
-    // 错误提示由请求层统一 toast
-  }
+  // 编辑一律复用创建页：日志用 cherry 全套编辑器，说说用轻编辑器（含表情包）
+  uni.navigateTo({
+    url: `/pages/publish/publish?id=${contentId.value}&kind=${content.value.kind}`
+  })
 }
 
 function remove() {
@@ -383,10 +334,6 @@ async function postComment() {
   white-space: pre-wrap;
   word-break: break-word;
 }
-.edit-actions {
-  display: flex;
-  gap: 8px;
-}
 .section-title {
   font-size: var(--hz-font-size-base);
   font-weight: 600;
@@ -427,12 +374,6 @@ async function postComment() {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text);
   background: var(--hz-color-bg);
-}
-.area {
-  width: 100%;
-  min-height: 160px;
-  font-size: var(--hz-font-size-base);
-  color: var(--hz-color-text);
 }
 .mini {
   height: 34px;

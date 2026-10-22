@@ -177,7 +177,8 @@
     "previewToggle": "预览",
     "saved": "已保存",
     "openLocal": "打开本地文件",
-    "openLocalConfirm": "当前内容将被打开的文件替换，继续？"
+    "openLocalConfirm": "当前内容将被打开的文件替换，继续？",
+    "emojiNoRecent": "最近还没有使用表情，去挑几个吧"
   },
   "weather": {
     "title": "天气",

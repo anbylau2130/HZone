@@ -174,7 +174,8 @@
     "previewToggle": "Preview",
     "saved": "Saved",
     "openLocal": "Open local file",
-    "openLocalConfirm": "Current content will be replaced by the opened file. Continue?"
+    "openLocalConfirm": "Current content will be replaced by the opened file. Continue?",
+    "emojiNoRecent": "No recent emojis yet — go pick some"
   },
   "weather": {
     "title": "Weather",

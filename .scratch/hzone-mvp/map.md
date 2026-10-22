@@ -113,6 +113,14 @@
 - **顺带修**：uni.showModal 按钮显示未翻译原键（uni.showModal.confirm）——uni H5 框架 i18n 缺失，5 处调用点全部显式传 confirmText/cancelText
 - 终态：**Playwright 23/23**（新增 editor-extras 4 条：401 守卫/视图切换/图片尺寸/三功能含下载）+ dotnet 116/116 + tsc 0 错
 
+## 说说编辑统一+表情包+卡片重设计轮（2026-10-22，frontend-design 技能）
+
+- **说说编辑统一走 publish 页**：旧 ✎(say)→detail?edit=1 内联 textarea 已废弃（详情页瞬间整页变表单，✎ 小图标易误触=用户感知"点说说跳编辑页"）。ContentCard/moments ✎ 一律 `publish?id&kind=<kind>`；detail.vue 删除全部内联编辑（模板/状态/saveEdit/autoEdit），本页纯阅读，编辑跳 publish（说说轻编辑器/日志 cherry）。detail?edit=1 路由全仓清零
+- **表情包**（说说编辑器）：新组件 EmojiPicker.vue——8 分类（笑脸/手势/动物/食物/活动/物品/符号/最近）精选集、9px tabs、8 列网格（窄屏 6 列）、最近使用 localStorage ≤24 去重置顶、入场动画+hover 放大；工具栏 😊 圆钮开关；插入到 textarea 光标处（H5 取 uni-textarea 内层真实 textarea 的 selectionStart/End，nextTick 后重设光标；App 兜底追加）
+- **日志卡片三段式重设计**：标题（17px/650 单行省略）→ 预览（≤200 字 JS 截断 + 4 行 CSS 截断双保险，15px/1.65）→ meta（hairline 上边线，日期左+天气胶囊右，margin-top:auto 贴底）；hover 上浮+投影+描边
+- **布局修正**：容器 42rem→60rem，桌面 `repeat(auto-fill, minmax(300px,1fr))` 自适应列（旧固定 2 栏×21rem 窄卡）；align-items:stretch 同行等高。度量验证：1440/1000px=2 列(428/358px)、780px=1 列，meta 全贴底、等高成立
+- 终态：**Playwright 23/23** + tsc 0 错
+
 ## 一键验收
 
 ```bash

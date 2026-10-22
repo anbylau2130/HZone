@@ -32,15 +32,16 @@
       </view>
 
       <view v-if="items.length && viewMode === 'card'" class="cards">
-        <view
-          v-for="c in items"
-          :key="c.id"
-          class="card"
-          @click="openDetail(c)"
-        >
+        <!-- 三段式卡：标题 / 内容预览（≤200字）/ 日期+天气 -->
+        <view v-for="c in items" :key="c.id" class="card" @click="openDetail(c)">
           <text class="title">{{ c.title }}</text>
-          <text class="summary">{{ summary(c) }}</text>
-          <text class="date">{{ formatDateTime(c.createdAt) }}</text>
+          <text class="summary">{{ preview(c) }}</text>
+          <view class="meta">
+            <text class="date">{{ formatDateTime(c.createdAt) }}</text>
+            <view v-if="weatherChip(c)" class="weather">
+              <text class="weather-text">{{ weatherChip(c) }}</text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -88,6 +89,7 @@ import ToolDock from '../../components/ToolDock.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, type ContentItem } from '../../api/endpoints'
 import { formatDateTime, stripMarkdown } from '../../utils/format'
+import { weatherChipText } from '../../utils/weather'
 
 const pagination = usePagination<ContentItem>((offset, limit) =>
   listMyContents('journal', offset, limit)
@@ -130,6 +132,17 @@ function goSearch() {
 
 function summary(c: ContentItem): string {
   return stripMarkdown(c.markdownBody ?? '')
+}
+
+// 卡片预览：纯文本 ≤200 字，超出加省略号（配合 CSS 行数截断双保险）
+function preview(c: ContentItem): string {
+  const text = summary(c).trim()
+  return text.length > 200 ? text.slice(0, 200) + '…' : text
+}
+
+// 底部天气 chip（现象图标+温度，与随记页同款）
+function weatherChip(c: ContentItem): string {
+  return weatherChipText(c.weather ?? null)
 }
 
 function wordCount(c: ContentItem): number {
@@ -217,31 +230,62 @@ function wordCount(c: ContentItem): number {
   flex-direction: column;
   gap: 12px;
 }
+/* 三段式卡片：标题（1行）→ 预览（≤200字，行数截断）→ 日期+天气（细线分隔）。
+   呼吸感来自分区而非大间距：内容区上下 10px，meta 有独立 hairline */
 .card {
   background: var(--hz-color-surface);
   border-radius: var(--hz-radius-sm);
-  padding: 14px;
+  border: 1px solid transparent;
+  padding: 16px 18px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.card:hover {
+  border-color: var(--hz-color-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+  transform: translateY(-1px);
 }
 .title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 650;
   color: var(--hz-color-text);
-  line-height: 1.3;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .summary {
   font-size: var(--hz-font-size-base);
   color: var(--hz-color-text-secondary);
-  line-height: 1.5;
+  line-height: 1.65;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: auto;
+  border-top: 1px solid var(--hz-color-border);
+}
 .date {
-  font-size: var(--hz-font-size-sm);
+  font-size: 12px;
+  color: var(--hz-color-text-secondary);
+}
+.weather {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--hz-color-bg);
+}
+.weather-text {
+  font-size: 12px;
   color: var(--hz-color-text-secondary);
 }
 .more {
@@ -355,19 +399,20 @@ function wordCount(c: ContentItem): number {
     padding: 24px;
   }
   .container {
-    max-width: 42rem;
+    /* 日志是多列浏览页：放宽到 60rem，卡片按 auto-fill 自适应分列
+       （旧的固定 2 栏 × 42rem 每栏仅 21rem，窄卡+多余留白两头不讨好） */
+    max-width: 60rem;
     margin: 0 auto;
     width: 100%;
   }
-  /* 桌面双栏 grid */
   .cards {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 16px;
-    align-items: start;
+    align-items: stretch;
   }
   .card {
-    padding: 18px 20px;
+    padding: 18px 20px 14px;
   }
   .write-btn {
     display: flex;

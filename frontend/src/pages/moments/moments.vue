@@ -115,12 +115,8 @@ function weatherChip(c: ContentItem) {
 }
 
 function goEdit(c: ContentItem) {
-  // 日志：直达 publish 编辑页（与创建同一页面）；随记：detail 内联改短文本
-  const url =
-    c.kind === 'journal'
-      ? '/pages/publish/publish?id=' + c.id + '&kind=journal'
-      : '/pages/detail/detail?id=' + c.id + '&edit=1'
-  uni.navigateTo({ url })
+  // 编辑一律去 publish 编辑页（与创建同一页面）；detail 内联编辑已废弃
+  uni.navigateTo({ url: `/pages/publish/publish?id=${c.id}&kind=${c.kind}` })
 }
 
 function remove(c: ContentItem) {

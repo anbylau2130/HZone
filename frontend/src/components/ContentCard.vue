@@ -65,12 +65,11 @@ const weatherChip = computed(() => {
 })
 
 function goEdit() {
-  // 日志：直达 publish 编辑页（与创建同一页面）；随记：detail 内联改短文本
-  const url =
-    props.content.kind === 'journal'
-      ? '/pages/publish/publish?id=' + props.content.id + '&kind=journal'
-      : '/pages/detail/detail?id=' + props.content.id + '&edit=1'
-  uni.navigateTo({ url })
+  // 编辑一律去 publish 编辑页（与创建同一页面，cherry 编辑器/媒体/表情包全套）；
+  // 说说旧的 detail?edit=1 内联编辑已废弃（误触即整页变表单，体验割裂）
+  uni.navigateTo({
+    url: `/pages/publish/publish?id=${props.content.id}&kind=${props.content.kind}`
+  })
 }
 
 async function remove() {
