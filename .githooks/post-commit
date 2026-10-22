@@ -1,0 +1,9 @@
+#!/bin/sh
+# post-commit：自动更新代码知识索引（查询用 codegraph / graphify，见 .scratch/hzone-mvp/map.md）
+# - codegraph sync：增量同步符号图（~1s，同步执行，MCP 查询即时可见）
+# - graphify update：AST 增量重建知识图谱（~15s，后台执行不阻塞提交；输出丢弃）
+root="$(git rev-parse --show-toplevel)"
+codegraph sync >/dev/null 2>&1 || true
+cd "$root" || exit 0
+( nohup graphify update . >/dev/null 2>&1 & ) 2>/dev/null || graphify update . >/dev/null 2>&1 || true
+exit 0

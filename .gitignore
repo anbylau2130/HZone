@@ -24,3 +24,7 @@ mcp/dist/
 test-results/
 .mimosa/
 .scratch/hosts.bak
+
+# 代码知识索引（codegraph 符号图 + graphify 知识图谱，本机可再生）
+.codegraph/
+graphify-out/

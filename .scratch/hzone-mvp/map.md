@@ -158,3 +158,11 @@ cd frontend && pnpm dev:h5               # H5 :5173（/api 代理 :5000）
 - 后端：`dotnet test`（WebApplicationFactory 进程内 e2e，HTTP 边界 seam）
 - 前端 H5：`pnpm -C frontend dev:h5`（:5173，/api 代理到 :5000）+ Playwright（ticket 15）
 - 全部本地，无 Docker
+
+## 代码知识索引约定（2026-10-22 起）
+
+- **查询优先用两套索引**（代替裸 grep/逐文件读）：
+  - **codegraph**（符号图，MCP 工具）：`codegraph_explore`（问题/符号 → 相关源码一次性带回）、`codegraph_callers/callees/impact`（调用链/改动影响面）、`codegraph_files`（项目结构）
+  - **graphify**（知识图谱，CLI）：`graphify query "问题"`（BFS 广度检索）、`graphify path A B`（两概念间路径）、`graphify explain X`（节点解释）、`graphify affected X`（反向影响面）
+- **自动更新**：`.githooks/post-commit`（core.hooksPath 已指向 .githooks）——提交后 codegraph sync 同步跑（~1s），graphify update 后台跑（~15s）；文档类改动需手动 `/graphify --update`
+- 首建状态：codegraph 181 文件/2434 节点/4803 边；graphify 403 代码文件 → 5312 节点/6085 边/466 社区（graphify-out/ 与 .codegraph/ 已 gitignore，本机可再生）
