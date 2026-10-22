@@ -77,7 +77,11 @@ public static class DatabaseBootstrapper
             }
         }
 
-        var initialMigrationId = db.Database.GetMigrations().Single();
+        // legacy baseline 语义：存量库的结构对应首个建表迁移（InitialCreate），标记其后让
+        // Migrate() 只应用增量。迁移已有多个（InitialCreate + 后续增量），不能 Single()。
+        var initialMigrationId = db.Database.GetMigrations()
+            .FirstOrDefault(m => m.EndsWith("_InitialCreate", StringComparison.Ordinal))
+            ?? db.Database.GetMigrations().First();
         logger.LogWarning(
             "检测到 legacy 数据库（无 __EFMigrationsHistory 但已有业务表），自动 baseline 迁移 {MigrationId} 后继续增量迁移",
             initialMigrationId);

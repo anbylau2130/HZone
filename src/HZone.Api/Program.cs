@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using HZone.Core.Entities;
 using HZone.Core.Interfaces;
 using HZone.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -18,8 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString =
     builder.Configuration["HZone:Database:ConnectionString"] ?? "Data Source=data/hzone.db";
-var jwtKey =
-    builder.Configuration["HZone:Auth:JwtKey"] ?? "dev-only-insecure-jwt-key-0246802468";
+var jwtKey = AuthConfig.GetJwtKey(builder.Configuration, builder.Environment.IsProduction());
 var jwtIssuer = builder.Configuration["HZone:Auth:Issuer"] ?? "HZone";
 var jwtAudience = builder.Configuration["HZone:Auth:Audience"] ?? "HZone";
 
@@ -28,6 +29,8 @@ builder.Services.AddDbContext<HZoneDbContext>(options =>
     options.UseSqlite(connectionString);
     options.AddInterceptors(new HZone.Api.Data.SqlitePragmaInterceptor());
 });
+// 签发与校验复用同一来源的 JWT 键（AuthConfig 单点读取，生产未配置已 fail-fast）。
+builder.Services.AddSingleton(jwtKey);
 builder.Services.AddScoped<IContentQuery, ContentQuery>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
@@ -89,12 +92,45 @@ builder.Services
     .AddScheme<PatAuthenticationOptions, PatAuthHandler>(PatAuthHandler.SchemeName, _ => { });
 builder.Services.AddAuthorization();
 
+// 认证端点限流：/auth/login 防暴力试密码、/auth/forgot-password 防刷盘（fixed window，分区键 = 远程 IP）。
+// 已知简化：未启用 ForwardedHeaders 中间件，反代场景下所有请求共享反代 IP 的配额，先用 RemoteIpAddress 简单实现。
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    // 项目 API 口径是 JSON：限流触发也回 JSON 错误体（默认是纯文本）。
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new { error = "too many requests" }, ct);
+    };
+
+    var loginPerMinute = builder.Configuration.GetValue("HZone:RateLimit:LoginPerMinute", 10);
+    var forgotPerMinute = builder.Configuration.GetValue("HZone:RateLimit:ForgotPasswordPerMinute", 5);
+
+    options.AddPolicy("auth-login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = loginPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+        }));
+    options.AddPolicy("auth-forgot-password", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = forgotPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+        }));
+});
+
 var app = builder.Build();
 
 DatabaseBootstrapper.EnsureDatabase(app, connectionString);
 
 app.UseAuthentication();
 app.UseAuthorization();
+// 限流中间件必须在路由解析之后（UseRouting 隐式调用）挂载，否则策略元数据读不到。
+app.UseRateLimiter();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 

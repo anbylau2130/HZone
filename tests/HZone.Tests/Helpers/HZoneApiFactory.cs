@@ -37,6 +37,10 @@ public sealed class HZoneApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("HZone:Database:ConnectionString", $"Data Source={DbPath}");
         builder.UseSetting("HZone:DataDirectory", _dataDirectory);
         builder.UseSetting("HZone:Auth:JwtKey", JwtKey);
+        // 测试套件同一回环 IP 在一分钟内会发起几十次 login/forgot-password，
+        // 限流配额放开避免 e2e 误触 429（限流行为本身不在后端 e2e 覆盖范围）。
+        builder.UseSetting("HZone:RateLimit:LoginPerMinute", "10000");
+        builder.UseSetting("HZone:RateLimit:ForgotPasswordPerMinute", "10000");
         if (_ffmpegAvailable is { } ffmpeg)
         {
             builder.UseSetting(FFmpegCompressor.AvailableSettingKey, ffmpeg.ToString());

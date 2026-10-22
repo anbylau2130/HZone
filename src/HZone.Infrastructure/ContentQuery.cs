@@ -78,8 +78,11 @@ public class ContentQuery : IContentQuery
         }
 
         var total = await query.CountAsync(ct);
+        // 加 Id 作唯一次序键：同 CreatedAt（如 /import 批量导入全是同一 UtcNow）时
+        // Skip/Take 不再因排序不稳定而重复/漏项。
         var items = await query
             .OrderByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.Id)
             .Skip(spec.Offset)
             .Take(spec.Limit)
             .ToListAsync(ct);

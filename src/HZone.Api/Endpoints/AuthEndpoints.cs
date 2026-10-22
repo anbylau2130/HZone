@@ -8,6 +8,7 @@ using HZone.Core.Entities;
 using HZone.Core.Interfaces;
 using HZone.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -15,8 +16,6 @@ namespace HZone.Api.Endpoints;
 
 public static class AuthEndpoints
 {
-    private const string FrontendBaseUrl = "http://localhost:5173";
-
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/auth/register", async (
@@ -24,6 +23,7 @@ public static class AuthEndpoints
             HZoneDbContext db,
             IPasswordHasher hasher,
             IEmailSender emailSender,
+            IConfiguration config,
             CancellationToken ct) =>
         {
             var now = DateTime.UtcNow;
@@ -81,9 +81,9 @@ public static class AuthEndpoints
                 CreatedAt = now,
             };
 
-            // errors 为空意味着 invite 一定非空（invite 为空必产生 inviteCode 字段错误）
-            invite!.UsedById = user.Id;
-            invite.UsedAt = now;
+            // 防并发同码双注册：核销改为条件更新（UsedAt 仍为 null 才更新），受影响 0 行 =
+            // 已被并发使用 → 整个事务回滚拒绝。与用户插入同事务，任一失败都不会留半截状态。
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
             db.Users.Add(user);
             db.EmailTokens.Add(new EmailToken
             {
@@ -95,8 +95,26 @@ public static class AuthEndpoints
             });
             await db.SaveChangesAsync(ct);
 
+            // errors 为空意味着 invite 一定非空（invite 为空必产生 inviteCode 字段错误）
+            var redeemed = await db.InviteCodes
+                .Where(i => i.Code == request.InviteCode && i.UsedAt == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(i => i.UsedAt, now)
+                    .SetProperty(i => i.UsedById, user.Id), ct);
+            if (redeemed == 0)
+            {
+                // 竞态败者：回滚刚插入的用户与邮件 token，按邀请码已用拒绝。
+                await tx.RollbackAsync(ct);
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["inviteCode"] = new[] { "invite code already used" },
+                });
+            }
+
+            await tx.CommitAsync(ct);
+
             await emailSender.SendAsync(user.Email, "Verify your email",
-                $"Welcome to HZone! Verify your email: {FrontendBaseUrl}/#/pages/verify-email/verify-email?token={token}", ct);
+                $"Welcome to HZone! Verify your email: {FrontendUrl(config, "/#/pages/verify-email/verify-email?token=" + token)}", ct);
 
             return Results.Created("/auth/me", new
             {
@@ -138,6 +156,7 @@ public static class AuthEndpoints
             LoginRequest request,
             HZoneDbContext db,
             IPasswordHasher hasher,
+            [FromServices] string jwtKey,
             IConfiguration config,
             CancellationToken ct) =>
         {
@@ -150,7 +169,7 @@ public static class AuthEndpoints
                     title: "invalid credentials");
             }
 
-            var (token, expiresAt) = MintJwt(user, config);
+            var (token, expiresAt) = MintJwt(user, jwtKey, config);
             return Results.Ok(new
             {
                 token,
@@ -227,6 +246,7 @@ public static class AuthEndpoints
             ForgotPasswordRequest request,
             HZoneDbContext db,
             IEmailSender emailSender,
+            IConfiguration config,
             CancellationToken ct) =>
         {
             var now = DateTime.UtcNow;
@@ -246,7 +266,7 @@ public static class AuthEndpoints
                 });
                 await db.SaveChangesAsync(ct);
                 await emailSender.SendAsync(user.Email, "Reset your password",
-                    $"Reset your password: {FrontendBaseUrl}/#/pages/reset-password/reset-password?token={token}", ct);
+                    $"Reset your password: {FrontendUrl(config, "/#/pages/reset-password/reset-password?token=" + token)}", ct);
             }
 
             return Results.Ok(new { ok = true });
@@ -300,15 +320,18 @@ public static class AuthEndpoints
         }).AddEndpointFilter(SetupState.RequireInitialized);
     }
 
-    private static (string Token, DateTime ExpiresAt) MintJwt(User user, IConfiguration config)
+    /// <summary>邮件里前端链接统一拼接：读 HZone:Frontend:BaseUrl（dev 默认 http://localhost:5173）。</summary>
+    internal static string FrontendUrl(IConfiguration config, string pathAndQuery) =>
+        $"{(config["HZone:Frontend:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/')}{pathAndQuery}";
+
+    private static (string Token, DateTime ExpiresAt) MintJwt(User user, string jwtKey, IConfiguration config)
     {
-        var key = config["HZone:Auth:JwtKey"] ?? "dev-only-insecure-jwt-key-0246802468";
         var issuer = config["HZone:Auth:Issuer"] ?? "HZone";
         var audience = config["HZone:Auth:Audience"] ?? "HZone";
         var expiresAt = DateTime.UtcNow.AddDays(7);
         var claims = new List<Claim> { new("sub", user.Id.ToString()), new("nickname", user.Nickname) };
         var credentials = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
             SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(issuer, audience, claims, expires: expiresAt, signingCredentials: credentials);
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);

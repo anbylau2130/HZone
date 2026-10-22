@@ -59,9 +59,28 @@ public static class SetupEndpoints
                 CreatedAt = now,
             };
 
-            db.Users.Add(user);
-            db.SystemConfigs.Add(new SystemConfig { Key = SetupState.SetupCompletedKey, Value = now.ToString("O") });
-            await db.SaveChangesAsync(ct);
+            // 防并发抢注：check-then-act 之间公网可能并发插第二个 IsAdmin 账号。
+            // SystemConfig.Key 是主键（唯一），「创建管理员 + setup.completed 标记」在同一
+            // 事务里提交，并发第二个提交会因主键冲突失败 → 复核后按已初始化拒绝。
+            try
+            {
+                await using var tx = await db.Database.BeginTransactionAsync(ct);
+                db.Users.Add(user);
+                db.SystemConfigs.Add(new SystemConfig { Key = SetupState.SetupCompletedKey, Value = now.ToString("O") });
+                await db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                // 主键/唯一索引冲突落到这里；复核确认已初始化 → 竞态败者，回滚拒绝。
+                if (await SetupState.IsInitializedAsync(db, ct))
+                {
+                    return Results.Problem(statusCode: StatusCodes.Status409Conflict,
+                        title: "instance already initialized");
+                }
+
+                throw;
+            }
 
             return Results.Created("/setup/status", new AdminResponse(user.Id, user.Email, user.Nickname));
         });

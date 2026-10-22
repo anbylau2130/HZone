@@ -266,6 +266,18 @@ public static class MediaEndpoints
         await using var buffered = new MemoryStream();
         await input.CopyToAsync(buffered, ct);
         buffered.Position = 0;
+        // 解码炸弹防御：先用 Identify 只读图片头拿尺寸（不分配像素缓冲），超过
+        // 8000×8000 直接按无效图片拒绝，恶意 PNG（声明超大分辨率）不能解码膨胀到
+        // 数 GB 内存。（ImageSharp 3.x 没有 MaxWidth/MaxHeight 解码上限选项；
+        // TargetSize 是解码后缩放，防不住解码器全尺寸像素缓冲的分配，故用头信息预检。）
+        var info = await Image.IdentifyAsync(buffered, ct);
+        if (info is null || info.Width > 8000 || info.Height > 8000)
+        {
+            throw new InvalidImageContentException("image dimensions exceed the 8000x8000 limit");
+        }
+
+        // Identify 读走了流内容，重新定位到头部再解码。
+        buffered.Position = 0;
         using var image = await Image.LoadAsync(buffered, ct);
         // ResizeMode.Max 不放大，只缩小。
         using var main = image.Clone(ctx => ctx.Resize(new ResizeOptions
