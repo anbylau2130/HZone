@@ -102,3 +102,8 @@ cd frontend && pnpm build:h5             # H5 构建校验
 - 主会话直接写长文件会随机乱码 → 代码实现委托 executor 子代理，`dotnet test`/`pnpm build:h5` 兜底
 - **uni-app 选第三方组件铁律**：绝不能依赖原版 `vue` 包（uni 用分支 Vue，双实例冲突挂载即崩）——选型先查 package.json；框架无关的（如 CodeMirror 6）安全
 - **pnpm + uni 的 vite resolver 不穿透符号链接**：transitive 依赖（@codemirror/*、@lezer/* 等）必须显式声明为直接依赖，否则构建 504/无法解析
+
+## 代码查询工具规定
+
+- 查代码一律用 **codegraph**（符号定位/调用关系/影响面）和 **graphify**（架构与知识图谱），不要用 grep 全文搜索代码。
+- 仅当两者都答不了（如查任意字符串/日志文本）才退回文本搜索。
