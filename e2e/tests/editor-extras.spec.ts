@@ -30,6 +30,8 @@ test('guest deep-link to publish redirects to login (no dead-end 401)', async ({
 
 test('journals list toggles card/table view, edit jumps to publish', async ({ page }) => {
   const user = await registerAndVerifyViaApi('ViewUser')
+  // 两篇：先造旧文再造新文（列表按时间倒序，阅读视图默认最新=后造的这篇）
+  await createJournalViaApi(user.token, '更早的一篇', '旧文正文')
   await createJournalViaApi(user.token, '表格视图测试', '正文内容')
 
   await loginViaUi(page, user)
@@ -49,6 +51,17 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
   // 视图偏好 localStorage 记忆：重进仍为表格
   await page.goto('/#/pages/journals/journals')
   await expect(page.locator('.table .thead')).toBeVisible({ timeout: 15_000 })
+
+  // 阅读视图：默认最新一篇，按钮翻篇，计数与标题联动
+  await page.locator('.view-toggle .vt', { hasText: '阅读' }).click()
+  await expect(page.locator('.r-title')).toHaveText('表格视图测试', { timeout: 15_000 })
+  await expect(page.locator('.r-count')).toHaveText(/^1 \/ \d+/)
+  await page.locator('.r-btn', { hasText: '下一篇' }).click()
+  await expect(page.locator('.r-count')).toHaveText(/^2 \/ \d+/, { timeout: 10_000 })
+  await expect(page.locator('.r-title')).toHaveText('更早的一篇')
+  // 第一篇（最新）可回退
+  await page.locator('.r-btn', { hasText: '上一篇' }).click()
+  await expect(page.locator('.r-count')).toHaveText(/^1 \/ \d+/, { timeout: 10_000 })
 })
 
 test('image alt size syntax renders at requested size on detail', async ({ page }) => {

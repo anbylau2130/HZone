@@ -143,7 +143,10 @@
     "colDate": "Date",
     "colTitle": "Title",
     "colWords": "Words",
-    "colActions": "Actions"
+    "colActions": "Actions",
+    "viewRead": "Read",
+    "readerPrev": "‹ Prev",
+    "readerNext": "Next ›"
   },
   "publish": {
     "sayPlaceholder": "What's on your mind…",

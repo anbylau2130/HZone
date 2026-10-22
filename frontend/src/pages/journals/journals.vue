@@ -4,13 +4,16 @@
       <view class="topbar">
         <text class="topbar-title">{{ $t('journals.title') }}</text>
         <view class="topbar-actions">
-          <!-- 卡片/表格视图切换（localStorage 记忆） -->
+          <!-- 卡片/表格/阅读视图切换（localStorage 记忆） -->
           <view v-if="items.length > 0" class="view-toggle">
             <text class="vt" :class="{ on: viewMode === 'card' }" @click="setViewMode('card')">
               {{ $t('journals.viewCard') }}
             </text>
             <text class="vt" :class="{ on: viewMode === 'table' }" @click="setViewMode('table')">
               {{ $t('journals.viewTable') }}
+            </text>
+            <text class="vt" :class="{ on: viewMode === 'read' }" @click="setViewMode('read')">
+              {{ $t('journals.viewRead') }}
             </text>
           </view>
           <view v-if="items.length > 0" class="write-btn" @click="goPublish">
@@ -63,7 +66,17 @@
         </view>
       </view>
 
-      <view v-if="items.length" class="more">
+      <!-- 阅读视图：单篇沉浸阅读，滑动/按钮翻篇，接近末尾动态加载 -->
+      <JournalReader
+        v-if="items.length && viewMode === 'read'"
+        :items="items"
+        :finished="finished"
+        :loading="pagination.loading.value"
+        @load-more="loadMore"
+      />
+
+      <!-- 加载更多行仅卡片/表格视图（阅读视图自带动态加载） -->
+      <view v-if="items.length && viewMode !== 'read'" class="more">
         <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
         <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
           {{ $t('common.loadMore') }}
@@ -85,6 +98,7 @@ import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
+import JournalReader from '../../components/JournalReader.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, type ContentItem } from '../../api/endpoints'
 import { formatDateTime, stripMarkdown } from '../../utils/format'
@@ -101,13 +115,15 @@ onShow(() => {
   pagination.refresh()
 })
 
-// ---------- 卡片/表格视图切换（localStorage 记忆） ----------
+// ---------- 卡片/表格/阅读视图切换（localStorage 记忆） ----------
 const VIEW_KEY = 'hz-journals-view'
-const viewMode = ref<'card' | 'table'>(
-  localStorage.getItem(VIEW_KEY) === 'table' ? 'table' : 'card'
+type ViewMode = 'card' | 'table' | 'read'
+const savedView = localStorage.getItem(VIEW_KEY)
+const viewMode = ref<ViewMode>(
+  savedView === 'table' || savedView === 'read' ? savedView : 'card'
 )
 
-function setViewMode(mode: 'card' | 'table') {
+function setViewMode(mode: ViewMode) {
   viewMode.value = mode
   localStorage.setItem(VIEW_KEY, mode)
 }
