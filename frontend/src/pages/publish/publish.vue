@@ -839,10 +839,11 @@ async function submit() {
   background: var(--hz-color-bg);
 }
 .media-grid {
-  /* 缩略格固定 72px（与随记页内编辑器一致）：编辑随记时图不再占满整行 */
+  /* 与阅读侧九宫格同款：3 列限宽 300px（用户要求 3×3 布局） */
   display: grid;
-  grid-template-columns: repeat(4, 72px);
-  gap: 6px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  max-width: 300px;
 }
 .cell {
   position: relative;

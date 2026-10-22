@@ -239,14 +239,15 @@ defineExpose({
   color: var(--hz-color-text);
 }
 .c-media {
+  /* 与阅读侧九宫格同款：3 列限宽 300px（用户要求 3×3 布局） */
   display: grid;
-  grid-template-columns: repeat(4, 72px);
-  gap: 6px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  max-width: 300px;
 }
 .c-cell {
   position: relative;
-  width: 72px;
-  height: 72px;
+  aspect-ratio: 1;
   border-radius: var(--hz-radius-md);
   overflow: hidden;
 }
