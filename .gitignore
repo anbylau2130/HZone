@@ -22,3 +22,4 @@ mcp/dist/
 
 # playwright 局部产物（e2e/test-results 与 test-results/ 同源，勿入库）
 test-results/
+.mimosa/

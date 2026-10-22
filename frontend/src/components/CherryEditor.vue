@@ -11,8 +11,14 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Cherry, { MenuHookBase } from 'cherry-markdown'
-// @ts-ignore cherry 可选 addon（无类型；自带 mermaid 渲染引擎，零外部导入）
+// @ts-ignore cherry 可选 addon（无类型；实例化前经 usePlugin 注册 mermaid 代码块渲染器）
 import CherryMermaidPlugin from 'cherry-markdown/dist/addons/cherry-code-block-mermaid-plugin.esm.js'
+// mermaid 渲染引擎本地打包（官方 examples/mermaid.html 用 CDN src，本项目离线铁律改为显式
+// 注入）。走全量打包单文件入口：包默认入口 mermaid.core.mjs 有 d3/ts-dedent 等外部依赖，
+// uni vite 插件强制 preserveSymlinks:true 下 pnpm 嵌套依赖解析不了（构建失败）。
+// 必须 default 导入：该文件的 render/initialize 只在 default 导出上（命名导出仅 5 个
+// 布局函数），namespace 导入会让 addon 误判"找不到 mermaid"静默回退源码
+import Mermaid from 'mermaid/dist/mermaid.esm.min.mjs'
 // uni postcss 会把 css 里 input/button/textarea/video 标签选择器改写成 uni-*（实测 vditor 同款坑），
 // cherry 运行时创建的原生 DOM（隐藏上传 input、CodeMirror textarea 等）全部失配 → 样式坏。
 // 用 ?raw 绕过 postcss，运行时原样注入（幂等，多实例只注入一次）。
@@ -52,7 +58,9 @@ function cherryLocale(locale: AppLocale): 'zh_CN' | 'en_US' {
 function swapMediaSrc() {
   if (!host.value) return
   for (const el of Array.from(
-    host.value.querySelectorAll('.cherry-previewer img[src^="/media/"], .cherry-previewer video[src^="/media/"]')
+    host.value.querySelectorAll(
+      '.cherry-previewer img[src^="/media/"], .cherry-previewer video[src^="/media/"], .cherry-previewer audio[src^="/media/"]'
+    )
   )) {
     const raw = el.getAttribute('src') ?? ''
     loadMediaUrl(raw)
@@ -96,95 +104,37 @@ function fileUploadMulti(files: File[], callback: (urls: { url: string }[]) => v
   })
 }
 
-// ---------- drawIO 画图（cherry drawIo 菜单） ----------
-// cherry 0.11.11 的 drawIo 弹层 iframe 期望私有协议（postMessage 包 eventName:
-// ready?/setData/getData:success，见包内 dist cherry-markdown.core.js 的 ML 对象），
-// 官方只提供 examples/drawio_demo.html 桥接页方案（需自托管整套 drawio_lib 静态资源）。
-// 直接指向 embed.diagrams.net 不通（其 embed 协议用 {event:...} 字段，互不相认）。
-// 这里生成 blob: 桥接页（零静态资源、零依赖）：内嵌 embed.diagrams.net embed 模式
-// iframe（proto=json&export=1&saveAndExit=1），双向翻译两套协议；PNG 导出走 save 事件
-// 的 data 字段，桥接页直传 /api/media（blob: 同源，localStorage 直读 hz_token），
-// getData:success 回给 cherry 的 base64 即 /media/* 路径——插入产物持久化，不走 base64
-// dataURL 落库（会撑爆 DB）。保存按钮是 drawio 编辑器自带的 ✓（saveAndExit），
-// cherry 弹层脚下的"确定"由 CSS 隐藏。
-function createDrawioBridgeUrl(locale: AppLocale): string {
-  const editorUrl = `https://embed.diagrams.net/?embed=1&proto=json&spin=1&export=1&saveAndExit=1&noSaveBtn=1&ui=min&libraries=1&lang=${locale === 'en-US' ? 'en' : 'zh'}`
-  const apiBase = `${window.location.origin}`
-  // 桥接页脚本保持 ES5 风格字符串拼接（外层模板串里不能用反引号/${}）
-  const html = [
-    '<!DOCTYPE html><html><head><meta charset="utf-8">',
-    '<style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100%;height:100%}</style>',
-    '</head><body><script>',
-    'var EDITOR_URL = ' + JSON.stringify(editorUrl) + ';',
-    'var API_BASE = ' + JSON.stringify(apiBase) + ';',
-    'var child = null, loaded = false, pendingXml = null, respawned = false;',
-    'function spawnChild() {',
-    '  loaded = false; respawned = true;',
-    '  if (child) child.remove();',
-    '  child = document.createElement("iframe");',
-    '  child.src = EDITOR_URL;',
-    '  document.body.appendChild(child);',
-    '}',
-    'function toParent(msg) { parent.postMessage(msg, "*"); }',
-    'function toChild(msg) { if (child && child.contentWindow) child.contentWindow.postMessage(msg, "*"); }',
-    'window.addEventListener("message", function (e) {',
-    '  var d = e.data || {};',
-    '  // ---- 宿主（cherry 弹层）→ 桥接页 ----',
-    '  if (d.eventName === "ready?") { if (loaded) toParent({ eventName: "ready", value: "" }); return; }',
-    '  if (d.eventName === "setData") { pendingXml = d.value || ""; if (loaded && pendingXml) toChild({ event: "load", xml: pendingXml }); return; }',
-    '  if (d.eventName === "getData") { return; } // cherry 弹层"确定"已隐藏，不依赖该回路',
-    '  // ---- embed.diagrams.net（embed 协议）→ 桥接页 ----',
-    '  if (d.event === "init") {',
-    '    loaded = true; respawned = false;',
-    '    toParent({ eventName: "ready", value: "" });',
-    '    if (pendingXml) { toChild({ event: "load", xml: pendingXml }); pendingXml = null; }',
-    '    return;',
-    '  }',
-    '  if (d.event === "save") {',
-    '    var xml = d.xml || "";',
-    '    var png = typeof d.data === "string" && d.data.indexOf("data:image") === 0 ? d.data : "";',
-    '    var finish = function (url) {',
-    '      toParent({ eventName: "getData:success", value: { xmlData: xml, base64: url || png || "" } });',
-    '      spawnChild(); // drawio save 后自毁（exit），重建等下一轮',
-    '    };',
-    '    if (png) upload(png); else finish("");',
-    '    return;',
-    '  }',
-    '  if (d.event === "exit" && !respawned) { spawnChild(); }',
-    '});',
-    'function upload(dataUrl) {',
-    '  var token = localStorage.getItem("hz_token") || "";',
-    '  var bin = atob(dataUrl.slice(dataUrl.indexOf(",") + 1));',
-    '  var bytes = new Uint8Array(bin.length);',
-    '  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);',
-    '  var fd = new FormData();',
-    '  fd.append("file", new Blob([bytes], { type: "image/png" }), "drawio-" + Date.now() + ".png");',
-    '  fetch(API_BASE + "/api/media", { method: "POST", headers: token ? { Authorization: "Bearer " + token } : {}, body: fd })',
-    '    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })',
-    '    .then(function (a) { finish(a.url); })',
-    '    .catch(function () { finish(""); }); // 上传失败兜底：base64 直插（cherry 原生行为，不丢图）',
-    '}',
-    'spawnChild();',
-    '<\/script></body></html>'
-  ].join('\n') // 必须换行拼接：脚本里有 // 注释，无缝拼接会把后续代码吞进注释
-  return URL.createObjectURL(new Blob([html], { type: 'text/html' }))
-}
+// ---------- drawIO 画图（cherry drawIo 菜单，照抄官方 examples/drawio_demo.html 集成） ----------
+// 官方方案：drawioIframeUrl 指向自托管 drawio grapheditor 静态页（src/static/drawio/，
+// 资源取自 cherry-markdown 仓库 examples/assets/{drawio_lib,mxgraph}，随 H5 构建原样拷贝），
+// 页内 drawio-bridge.js 实现 cherry 私有 postMessage 协议（ready/setData/getData）。
+// 导出产物是官方原生形态：![](data:image/png;base64,..){data-type=drawio data-xml=..}
+// ——base64 dataURL 必须保留在正文里：cherry 的"预览区点击图片重新编辑"内部正则
+// 只认 data:image/..;base64 形态，换成 /media 路径会静默失去再编辑能力。
 
-// ---------- 自定义媒体插入菜单（image/video 共用） ----------
-// 不用 cherry 原生 image/video 菜单：实测缺陷——同一会话第二笔媒体插入会被上一笔的
-// cacheOnce 语法包裹/吞掉（cherry 0.11.11 cacheOnce×异步回调交错）。自定义菜单走
-// MenuHookBase（官方自定义菜单机制）：input 创建与 click() 在用户手势同一同步栈，
-// Promise 只包异步上传回填；resolve(null) 时 fire 跳过选区替换（取消/失败不吞正文）
+// ---------- 自定义媒体插入菜单（image/audio/video 共用） ----------
+// 不用 cherry 原生 image/video/audio 菜单，两个原因：
+// ① 原生缺陷——同一会话第二笔媒体插入会被上一笔的 cacheOnce 语法包裹/吞掉
+// （cherry 0.11.11 cacheOnce×异步回调交错）；
+// ② 原生 kO() 用未挂载 DOM 的 input 直接 .click()——iOS Safari/微信 WebView 会
+// 静默不弹文件框（真机"点了没反应"根因）。自定义菜单走 MenuHookBase（官方自定义
+// 菜单机制），input 先挂到 body（fixed 定位移出视口，display:none 同样不可点）
+// 再 click()，全程留在用户手势同步栈；resolve(null) 时 fire 跳过选区替换
 class InsertMediaMenu extends MenuHookBase {
   private readonly accept: string
   private readonly build: (url: string, name: string) => string
 
-  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0], kind: 'image' | 'video') {
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0], kind: 'image' | 'audio' | 'video') {
     super(cherryOptions)
     if (kind === 'image') {
       this.accept = 'image/*'
       this.build = (url, name) => `![${name}](${url})\n`
       this.setName('insertImage', 'image') // ch-icon-image
+    } else if (kind === 'audio') {
+      this.accept = 'audio/*'
+      // 语法对齐 cherry 原生音频：!audio[名字](url)（cherry 音频无专属图标，官方同用 video）
+      this.build = (url, name) => `!audio[${name}](${url})\n`
+      this.setName('insertAudio', 'video')
     } else {
       this.accept = 'video/*'
       this.build = (url) => `<video src="${url}" controls></video>\n`
@@ -193,20 +143,32 @@ class InsertMediaMenu extends MenuHookBase {
   }
 
   onClick(): Promise<string | null> {
-    // 同步段：创建 input、挂回调、click() 全在同一同步栈（cherry 派发链
-    // pointerup → _E.onClick → fire → onClick 全程无 await），用户手势必达文件框。
+    // 同步段：创建 input、挂 body、挂回调、click() 全在同一同步栈（cherry 派发链
+    // pointerup → onClick → fire → onClick 全程无 await），用户手势必达文件框。
     // Promise 只包异步上传回填；resolve(null) 时 fire 跳过选区替换（取消/失败不吞正文）
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = this.accept
-    input.style.display = 'none'
+    // 真机铁律：input 必须在文档流内才可 click()——fixed 移出视口保持不可见又可交互
+    input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;'
     input.multiple = false
+    document.body.appendChild(input)
     let settled = false
     const settle = (resolve: (v: string | null) => void, v: string | null) => {
       if (settled) return
       settled = true
+      input.remove() // settle 后立即摘除，不留游离节点
       resolve(v)
     }
+    // cherry fire() 的回填会把刚插入的文本整段设为选区（为 cacheOnce 二次点击设计），
+    // 连续插入时下一笔会把"仍被选中的上一笔"整个替换掉（图片→音频→视频→流程图连插互吞，
+    // 实测实锤）。afterClickCb 在回填后执行一次：把选区折叠成光标，落在插入文本之后
+    this.registerAfterClickCb(() => {
+      const view = (this as unknown as { editor?: { editor?: { view?: { state?: { selection?: { main?: { to?: number } } }; dispatch: (tr: unknown) => void } } } }).editor
+        ?.editor?.view
+      const pos = view?.state?.selection?.main?.to
+      if (view && typeof pos === 'number') view.dispatch({ selection: { anchor: pos } })
+    })
     const done = new Promise<string | null>((resolve) => {
       input.onchange = () => {
         const file = input.files?.[0]
@@ -236,6 +198,12 @@ class InsertImageMenu extends InsertMediaMenu {
   }
 }
 
+class InsertAudioMenu extends InsertMediaMenu {
+  constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
+    super(cherryOptions, 'audio')
+  }
+}
+
 class InsertVideoMenu extends InsertMediaMenu {
   constructor(cherryOptions: ConstructorParameters<typeof MenuHookBase>[0]) {
     super(cherryOptions, 'video')
@@ -249,7 +217,6 @@ function injectCherryCss() {
   // 只替换图标字体的 src（@font-face 唯一；非压缩 css 的 "@font-face {" 带空格，\s* 兼容两种格式）
   const cherryDialogCss = `
 .cherry-dialog { position: fixed !important; z-index: 3000 !important; }
-.cherry-dialog--sure { display: none !important; }
 `
   style.textContent =
     cherryCss.replace(
@@ -259,12 +226,18 @@ function injectCherryCss() {
   document.head.appendChild(style)
 }
 
-// usePlugin 是静态注册（实例化前调用一次）；HMR/多实例下防重复注册报错
+// usePlugin 是静态注册（实例化前调用一次）；HMR/多实例下防重复注册报错。
+// 官方 examples/mermaid.html 方案：usePlugin(插件, {mermaid}) 显式注入渲染引擎
+//（官方 demo 用 engine.syntax.codeBlock.mermaid.src 走 CDN，本项目离线铁律改为
+// 本地打包 mermaid 包直接注入，两路在插件内等价——hasExplicitMermaid 优先）
 let mermaidPluginRegistered = false
 function ensureMermaidPlugin() {
   if (mermaidPluginRegistered) return
   try {
-    Cherry.usePlugin(CherryMermaidPlugin)
+    Cherry.usePlugin(CherryMermaidPlugin, {
+      mermaid: Mermaid,
+      showSourceToolbar: true
+    })
     mermaidPluginRegistered = true
   } catch (e) {
     console.warn('[CherryEditor] mermaid plugin register skipped:', e)
@@ -278,8 +251,7 @@ onMounted(() => {
   // echarts：cherry 内置 table-chart / echarts 代码块插件只从 window.echarts 解析
   //（externals 不生效），挂到 window 才能让图表离线渲染
   ;(window as unknown as { echarts: typeof ECharts }).echarts = ECharts
-  // drawIO 桥接页（blob: 协议翻译 + PNG 直传 /media），挂载时按当前语言生成
-  const drawioBridgeUrl = createDrawioBridgeUrl(i18n.global.locale.value as AppLocale)
+  ensureMermaidPlugin()
   cherry = new Cherry({
     id: hostId,
     value: props.modelValue,
@@ -295,9 +267,10 @@ onMounted(() => {
     },
     toolbars: {
       // 照抄官方 demo（index-demo.js）的 toolbars 块，仅按 0.11.11 与离线可用性裁剪：
-      // drawIo/pdf/word/file 为外部服务不抄；demo 的 customMenuA/B/C 换成 insertVideo
-      // （MenuHookBase 自定义菜单，塞进 strikethrough 折叠组）；insert 组用 cherry 原生
-      // video（demo 同款，走 callback.fileUpload/fileUploadMulti 鉴权直传）。
+      // pdf/word/file 为外部服务不抄；demo 的 customMenuA/B/C 换成自研媒体菜单。
+      // insert 组官方是 ['image','audio','video',...]——原生菜单真机不可弹文件框
+      //（kO() 未挂 DOM input）且有第二笔插入吞字缺陷，三个都换成自研
+      // insertImage/insertAudio/insertVideo（customMenu 注册，见下）
       toolbar: [
         'bold',
         'italic',
@@ -306,6 +279,8 @@ onMounted(() => {
         '|',
         'color',
         'header',
+        '|',
+        'drawIo',
         '|',
         'ol',
         'ul',
@@ -316,7 +291,7 @@ onMounted(() => {
         'detail',
         '|',
         'formula',
-        { insert: ['insertImage', 'audio', 'insertVideo', 'link', 'hr', 'br', 'code', 'inlineCode', 'formula', 'toc', 'table'] },
+        { insert: ['insertImage', 'insertAudio', 'insertVideo', 'link', 'hr', 'br', 'code', 'inlineCode', 'formula', 'toc', 'table'] },
         'graph',
         'proTable',
         '|',
@@ -330,6 +305,7 @@ onMounted(() => {
       toc: { defaultModel: 'full' },
       customMenu: {
         insertImage: InsertImageMenu,
+        insertAudio: InsertAudioMenu,
         insertVideo: InsertVideoMenu
       }
     },
@@ -348,8 +324,9 @@ onMounted(() => {
     // true（多选）路径实测第二笔媒体插入会被上一笔的缓存语法包裹/吞掉（cherry 0.11.11
     // cacheOnce 与异步回调交错的缺陷），多图场景用多次点击或粘贴替代
     multipleFileSelection: false,
-    // drawIO（cherry 官方机制）：iframeSrc 指向 blob 桥接页；为空则 drawIo 按钮点击无效
-    drawioIframeUrl: drawioBridgeUrl,
+    // drawIO（cherry 官方机制，examples/drawio_demo.html 同款）：iframeSrc 指向自托管
+    // drawio grapheditor 静态页（src/static/drawio/，随 H5 构建原样拷贝）；为空则按钮点击无效
+    drawioIframeUrl: '/static/drawio/index.html',
     drawioIframeStyle: 'border: none; width: 100%; height: 100%;',
     callback: {
       fileUpload,

@@ -65,8 +65,10 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { marked } from 'marked'
-// @ts-ignore cherry 可选 addon（自带 mermaid 渲染引擎，零外部导入；与编辑器共用）
-import CherryMermaidPlugin from 'cherry-markdown/dist/addons/cherry-code-block-mermaid-plugin.esm.js'
+// mermaid 渲染引擎（与编辑器同款本地打包入口；default 导入——render/initialize 只在
+// default 导出上；addon 不直接用：其 render 对 mermaid 11 异步版返回 fallback 占位、
+// 靠 cherry 内部 asyncRenderHandler 回填，脱离 cherry 不可用）
+import Mermaid from 'mermaid/dist/mermaid.esm.min.mjs'
 import { setNavTitle } from '../../locale'
 import { useI18n } from 'vue-i18n'
 import MediaGrid from '../../components/MediaGrid.vue'
@@ -85,6 +87,7 @@ import {
   type CommentItem
 } from '../../api/endpoints'
 import { useAuthStore } from '../../stores/auth'
+import { loadMediaUrl } from '../../api/media'
 
 const { t, te } = useI18n()
 const auth = useAuthStore()
@@ -105,42 +108,64 @@ const kindLabel = computed(() =>
 )
 
 // 日志正文渲染完整 Markdown。marked 不理解 cherry 的音视频扩展语法
-//（编辑器原生 video 项插入 !video[name](url) / !audio[alt](url)），读侧转回 HTML
+//（编辑器原生 video 项插入 !video[name](url) / !audio[alt](url)），读侧转回 HTML；
+// video/audio 都要 controls（audio 无控件即隐形）
 const mdHtml = computed(() => {
-  const md = (content.value?.markdownBody ?? '').replace(
-    /!(video|audio)\[([^\]]*)\]\(([^)]+)\)/g,
-    (_m, tag, alt, url) => `<${tag} src="${url}" ${tag === 'video' ? 'controls' : ''}>${alt}</${tag}>`
-  )
+  const md = (content.value?.markdownBody ?? '')
+    // cherry 图片属性块（drawio 产物的 {data-type=drawio data-xml=..}）marked 不认会
+    // 泄漏成正文文本——先转成带属性的 img（xml 编码串留 href 供排查，不再展示）
+    .replace(
+      /!\[([^\]]*)\]\((data:image[^)]+)\)\{data-type=drawio[^}]*\}/g,
+      '<img src="$2" alt="$1" data-type="drawio">'
+    )
+    .replace(
+      /!(video|audio)\[([^\]]*)\]\(([^)]+)\)/g,
+      (_m, tag, alt, url) => `<${tag} src="${url}" controls>${alt}</${tag}>`
+    )
   return marked.parse(md) as string
 })
 
-// ```mermaid 代码块用 cherry 自包含 addon 渲染成流程图（阅读侧与编辑器同引擎）
+// ```mermaid 代码块渲染成流程图（读侧直接走 mermaid.render，异步换入 DOM）
 let mermaidSeq = 0
-let mermaidRenderer: { render: (code: string, index: number, id: string, cfg?: object) => string } | null = null
+let mermaidReady = false
 async function renderMermaidBlocks() {
   const blocks = document.querySelectorAll('.md-body pre > code.language-mermaid')
   if (!blocks.length) return
-  if (!mermaidRenderer) {
-    // addon 实例化不含 cherry 内部状态（渲染引擎自包含）；语法错误走 fallback 保留源码
-    mermaidRenderer = new (CherryMermaidPlugin as unknown as {
-      new (): { render: (code: string, index: number, id: string, cfg?: object) => string }
-    })()
+  if (!mermaidReady) {
+    Mermaid.initialize({ startOnLoad: false })
+    mermaidReady = true
   }
   for (const code of blocks) {
     const src = code.textContent ?? ''
     const id = `mermaid-hz-${++mermaidSeq}`
     try {
-      const html = mermaidRenderer.render(src, Date.now(), id)
+      const { svg } = await Mermaid.render(id, src)
       const wrap = document.createElement('div')
       wrap.className = 'mermaid-figure'
-      wrap.innerHTML = html
+      wrap.innerHTML = svg
       ;(code.parentElement as HTMLElement).replaceWith(wrap)
     } catch {
       // 语法错误保留源码展示，不吞内容
     }
   }
 }
+// 正文里的 /media/*（插图/音频/video 标签）带不上 Authorization 头——渲染后换成
+// loadMediaUrl 的授权 blob url（模块级缓存；换成 blob: 后不再命中选择器，不会循环）
+function swapMediaSrcs() {
+  for (const el of Array.from(
+    document.querySelectorAll('.md-body img[src^="/media/"], .md-body video[src^="/media/"], .md-body audio[src^="/media/"]')
+  )) {
+    const raw = el.getAttribute('src') ?? ''
+    loadMediaUrl(raw)
+      .then((u) => {
+        if (el.getAttribute('src') === raw) el.setAttribute('src', u)
+      })
+      .catch(() => {})
+  }
+}
+
 watch(mdHtml, () => nextTick(() => void renderMermaidBlocks()), { immediate: true })
+watch(mdHtml, () => nextTick(swapMediaSrcs), { immediate: true })
 
 // 农历+天气全显条（homepage-v2）：`乙巳年 腊月初一 · 大雪 ｜ 杭州 · 晴 · 12°C`
 const contextLine = computed(() => {
@@ -379,6 +404,18 @@ async function postComment() {
   color: var(--hz-color-text);
   line-height: 1.8;
   word-break: break-word;
+  /* 正文媒体防溢出：无约束时大图/大视频会横向撑破卡片（编辑器预览区自带约束，读侧此前没有） */
+  :deep(img),
+  :deep(video) {
+    max-width: 100%;
+    height: auto;
+  }
+  :deep(audio) {
+    width: 100%;
+  }
+  :deep(figure) {
+    margin: 8px 0;
+  }
 }
 @media (min-width: 768px) {
   .page {

@@ -68,6 +68,26 @@
 - 新结构：桌面三栏（侧栏 220px｜内容 48-60rem｜右 ToolDock 300px ≥1200px）；发布页日记头+整体卡片+按住录视频；日志编辑器上下布局+MD 附件插入；朋友圈化随记卡；头像全栈
 - 流程教训：**建票前先确认 cwd**（本批次 ticket 文件曾写进 e2e/.scratch/ 被误删，git 未收录，已重建）
 
+## drawio+mermaid 修复轮（2026-10-21，00d132e 之后的返修）
+
+- 三根因（全部对着 cherry 0.11.11 dist 源码实锤）：
+  1. **mermaid 不渲染**：addon 只认 window.mermaid / usePlugin 显式参 / src CDN，旧注释"自带渲染引擎"是误解。修法=官方 examples/mermaid.html 方案改离线：`pnpm add mermaid@11`（官方 demo 钉 11.x；12 未验证）+ `Cherry.usePlugin(插件, {mermaid, showSourceToolbar:true})`。**两个坑**：① 包默认入口 mermaid.core.mjs 有 d3/ts-dedent 外部依赖，uni vite 插件强制 preserveSymlinks:true 下 pnpm 解析不了→构建失败，必须走 `mermaid/dist/mermaid.esm.min.mjs`（零外部导入全量包）；② 该文件 render/initialize **只在 default 导出**（命名导出仅 5 个布局函数），namespace 导入会让 addon 静默判"找不到 mermaid"回退源码，必须 default 导入。阅读侧 detail.vue 不能实例化 addon（asyncRenderHandler 是 cherry 引擎内部机制，脱离 cherry 拿不到回填），直接 `Mermaid.render()` 异步换 DOM。
+  2. **媒体插入真机打不开文件框**：cherry 原生 kO() 与自研菜单都用未挂 DOM 的 input 直接 .click()——iOS Safari/微信 WebView 静默失败。修法：input 先 `position:fixed;left:-9999px` 挂 body 再 click（display:none 同样不可点），settle 后 remove；audio 也换成自研 InsertAudioMenu（原生 audio 走 kO 同病），语法对齐官方 `!audio[name](url)`。
+  3. **drawIO**：旧 blob: 桥接依赖 embed.diagrams.net（国内不可靠）。修法=官方 examples/drawio_demo.html 自托管方案：drawio_lib+mxgraph 静态资源（199 文件 6.4MB，源自 cherry 仓库 examples/assets，跳过运行时不加载的 src/js；tencent.github.io 镜像逐文件下载）落 `frontend/src/static/drawio/`，`drawioIframeUrl: '/static/drawio/index.html'`，drawio-bridge.js 照抄官方协议（ready/setData/getData:getData:success）。**产物必须保持官方 base64 dataURL 形态**：cherry"预览区点击图片再编辑"的 tQ 正则只认 `data:image/..;base64,`，换 /media 路径会静默失去再编辑（此前 /media 直传方案的真实缺陷）。工具栏补上被误裁的 drawIo 按钮；撤销 `.cherry-dialog--sure` 隐藏（getData 回路依赖确定按钮）。exportImage(editable=true) 会把 xml 嵌 PNG zTXt 块，drawio 原生可再开。
+- 终态：Playwright 17/17（cherry spec 新增：音频插入、graph 模板 mermaid 渲染断言 figure svg、drawio 全链路=弹层+editorUIInstance 就绪+setData 注入 g rect+确定导出 dataURL 插入+预览 img[data-type=drawio]）；tsc 0 错；build:h5 通过（dist 含 static/drawio 与 mermaid chunk）
+- 踩坑：e2e 里 drawio 插入前先 Ctrl+End 逃出代码围栏（mermaid 模板测试的光标留在围栏内，直插会被吞成代码文本）；curl 拉镜像文件名中文需 encodeURIComponent；TSV 末行无换行会被 while read 静默跳过
+
+## 浏览器实测轮（2026-10-22，用户指令：e2e+浏览器自测+修复到全绿+推送 GitHub）
+
+- 新增 browser-tour.spec（第 18 条）：UI 全链路=发布日志（图/音/视/mermaid/drawio）→发布→详情页渲染断言+逐步截图；截图经视觉模型目检
+- **连环挖出 4 个真 bug 并即修**：
+  1. **连续插入互吞**（最重要）：cherry fire() 异步回填后把刚插入的文本设为选区（cacheOnce 二次点击设计），下一笔插入会把"仍被选中的上一笔"整段替换——图→音→视→流程图连插只剩最后一笔（bisect 实测实锤）。修：InsertMediaMenu 注册 afterClickCb 把选区折叠成光标。旧 cherry spec 没查前序内容所以漏网
+  2. **详情页 /media 全 401 断图**：detail.vue v-html 直出，img/video/audio 带不上 Authorization（GET /media 是 [Authorize]）。修：mdHtml watch 后 loadMediaUrl 换授权 blob src（与编辑器 swapMediaSrc 同模式）
+  3. **详情页 drawio 属性泄漏**：marked 不认 cherry `{data-type=drawio data-xml=..}` 属性块，泄漏成正文文本。修：预处理正则转 `<img data-type="drawio">`；顺带 audio 转换补 controls（此前 audio 无控件=隐形）
+  4. **详情页媒体溢出**：.md-body 无 max-width 约束，大图横向撑破卡片（截图目检发现）。修：:deep(img/video) max-width:100%
+- spec 教训：cherry spec 中段有 page.reload()（预览开关持久化验证）会清空草稿，"前序内容存活"断言必须放 reload 之前
+- 终态：**Playwright 18/18** + tsc 0 错 + build:h5 通过；浏览器 tour 详情页断言含"图片真实解码"（naturalWidth>0，防元素在但 401）
+
 ## 一键验收
 
 ```bash
