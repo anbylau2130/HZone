@@ -127,10 +127,16 @@ watch(
   { immediate: true }
 )
 
-// 回顶按钮：页面滚动超一屏（600px）才显示
+// 回顶按钮：页面滚动超一屏（600px）才显示；同一个 window scroll 监听
+// 顺带做滚动加载检测（距底 ≤300px 自动拉下一页，uni-app H5 页面滚动即 window 滚动）
 const showTop = ref(false)
 function onScroll() {
   showTop.value = window.scrollY > 600
+  const distance = document.documentElement.scrollHeight - window.innerHeight - window.scrollY
+  // emit 前先判断 finished/loading 防重复；loadMore 本身也有防重入
+  if (distance <= 300 && !props.finished && !props.loading) {
+    emit('load-more')
+  }
 }
 function toTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })

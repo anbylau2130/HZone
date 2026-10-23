@@ -52,7 +52,7 @@
           <text class="tcell c-words">{{ $t('journals.colWords') }}</text>
           <text class="tcell c-op">{{ $t('journals.colActions') }}</text>
         </view>
-        <view v-for="c in items" :key="c.id" class="trow" @click="openDetail(c)">
+        <view v-for="c in tableItems" :key="c.id" class="trow" @click="openDetail(c)">
           <text class="tcell c-title">{{ c.title }}</text>
           <text class="tcell c-date">{{ formatDateTime(c.createdAt) }}</text>
           <text class="tcell c-words">{{ formatWords(wordCount(c)) }}</text>
@@ -71,11 +71,28 @@
         @load-more="loadMore"
       />
 
-      <!-- 加载更多行仅卡片/表格视图（阅读视图自带动态加载） -->
-      <view v-if="items.length && viewMode !== 'read'" class="more">
-        <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
-        <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
-          {{ $t('common.loadMore') }}
+      <!-- 卡片视图滚动近底部自动加载（useInfiniteScroll），结束后只留提示；
+           表格视图走下方经典分页；阅读视图由 JournalReader 自带预加载 -->
+      <view v-if="items.length && viewMode === 'card' && finished" class="more">
+        <text class="hint-text">{{ $t('common.noMore') }}</text>
+      </view>
+
+      <!-- 表格视图经典分页：上一页 / 页码 / 下一页（表格不参与滚动加载） -->
+      <view v-if="items.length && viewMode === 'table'" class="pager">
+        <button
+          class="pager-btn"
+          :disabled="tablePage <= 1 || tableLoading"
+          @click="goTablePage(tablePage - 1)"
+        >
+          {{ $t('journals.prevPage') }}
+        </button>
+        <text class="pager-label">{{ $t('journals.pageOf', { x: tablePage, y: tablePages }) }}</text>
+        <button
+          class="pager-btn"
+          :disabled="tablePage >= tablePages || tableLoading"
+          @click="goTablePage(tablePage + 1)"
+        >
+          {{ $t('journals.nextPage') }}
         </button>
       </view>
     </view>
@@ -88,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
@@ -96,6 +113,7 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
 import JournalReader from '../../components/JournalReader.vue'
 import { usePagination } from '../../composables/usePagination'
+import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import { listMyContents, type ContentItem } from '../../api/endpoints'
 import { formatDateTime, stripMarkdown } from '../../utils/format'
 import { weatherChipText } from '../../utils/weather'
@@ -105,10 +123,18 @@ const pagination = usePagination<ContentItem>((offset, limit) =>
 )
 const { items, finished, loadMore } = pagination
 
+// 卡片视图滚动近底部自动加载；表格/阅读视图不触发（阅读由 JournalReader 预加载）
+useInfiniteScroll(() => {
+  if (viewMode.value !== 'card') return
+  if (!finished.value && !pagination.loading.value) loadMore()
+})
+
 // onShow 而非 onLoad：H5 端直接 hash 进入时 onLoad 不触发，onShow 稳定
 onShow(() => {
   setNavTitle('journals.title')
   pagination.refresh()
+  // 表格视图有独立分页状态：编辑保存回来后刷新当前页（首次进入由 watch(viewMode) 负责）
+  if (viewMode.value === 'table' && tableItems.value.length) fetchTablePage(tablePage.value)
 })
 
 // ---------- 视图切换：阅读（默认）/卡片/表格，localStorage 记忆 ----------
@@ -121,7 +147,41 @@ const viewMode = ref<'card' | 'table' | 'read'>(
 function setViewMode(mode: 'card' | 'table' | 'read') {
   viewMode.value = mode
   localStorage.setItem(VIEW_KEY, mode)
+  // 切到表格视图拉第 1 页（表格走经典分页，独立状态，与滚动加载流互不干扰）
+  if (mode === 'table') fetchTablePage(1)
 }
+
+// ---------- 表格视图经典分页：独立 page/total/items 状态（复用 listMyContents
+// fetcher，offset=(page-1)*pageSize），与卡片/阅读的 usePagination 滚动加载流互不干扰 ----------
+const TABLE_PAGE_SIZE = 20
+const tablePage = ref(1)
+const tableTotal = ref(0)
+const tableItems = ref<ContentItem[]>([])
+const tableLoading = ref(false)
+const tablePages = computed(() => Math.max(1, Math.ceil(tableTotal.value / TABLE_PAGE_SIZE)))
+
+async function fetchTablePage(page: number) {
+  tableLoading.value = true
+  try {
+    const res = await listMyContents('journal', (page - 1) * TABLE_PAGE_SIZE, TABLE_PAGE_SIZE)
+    tableItems.value = res.items
+    tableTotal.value = res.total
+    tablePage.value = page
+  } finally {
+    tableLoading.value = false
+  }
+}
+
+function goTablePage(p: number) {
+  // 边界外 / 在途请求时忽略（按钮本身已 disabled，这里是兜底防重入）
+  if (p < 1 || p > tablePages.value || tableLoading.value) return
+  fetchTablePage(p)
+}
+
+// 表格视图初始进入（localStorage 恢复）或切换时拉取第一页；onShow 里另有编辑返回后的当前页刷新
+watch(viewMode, (v) => {
+  if (v === 'table') fetchTablePage(1)
+}, { immediate: true })
 
 function openDetail(c: ContentItem) {
   uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
@@ -313,6 +373,32 @@ function formatWords(n: number): string {
   justify-content: center;
   padding: 4px 0 12px;
 }
+/* 表格分页条：上一页 / 页码 / 下一页 */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 4px 0 12px;
+}
+.pager-btn {
+  height: 32px;
+  line-height: 32px;
+  padding: 0 14px;
+  background: var(--hz-color-surface);
+  color: var(--hz-color-interactive);
+  border: 1px solid var(--hz-color-border);
+  border-radius: var(--hz-radius-md);
+  font-size: var(--hz-font-size-sm);
+}
+.pager-btn[disabled] {
+  opacity: 0.45;
+}
+.pager-label {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
 /* 视图切换：两个小 pill 并排，on 态 primary */
 .view-toggle {
   display: inline-flex;
@@ -402,16 +488,6 @@ function formatWords(n: number): string {
 .hint-text {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
-}
-.pick {
-  width: 60%;
-  height: 38px;
-  line-height: 38px;
-  background: var(--hz-color-surface);
-  color: var(--hz-color-interactive);
-  border-radius: var(--hz-radius-md);
-  font-size: var(--hz-font-size-sm);
-  border: 1px solid var(--hz-color-border);
 }
 @media (min-width: 768px) {
   .page {

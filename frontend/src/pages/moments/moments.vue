@@ -98,11 +98,9 @@
         </view>
       </view>
 
-      <view v-if="items.length" class="more">
-        <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
-        <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
-          {{ $t('common.loadMore') }}
-        </button>
+      <!-- 滚动近底部自动加载（useInfiniteScroll），结束后只留提示 -->
+      <view v-if="items.length && finished" class="more">
+        <text class="hint-text">{{ $t('common.noMore') }}</text>
       </view>
     </view>
 
@@ -126,6 +124,7 @@ import ProfileHeader from '../../components/ProfileHeader.vue'
 import CardOwnerActions from '../../components/CardOwnerActions.vue'
 import SayComposer from '../../components/SayComposer.vue'
 import { usePagination } from '../../composables/usePagination'
+import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import {
   listMyContents,
   searchContents,
@@ -150,6 +149,11 @@ const pagination = usePagination<ContentItem>((offset, limit) => {
   return kw ? searchContents(kw, 'say', offset, limit) : listMyContents('say', offset, limit)
 })
 const { items, finished, loadMore } = pagination
+
+// 滚动近底部自动加载；回调防重入由 usePagination 短路（loading/finished 已判断）
+useInfiniteScroll(() => {
+  if (!finished.value && !pagination.loading.value) loadMore()
+})
 
 function toggleSearch() {
   searchOpen.value = !searchOpen.value
@@ -494,16 +498,6 @@ async function uploadCoverFile(path: string | Blob) {
 .hint-text {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
-}
-.pick {
-  width: 60%;
-  height: 38px;
-  line-height: 38px;
-  background: var(--hz-color-surface);
-  color: var(--hz-color-interactive);
-  border-radius: var(--hz-radius-md);
-  font-size: var(--hz-font-size-sm);
-  border: 1px solid var(--hz-color-border);
 }
 @media (min-width: 768px) {
   .page {

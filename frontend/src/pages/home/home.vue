@@ -84,11 +84,9 @@
 
       <ContentCard v-for="c in items" :key="c.id" :content="c" @updated="onCardUpdated" @deleted="onCardDeleted" />
 
-      <view v-if="items.length" class="more">
-        <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
-        <button v-else class="pick" :disabled="pagination.loading.value" @click="loadMore">
-          {{ $t('common.loadMore') }}
-        </button>
+      <!-- 滚动近底部自动加载（useInfiniteScroll），结束后只留提示 -->
+      <view v-if="items.length && finished" class="more">
+        <text class="hint-text">{{ $t('common.noMore') }}</text>
       </view>
     </view>
 
@@ -123,6 +121,7 @@ import SegmentedFilter from '../../components/SegmentedFilter.vue'
 import Heatmap from '../../components/Heatmap.vue'
 import Footprints from '../../components/Footprints.vue'
 import { usePagination } from '../../composables/usePagination'
+import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import { getWeather, CONDITION_ICONS, type WeatherSnapshot } from '../../utils/weather'
 import { formatLunar } from '../../utils/lunar'
 import { i18n } from '../../locale'
@@ -214,6 +213,11 @@ const pagination = usePagination<ContentItem>((offset, limit) =>
   listMyContents(kind.value, offset, limit)
 )
 const { items, finished, loadMore } = pagination
+
+// 滚动近底部自动加载；回调防重入由 usePagination 短路（loading/finished 已判断）
+useInfiniteScroll(() => {
+  if (!finished.value && !pagination.loading.value) loadMore()
+})
 
 onShow(async () => {
   try {
@@ -475,16 +479,6 @@ function onCardUpdated(c: ContentItem) {
   display: flex;
   justify-content: center;
   padding: 4px 0 12px;
-}
-.pick {
-  width: 60%;
-  height: 38px;
-  line-height: 38px;
-  background: var(--hz-color-surface);
-  color: var(--hz-color-primary);
-  border-radius: var(--hz-radius-md);
-  font-size: var(--hz-font-size-sm);
-  border: 1px solid var(--hz-color-border);
 }
 @media (min-width: 768px) {
   .page {

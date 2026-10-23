@@ -149,7 +149,10 @@
     "colActions": "操作",
     "viewRead": "阅读",
     "readerPrev": "‹ 上一篇",
-    "readerNext": "下一篇 ›"
+    "readerNext": "下一篇 ›",
+    "prevPage": "上一页",
+    "nextPage": "下一页",
+    "pageOf": "第 {x} / {y} 页"
   },
   "publish": {
     "sayPlaceholder": "说点什么…",
