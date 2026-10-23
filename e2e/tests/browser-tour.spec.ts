@@ -2,7 +2,7 @@
 // → 日志阅读视图渲染"全链路，每步截图供人工目检。作为回归用例保留。
 // （详情页已移除：读侧渲染断言迁移到 /pages/journals/journals 阅读视图信息流）
 import { test, expect } from '@playwright/test'
-import { loginViaUi, registerAndVerifyViaApi, uniButton } from './helpers'
+import { enterJournalEditMode, loginViaUi, registerAndVerifyViaApi, toggleJournalPreview, uniButton } from './helpers'
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -21,7 +21,8 @@ test('browser tour: journal with image/audio/video/mermaid/drawio renders in rea
   await page.setViewportSize({ width: 1280, height: 900 })
   await loginViaUi(page, user)
   await page.goto('/#/pages/publish/publish?kind=journal')
-  await page.waitForSelector('.cherry-editor .cm-content', { timeout: 20_000 })
+  // 新规则：发布页默认预览模式——先切「编辑」再操作编辑器
+  await enterJournalEditMode(page)
 
   // 标题 + 正文开头（uni-input 包装，fill 打内层 input）
   const titleInput = page.locator('.j-title input')
@@ -59,9 +60,13 @@ test('browser tour: journal with image/audio/video/mermaid/drawio renders in rea
   await page.locator('.cherry-toolbar-insertChart').click()
   await expect(page.locator('.cherry-dropdown[name="graph"] .cherry-dropdown-item').first()).toBeVisible()
   await page.locator('.cherry-dropdown[name="graph"] .cherry-dropdown-item').first().click()
+  // 预览即时验证 mermaid 渲染（桌面双栏常显 no-op，移动端点切换按钮），验证后切回
+  await toggleJournalPreview(page)
   await expect(page.locator('.cherry-previewer figure[data-type="mermaid"] svg').first()).toBeVisible({
     timeout: 20_000,
   })
+  await toggleJournalPreview(page)
+  await expect(page.locator('.cherry-editor .cm-content')).toBeVisible()
 
   // ---- drawio：弹层 → 注入 xml → 确定 → base64 插入 ----
   await page.keyboard.press('Control+End')
@@ -89,6 +94,8 @@ test('browser tour: journal with image/audio/video/mermaid/drawio renders in rea
   await shot('03-drawio-graph-loaded')
   await page.locator('.cherry-dialog--sure').click()
   await expect(cm).toContainText('data:image/png;base64', { timeout: 20_000 })
+  // 预览即时验证 drawio 渲染（桌面双栏常显 no-op；移动端切预览，截图也在预览态，正文完整可见）
+  await toggleJournalPreview(page)
   await expect(page.locator('.cherry-previewer img[data-type="drawio"]').first()).toBeVisible({ timeout: 15_000 })
   await shot('04-editor-all-content')
 

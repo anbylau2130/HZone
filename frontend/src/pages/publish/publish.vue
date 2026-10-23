@@ -69,19 +69,28 @@
       <text class="hint">{{ $t('publish.mediaRule') }}</text>
     </view>
 
-    <!-- 日志：标题独立（无圆角+分隔线）→ cherry-markdown 编辑器（内置工具栏+实时预览同框） -->
+    <!-- 日志：标题独立（无圆角+分隔线）。桌面双栏（编辑器+预览并排常显）；
+         移动端 cherry 互斥单显（纯编辑 ↔ 满宽预览，标题后按钮切换） -->
     <template v-else>
       <view class="panel journal-panel">
         <view class="j-head-row">
           <input v-model="title" class="j-title" :placeholder="$t('publish.titlePlaceholder')" />
           <!-- #ifdef H5 -->
+          <!-- 预览态显示「编辑」、编辑态显示「预览」（按钮指向可切入的模式）；仅移动端显示（桌面 CSS 隐藏） -->
           <view class="preview-toggle" :class="{ on: previewOn }" @click="previewOn = !previewOn">
-            <text class="pt-text">{{ $t('publish.previewToggle') }}</text>
+            <text class="pt-text">{{ previewOn ? $t('common.edit') : $t('publish.previewToggle') }}</text>
           </view>
           <!-- #endif -->
         </view>
         <!-- #ifdef H5 -->
-        <CherryEditor v-model="markdown" :placeholder="$t('publish.bodyPlaceholder')" :preview="previewOn" />
+        <!-- 桌面不传 exclusive → cherry edit&preview 双栏；移动端 exclusive 互斥单显 -->
+        <CherryEditor
+          v-model="markdown"
+          :placeholder="$t('publish.bodyPlaceholder')"
+          :exclusive="isMobile"
+          :initial-preview="previewOn"
+          :preview="previewOn"
+        />
         <!-- #endif -->
         <!-- #ifndef H5 -->
         <textarea
@@ -360,11 +369,16 @@ watch([title, markdown, sayText], () => {
   if (title.value || markdown.value || sayText.value) saveDraft()
 })
 
-// ---------- 日志预览开关（仅 H5） ----------
-// CSS 类隐藏 .cherry-previewer（不依赖 cherry 内部 API），状态 localStorage 记忆
+// ---------- 日志预览/编辑切换（仅 H5） ----------
+// 桌面（≥768px）：双栏常显（previewOn 恒 true，切换按钮 CSS 隐藏）；
+// 移动（<768px）：默认纯编辑，用户点标题后按钮在「编辑 ↔ 预览」间切换并持久化。
+// 传给 CherryEditor 的 exclusive（仅移动端）/initial-preview/preview 三件套驱动 switchModel 切换
 // #ifdef H5
 const PREVIEW_KEY = 'hz-journal-preview'
-const previewOn = ref(localStorage.getItem(PREVIEW_KEY) !== 'off')
+// 断点 767px 与样式表 @media (max-width: 767px) 保持一致
+const isMobile = window.matchMedia('(max-width: 767px)').matches
+// 桌面恒双栏；移动默认关，用户开关后持久化到 localStorage
+const previewOn = ref(isMobile ? localStorage.getItem(PREVIEW_KEY) === 'on' : true)
 watch(previewOn, (v) => {
   localStorage.setItem(PREVIEW_KEY, v ? 'on' : 'off')
 })
@@ -1083,8 +1097,12 @@ async function submit() {
   font-size: var(--hz-font-size-base);
 }
 @media (min-width: 768px) {
+  /* 预览切换按钮桌面隐藏：桌面恒双栏，无需切换 */
+  .preview-toggle {
+    display: none;
+  }
+  /* journal 模式占满左导航与 dock 之间的可用宽度，仅留 24px padding */
   .page {
-    /* journal 模式占满左导航与 dock 之间的可用宽度，仅留 24px padding */
     padding: 32px 24px;
   }
   /* say 短内容：单栏限宽居中（覆盖视口 padding 公式，否则 672px 盒子被 185px×2 的 padding 挤扁） */

@@ -237,6 +237,32 @@ export async function openEntry(page: Page, label: string): Promise<void> {
 }
 
 /**
+ * 进入发布页日志编辑态（视口自适应）：
+ * 桌面（≥768px）双栏编辑器常显、移动端默认纯编辑——两者编辑器均直接可见；
+ * 仅当编辑器不可见（如 localStorage 记忆停留在预览态）才点标题后切换按钮。
+ */
+export async function enterJournalEditMode(page: Page): Promise<void> {
+  const editor = page.locator('.cherry-editor .cm-content')
+  // isVisible 是即时快照（cherry 异步初始化中可能尚未就绪），先给一段可见性等待
+  const ready = await editor
+    .waitFor({ state: 'visible', timeout: 8_000 })
+    .then(() => true)
+    .catch(() => false)
+  if (ready) return
+  await page.locator('.preview-toggle').click()
+  await expect(editor).toBeVisible({ timeout: 20_000 })
+}
+
+/**
+ * 切到日志预览态：桌面双栏预览面板常显（调用为 no-op）；
+ * 移动端（<768px）点标题后切换按钮进入满宽预览。验证后用同函数切回。
+ */
+export async function toggleJournalPreview(page: Page): Promise<void> {
+  const isDesktop = await page.evaluate(() => window.matchMedia('(min-width: 768px)').matches)
+  if (!isDesktop) await page.locator('.preview-toggle').click()
+}
+
+/**
  * 回首页后退出登录。深层页面沿浏览器历史后退（uni-app hash 路由响应 popstate），
  * 避免 hash URL goto 的整页 reload 竞态。退出按钮在桌面侧栏底部（首页不再有退出按钮）。
  */

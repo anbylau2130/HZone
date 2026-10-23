@@ -4,7 +4,7 @@
     ref="host"
     :id="hostId"
     class="cherry-host"
-    :class="{ 'no-preview': !preview && !previewOnly, 'preview-only': previewOnly }"
+    :class="{ 'no-preview': !preview && !previewOnly, 'preview-only': previewOnly || (exclusive && preview) }"
   ></div>
 </template>
 
@@ -44,7 +44,9 @@ import * as ECharts from 'echarts'
 
 // compact：时间线内联编辑用精简菜单，渲染引擎与发布页同一 cherry 保证观感一致；
 // height：编辑器高度（cherry 以内联 style 写到挂载点，不传走默认 60vh）；
-// previewOnly：纯预览模式（读侧正文渲染统一走 cherry，用户决策），高度自适应内容
+// previewOnly：纯预览模式（读侧正文渲染统一走 cherry，用户决策），高度自适应内容；
+// exclusive：互斥单显（预览/编辑二选一，彻底无双栏，发布页用）——preview=true 只渲染
+// 预览、false 纯编辑；initialPreview 仅决定首挂模式，后续切换走 preview 的 watch
 const props = defineProps<{
   modelValue: string
   placeholder?: string
@@ -52,6 +54,8 @@ const props = defineProps<{
   compact?: boolean
   height?: string
   previewOnly?: boolean
+  exclusive?: boolean
+  initialPreview?: boolean
 }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
@@ -358,14 +362,21 @@ onMounted(() => {
     // edit&preview）——edit&preview 是其内置双栏（编辑|实时预览同框，无分离预览窗）
     editor: {
       // previewOnly（读侧正文渲染统一走 cherry，用户决策）：纯预览无编辑区，工具栏/编辑区
-      // 由 cherry 自行隐藏；其余模式默认带实时预览（用户要求编辑时能直接看到渲染结果，
-      // 与发布页一致）；预览开关仍可切换。发布页同为 edit&preview 双栏
+      // 由 cherry 自行隐藏（cherry init 末尾统一 switchModel(defaultModel)，全量工具栏也不显形）；
+      // exclusive：发布页移动端互斥单显（预览/编辑二选一，桌面走下方双栏），initialPreview 决定首挂模式；
+      // 其余（卡片内联编辑）保持 edit&preview 双栏现状
       // TODO(安全): cherry 预览他人内容的 XSS 面需单独评估
-      defaultModel: props.previewOnly ? 'previewOnly' : 'edit&preview',
+      defaultModel: props.previewOnly
+        ? 'previewOnly'
+        : props.exclusive
+          ? props.initialPreview
+            ? 'previewOnly'
+            : 'editOnly'
+          : 'edit&preview',
       // cherry 会把该值以内联 style 写到挂载点上（内联优先于组件 css），所以高度从这传；
-      // previewOnly 传 auto（cherry 源码：挂载点无内联 height 时才写该值，'auto' 合法），
+      // 纯预览/exclusive 首挂预览传 auto（cherry 源码：挂载点无内联 height 时才写该值，'auto' 合法），
       // 卡片/阅读页不能像编辑器那样定高 60vh，必须跟随内容伸展
-      height: props.previewOnly ? 'auto' : props.height ?? '60vh',
+      height: props.previewOnly || (props.exclusive && props.initialPreview) ? 'auto' : (props.height ?? '60vh'),
       // 0.11 的 placeholder 透传给 CodeMirror 走 editor.codemirror 子配置；纯预览无输入框，不传
       codemirror: props.previewOnly ? undefined : { placeholder: props.placeholder }
     },
@@ -510,6 +521,19 @@ watch(
   }
 )
 
+// exclusive 预览/编辑互斥切换：cherry 0.11.11 实例有 switchModel（无 setMode），
+// 编辑器/预览 DOM 与内容都保留（editOnly 时 previewer 把当前渲染 html 缓存回 editor），
+// 无需销毁重建；同时同步挂载点内联 height——首挂预览写的是 auto，编辑模式要恢复定高，
+// 内联优先级高于组件 css，单靠 class 覆盖不了。非 exclusive 调用方不进此分支，行为不变
+watch(
+  () => props.preview,
+  (v) => {
+    if (!props.exclusive || !cherry || !host.value) return
+    cherry.switchModel(v ? 'previewOnly' : 'editOnly')
+    host.value.style.height = v ? 'auto' : (props.height ?? '60vh')
+  }
+)
+
 /** 编辑回填入口（外部一次性设置内容用） */
 function setMarkdown(v: string) {
   cherry?.setMarkdown(v)
@@ -567,10 +591,22 @@ defineExpose({ setMarkdown })
 .cherry-host :deep(.cherry .cm-editor) {
   background: transparent;
 }
+/* 编辑面板可选中复制：uni 容器默认禁选中的老坑，源码划选/长按复制必须显式放开
+（CM6 的 .cm-editor 与旧 CM5 的 .CodeMirror 都覆盖；顶层 ：deep 勿嵌套） */
+.cherry-host :deep(.cm-editor),
+.cherry-host :deep(.CodeMirror) {
+  user-select: text;
+  -webkit-user-select: text;
+}
+/* 预览面板全局去外框/外间隔（cherry 自带 padding: 20px 45px 20px 20px + 左侧 2px 分隔线）：
+   所有实例的预览一律裸排——预览是页面的正文本身，不再有"面板感"。宽度规则各模式自理
+   （preview-only 类/移动端规则控制 100%），避免误伤卡片内联编辑的 edit&preview 双栏 */
 .cherry-host :deep(.cherry-previewer) {
   font-size: 15px;
   line-height: 1.8;
-  padding: 12px 16px;
+  padding: 0;
+  border: none;
+  margin: 0;
   overflow-y: auto;
 }
 .cherry-host :deep(.cherry-previewer img),
@@ -580,20 +616,14 @@ defineExpose({ setMarkdown })
 /* 移动端隐藏 markdown 工具栏（用户要求）：触屏打字为主，格式工具用得少，
    还给正文更多纵向空间；cherry 0.11 的工具栏自身不响应窄屏，只能 CSS 收掉 */
 @media (max-width: 767px) {
-  /* 移动端不适合源码编辑（用户决策）：编辑页只显示渲染预览 */
-  .cherry-host :deep(.cherry-toolbar),
-  .cherry-host :deep(.cherry-editor) {
+  /* 移动端隐藏工具栏（触屏以打字为主）；编辑/预览由标题后的预览图标切换，不强制 */
+  .cherry-host :deep(.cherry-toolbar) {
     display: none !important;
   }
-  /* 用户主动关掉的预览（no-preview）仍尊重，不强行展开 */
+  /* 预览开着时收回全宽（双栏分宽在窄屏挤不下；边框/间隔已全局去掉，这里只管宽度） */
   .cherry-host:not(.no-preview) :deep(.cherry-previewer) {
-    display: block !important;
-    /* 双栏分宽是 cherry 运行时算的（内联 50%），编辑面板隐藏后必须收回全宽，
-       否则内容挤在半栏里（用户反馈"内容显示太小"） */
     width: 100% !important;
     max-width: 100% !important;
-    border: none !important;
-    padding: 0 4px !important;
   }
 }
 

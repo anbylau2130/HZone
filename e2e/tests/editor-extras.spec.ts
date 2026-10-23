@@ -3,7 +3,14 @@
 import { expect, test } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
-import { API_BASE, loginViaUi, registerAndVerifyViaApi, uniButton } from './helpers'
+import {
+  API_BASE,
+  enterJournalEditMode,
+  loginViaUi,
+  registerAndVerifyViaApi,
+  toggleJournalPreview,
+  uniButton,
+} from './helpers'
 
 const RESULT_DIR = path.resolve(__dirname, '../test-results/editor-extras')
 
@@ -48,9 +55,9 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
   await expect(page.locator('.table .thead')).toBeVisible()
   await expect(page.locator('.trow .c-title', { hasText: '表格视图测试' })).toBeVisible()
 
-  // 表格"编辑"直达 publish 编辑页（与创建同一页面）
+  // 表格"编辑"直达 publish 编辑页（与创建同一页面）；新规则默认预览模式，先切「编辑」
   await page.locator('.trow .op', { hasText: '编辑' }).first().click()
-  await expect(page.locator('.cherry-editor .cm-content')).toBeVisible({ timeout: 20_000 })
+  await enterJournalEditMode(page)
   await expect(page.locator('.j-title input')).toHaveValue('表格视图测试')
 
   // 回列表切阅读视图：连续信息流——两篇竖向堆叠，最新在上，无翻页控件
@@ -93,8 +100,9 @@ test('editor extras: open local md, export menu, insert file attachment', async 
   const user = await registerAndVerifyViaApi('ExtraUser')
   await loginViaUi(page, user)
   await page.goto('/#/pages/publish/publish?kind=journal')
+  // 新规则：发布页默认预览模式——先切「编辑」
+  await enterJournalEditMode(page)
   const cm = page.locator('.cherry-editor .cm-content')
-  await cm.waitFor({ state: 'visible', timeout: 20_000 })
 
   fs.mkdirSync(RESULT_DIR, { recursive: true })
   const mdFile = path.join(RESULT_DIR, 'local-doc.md')
@@ -140,6 +148,8 @@ test('editor extras: open local md, export menu, insert file attachment', async 
   ])
   await chooser3.setFiles(txt)
   await expect(cm).toContainText('[附件说明.txt](/media/', { timeout: 15_000 })
+  // 预览即时断言附件链接渲染（桌面双栏常显 no-op；移动端切预览，后续发布在预览态也能提交）
+  await toggleJournalPreview(page)
   await expect(page.locator('.cherry-previewer a[href^="/media/"]').first()).toBeVisible()
 
   // 发布 → 详情页：附件链接在，点击走授权下载（download 事件 + 原文件名）

@@ -1,9 +1,10 @@
 // 最高优先级验证：真实手势链（trusted mouse 事件）下文件框必弹——上传全流程逐现象验证
-// 1280 + 375 双视口。Chromium 的 filechooser 事件只在内部"用户激活检查"通过后派发；
-// 激活缺失时只打 "File chooser dialog can only be shown with a user activation" 警告不发事件。
-// 工具栏为官方 demo 版：图片/视频在「插入」折叠组（insertImage 第 1 项、insertVideo 第 3 项，均自定义菜单）。
+// 仅 1280 桌面视口（媒体插入按钮在工具栏里，移动端 <768px 工具栏整体隐藏是既定交互决策，
+// 375 视口无工具栏可点，该流程不可跑）。Chromium 的 filechooser 事件只在内部"用户激活检查"
+// 通过后派发；激活缺失时只打 "File chooser dialog can only be shown with a user activation"
+// 警告不发事件。工具栏为官方 demo 版：图片/视频在「插入」折叠组（自定义菜单）。
 import { test, expect } from '@playwright/test'
-import { loginViaUi, registerAndVerifyViaApi } from './helpers'
+import { enterJournalEditMode, loginViaUi, registerAndVerifyViaApi, toggleJournalPreview } from './helpers'
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -16,7 +17,8 @@ async function setup(page: import('@playwright/test').Page, width: number) {
   await page.setViewportSize({ width, height: 900 })
   await loginViaUi(page, user)
   await page.goto('/#/pages/publish/publish?kind=journal')
-  await page.waitForSelector('.cherry-editor .cm-content', { timeout: 20_000 })
+  // 视口自适应：桌面双栏常显直入；若记忆停在预览态则点标题后切换按钮回编辑
+  await enterJournalEditMode(page)
 }
 
 async function rawClick(page: import('@playwright/test').Page, locator: import('@playwright/test').Locator) {
@@ -27,7 +29,7 @@ async function rawClick(page: import('@playwright/test').Page, locator: import('
   await page.mouse.up()
 }
 
-for (const width of [1280, 375]) {
+for (const width of [1280]) {
   test(`gesture upload flow @ ${width}px`, async ({ page }) => {
     await setup(page, width)
     const activationWarnings: string[] = []
@@ -50,8 +52,12 @@ for (const width of [1280, 375]) {
       timeout: 15_000,
     })
     console.log(`[${width}] ③视频回填: <video> HTML 已插入编辑区`)
+    // 预览即时渲染：移动端切「预览」验证再切回；桌面双栏预览常显（helper 内 no-op）
+    await toggleJournalPreview(page)
     await expect(page.locator('.cherry-previewer video').first()).toBeVisible({ timeout: 10_000 })
     console.log(`[${width}] ④预览即时渲染: <video> 可见`)
+    await toggleJournalPreview(page)
+    await expect(page.locator('.cherry-editor .cm-content')).toBeVisible()
 
     // ---- ② 图片（insert 折叠第 1 项）
     await rawClick(page, page.locator('.cherry-toolbar-insert'))
@@ -64,8 +70,11 @@ for (const width of [1280, 375]) {
     await chooserI!.setFiles({ name: 'pic.png', mimeType: 'image/png', buffer: PNG })
     await expect(page.locator('.cherry-editor .cm-content')).toContainText('![pic.png](/media/', { timeout: 15_000 })
     console.log(`[${width}] ⑥图片回填: ![pic.png](/media/…) 已插入编辑区`)
+    await toggleJournalPreview(page)
     await expect(page.locator('.cherry-previewer img').first()).toBeVisible({ timeout: 10_000 })
     console.log(`[${width}] ⑦预览即时渲染: 图片可见`)
+    await toggleJournalPreview(page)
+    await expect(page.locator('.cherry-editor .cm-content')).toBeVisible()
 
     // 无 user-activation 警告 = Chromium 激活检查通过 = 真实浏览器必然弹 OS 文件框
     expect(activationWarnings, '不得出现 user activation 警告').toEqual([])

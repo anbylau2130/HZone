@@ -1,7 +1,7 @@
 // 日志编辑复用创建页：日志页表格视图「编辑」→ publish?id=（cherry 全套编辑器回填）→
 // 保存 PUT → 返回列表刷新。（详情页已移除：编辑入口改走 journals 表格视图）
 import { expect, test } from '@playwright/test'
-import { API_BASE, loginViaUi, registerAndVerifyViaApi, uniButton } from './helpers'
+import { API_BASE, enterJournalEditMode, loginViaUi, registerAndVerifyViaApi, uniButton } from './helpers'
 
 test('edit journal reuses publish page with cherry editor', async ({ page }) => {
   const user = await registerAndVerifyViaApi('EditUser')
@@ -28,10 +28,10 @@ test('edit journal reuses publish page with cherry editor', async ({ page }) => 
   await page.locator('.view-toggle .vt', { hasText: '表格' }).click()
   await expect(page.locator('.trow .c-title', { hasText: '编辑前标题' })).toBeVisible({ timeout: 15_000 })
 
-  // 编辑按钮：日志应跳 publish 编辑页
+  // 编辑按钮：日志应跳 publish 编辑页；新规则默认预览模式，先切「编辑」
   await page.locator('.trow .op', { hasText: '编辑' }).first().click()
-  await expect(page.locator('.cherry-editor .cm-content')).toBeVisible({ timeout: 20_000 })
   await expect(page).toHaveURL(/pages\/publish\/publish/)
+  await enterJournalEditMode(page)
 
   // 回填：标题与正文来自原日志
   await expect(page.locator('.j-title input')).toHaveValue('编辑前标题')

@@ -2,6 +2,7 @@ import { expect, test, type Browser } from '@playwright/test'
 import {
   createInviteCode,
   ensureInstanceInitialized,
+  enterJournalEditMode,
   loginViaUi,
   openEntry,
   registerAndVerifyViaApi,
@@ -117,7 +118,8 @@ test('journey 3: journal publish visible on friend profile', async ({ browser })
   // 去切换器后 kind 由入口 query 决定：直达 journal 入口
   await pageA.goto('/#/pages/publish/publish?kind=journal')
   await fillUniInput(pageA, '标题', JOURNAL_TITLE)
-  // cherry-markdown 编辑器（H5，CodeMirror6 contenteditable）
+  // cherry-markdown 编辑器（H5，CodeMirror6 contenteditable）；新规则默认预览模式，先切「编辑」
+  await enterJournalEditMode(pageA)
   const cm = pageA.locator('.cherry-editor .cm-content')
   await cm.click()
   await pageA.keyboard.type('正文第一段，写给 Bob 看。')
@@ -218,6 +220,8 @@ test('journey 7: publish with mocked weather snapshot, reader shows lunar + weat
 
   // 详情页已移除：改发日志，在日志阅读视图 meta 行断言农历+天气全显（与随记共用天气快照）
   await fillUniInput(pageA, '标题', '天气快照日志')
+  // 新规则默认预览模式，先切「编辑」
+  await enterJournalEditMode(pageA)
   const cm = pageA.locator('.cherry-editor .cm-content')
   await cm.click()
   await pageA.keyboard.type('UI 旅程：天气快照日志正文')
