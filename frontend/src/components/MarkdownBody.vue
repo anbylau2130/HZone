@@ -123,6 +123,30 @@ function swapMediaSrcs() {
 
 watch(html, () => nextTick(() => void renderMermaidBlocks()), { immediate: true })
 watch(html, () => nextTick(swapMediaSrcs), { immediate: true })
+watch(html, () => nextTick(enhanceCodeBlocks), { immediate: true })
+
+// 代码块语法高亮：hljs 懒加载（首个带语言标注的代码块才拉取，与 mermaid 同策略），
+// 与 cherry 预览的高亮观感对齐；mermaid 块跳过（它会被流程图替换）
+let hljsLib: typeof import('highlight.js') | null = null
+async function enhanceCodeBlocks() {
+  if (!root.value) return
+  const pending = Array.from(
+    root.value.querySelectorAll<HTMLElement>('pre code[class*="language-"]')
+  ).filter((el) => !el.dataset.hzHl && !el.classList.contains('language-mermaid'))
+  if (!pending.length) return
+  if (!hljsLib) {
+    const { default: hljs } = await import('highlight.js/lib/common')
+    hljsLib = hljs
+  }
+  for (const el of pending) {
+    el.dataset.hzHl = '1'
+    try {
+      hljsLib.highlightElement(el)
+    } catch {
+      // 未知语言/已高亮等异常保持原样，不吞正文
+    }
+  }
+}
 
 // 附件链接（[名字](/media/..)）点击 → 带 Bearer 下载（<a> 发不了授权头，默认导航必 401）
 function onLinkClick(e: Event) {
@@ -143,6 +167,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 注意：:deep() 规则必须写在顶层，不能嵌套进 .md-body{} —— uni-app 样式编译器会把
+   嵌套 :deep() 编译成 `.md-body [data-v] pre`（data-v 落在中间层），v-html 注入的 DOM
+   不带 data-v，规则永远不命中（pre/code/table 样式曾因此全部失效） */
 .md-body {
   font-size: var(--hz-font-size-base);
   color: var(--hz-color-text);
@@ -154,31 +181,50 @@ onBeforeUnmount(() => {
   max-width: 100%;
   /* 兜底裁剪：mermaid/表格/raw HTML 等无法预知宽度的元素不溢出卡片 */
   overflow-x: hidden;
-  /* 正文媒体防溢出：无约束时大图/大视频会横向撑破卡片 */
-  :deep(img),
-  :deep(video) {
-    max-width: 100%;
-    height: auto;
-  }
-  :deep(audio) {
-    width: 100%;
-  }
-  :deep(figure) {
-    margin: 8px 0;
-  }
-  /* 可横向滚动元素：裁剪兜底之上，仍能完整看到内容 */
-  :deep(svg),
-  :deep(.mermaid-figure) {
-    max-width: 100%;
-    height: auto;
-  }
-  :deep(pre) {
-    overflow-x: auto;
-  }
-  :deep(table) {
-    display: block;
-    max-width: 100%;
-    overflow-x: auto;
-  }
+}
+/* 以下全部为顶层 :deep()：编译成 [data-v] pre 等，可命中 v-html 内容 */
+:deep(img),
+:deep(video) {
+  max-width: 100%;
+  height: auto;
+}
+:deep(audio) {
+  width: 100%;
+}
+:deep(figure) {
+  margin: 8px 0;
+}
+/* 可横向滚动元素：裁剪兜底之上，仍能完整看到内容 */
+:deep(svg),
+:deep(.mermaid-figure) {
+  max-width: 100%;
+  height: auto;
+}
+:deep(pre) {
+  overflow-x: auto;
+  /* 代码块观感与 cherry 预览对齐：灰底圆角等宽 */
+  background: var(--hz-color-bg);
+  padding: 12px 14px;
+  border-radius: var(--hz-radius-md);
+}
+:deep(code) {
+  font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+  font-size: 0.9em;
+}
+:deep(pre code) {
+  display: block;
+  background: none;
+  padding: 0;
+  line-height: 1.6;
+}
+:deep(:not(pre) > code) {
+  background: var(--hz-color-bg);
+  padding: 1px 6px;
+  border-radius: var(--hz-radius-sm);
+}
+:deep(table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 </style>
