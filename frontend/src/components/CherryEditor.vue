@@ -346,8 +346,9 @@ onMounted(() => {
     // cherry 0.11.11 无 typora 式即时渲染模式（EditorMode 仅 editOnly/previewOnly/
     // edit&preview）——edit&preview 是其内置双栏（编辑|实时预览同框，无分离预览窗）
     editor: {
-      // compact（时间线内联）只出编辑区（editOnly）；发布页保持 edit&preview 双栏不变
-      defaultModel: props.compact ? 'editOnly' : 'edit&preview',
+      // compact（时间线内联）也默认带实时预览（用户要求编辑时能直接看到渲染结果，
+      // 与发布页一致）；预览开关仍可切换。发布页同为 edit&preview 双栏
+      defaultModel: 'edit&preview',
       // cherry 会把该值以内联 style 写到挂载点上（内联优先于组件 css），所以高度从这传
       height: props.height ?? '60vh',
       // 0.11 的 placeholder 透传给 CodeMirror 走 editor.codemirror 子配置

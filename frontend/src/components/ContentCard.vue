@@ -32,6 +32,7 @@
              defineAsyncComponent 懒加载，只有进编辑态才拉取 cherry chunk（不进主包） -->
         <AsyncCherryEditor
           v-model="editBody"
+          preview
           compact
           height="240px"
           :placeholder="$t('publish.bodyPlaceholder')"
