@@ -267,23 +267,7 @@ title: t('common.delete'),
   color: var(--hz-color-text);
   background: var(--hz-color-surface);
 }
-/* 日志正文预览：读侧同款 Markdown 渲染，限高+底部渐隐截断（点编辑可看全文） */
-.md-preview {
-  position: relative;
-  max-height: 9em;
-  overflow: hidden;
-}
-.md-preview::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2.5em;
-  background: linear-gradient(transparent, var(--hz-color-surface));
-  pointer-events: none;
-}
-/* 预览内正文紧凑些（阅读视图行高 1.8 在卡片里太疏） */
+/* 日志正文预览：读侧同款 Markdown 渲染，完整显示不截断 */
 .md-preview :deep(.md-body) {
   font-size: var(--hz-font-size-sm);
   line-height: 1.6;
