@@ -1,6 +1,6 @@
 <template>
   <view class="page">
-    <view class="container" :class="{ 'container-wide': viewMode === 'read' }">
+    <view class="container">
       <view class="topbar">
         <text class="topbar-title">{{ $t('journals.title') }}</text>
         <view class="topbar-actions">
@@ -490,13 +490,10 @@ function formatWords(n: number): string {
   .container {
     /* 日志是多列浏览页：放宽到 60rem，卡片按 auto-fill 自适应分列
        （旧的固定 2 栏 × 42rem 每栏仅 21rem，窄卡+多余留白两头不讨好） */
-    max-width: 60rem;
+    /* 三种视图全部撑满可用宽度（侧边栏/工具坞之间）——用户要求卡片/表格跟进阅读视图 */
+    max-width: none;
     margin: 0 auto;
     width: 100%;
-  }
-  /* 阅读视图撑满可用宽度（侧边栏/工具坞之间），卡片/表格仍 60rem 居中 */
-  .container-wide {
-    max-width: none;
   }
   .cards {
     display: grid;
