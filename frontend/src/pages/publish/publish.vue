@@ -741,7 +741,7 @@ async function submit() {
 .page {
   min-height: 100vh;
   background: var(--hz-color-bg);
-  padding: 16px;
+  padding: 0; /* 移动端零内边距：卡片全宽贴边 */
   display: flex;
   flex-direction: column;
   gap: 14px;
