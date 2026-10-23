@@ -1,5 +1,5 @@
 <template>
-  <view class="card" @click="$emit('open', content)">
+  <view class="card">
     <!-- 头部一行：头像+作者/类型 … 日期+编辑/删除贴右上角 -->
     <view class="head">
       <AvatarCircle :nickname="content.author.nickname" :avatar-url="content.author.avatarUrl" :size="44" />
@@ -80,7 +80,6 @@ const auth = useAuthStore()
 const props = defineProps<{ content: ContentItem }>()
 
 const emit = defineEmits<{
-  (e: 'open', c: ContentItem): void
   (e: 'deleted', id: string): void
   (e: 'updated', c: ContentItem): void
 }>()

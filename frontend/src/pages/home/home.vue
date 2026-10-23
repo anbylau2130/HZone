@@ -82,7 +82,7 @@
         <text class="hint-text">{{ $t('common.empty') }}</text>
       </view>
 
-      <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openDetail" @updated="onCardUpdated" @deleted="onCardDeleted" />
+      <ContentCard v-for="c in items" :key="c.id" :content="c" @updated="onCardUpdated" @deleted="onCardDeleted" />
 
       <view v-if="items.length" class="more">
         <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
