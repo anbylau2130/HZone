@@ -15,7 +15,7 @@
       <text class="hint-text">{{ $t('common.empty') }}</text>
     </view>
 
-    <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openDetail" @deleted="onCardDeleted" />
+    <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openDetail" @updated="onCardUpdated" @deleted="onCardDeleted" />
 
     <view v-if="items.length" class="more">
       <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
@@ -89,6 +89,11 @@ function openDetail(c: ContentItem) {
 // 列表卡上删除成功后移除本地列表项
 function onCardDeleted(id: string) {
   items.value = items.value.filter((c) => c.id !== id)
+}
+
+// 卡片原地编辑保存成功后本地替换该项
+function onCardUpdated(c: ContentItem) {
+  items.value = items.value.map((x) => (x.id === c.id ? c : x))
 }
 </script>
 
