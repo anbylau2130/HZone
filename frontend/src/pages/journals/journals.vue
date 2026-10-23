@@ -31,10 +31,24 @@
       </view>
 
       <view v-if="items.length && viewMode === 'card'" class="cards">
-        <!-- 三段式卡：标题 / 内容预览（≤200字）/ 日期+天气 -->
+        <!-- 三段式卡：标题 / 正文预览（cherry previewOnly 懒挂载）/ 日期+天气 -->
         <view v-for="c in items" :key="c.id" class="card" @click="openDetail(c)">
           <text class="title">{{ c.title }}</text>
-          <text class="summary">{{ preview(c) }}</text>
+          <!-- 正文预览统一 cherry previewOnly（全站读侧同一渲染引擎）；IntersectionObserver
+               懒挂载（同 JournalReader），视口 ±300px 内才实例化，挂载前 .md-preview 以
+               min-height 占位防跳变（用 div：view 的 ref 拿不到 DOM 元素） -->
+          <div
+            v-if="(c.markdownBody ?? '').trim()"
+            :ref="(el) => registerHost(c.id, el)"
+            class="md-preview"
+          >
+            <AsyncCherryEditor
+              v-if="visibleIds.has(c.id)"
+              :model-value="c.markdownBody ?? ''"
+              preview-only
+              height="auto"
+            />
+          </div>
           <view class="meta">
             <text class="date">{{ formatDateTime(c.createdAt) }}</text>
             <view v-if="weatherChip(c)" class="weather">
@@ -105,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
@@ -122,6 +136,37 @@ const pagination = usePagination<ContentItem>((offset, limit) =>
   listMyContents('journal', offset, limit)
 )
 const { items, finished, loadMore } = pagination
+
+// cherry 编辑器懒加载：模块顶层异步组件（同 JournalReader，vite 自动拆 chunk；
+// 读侧正文渲染统一走 cherry previewOnly）
+const AsyncCherryEditor = defineAsyncComponent(() => import('../../components/CherryEditor.vue'))
+
+// ---------- 卡片正文懒挂载：IntersectionObserver（同 JournalReader 做法）----------
+// 单个观察器盯所有卡片的占位 div，进过一次视口即挂载且保持不卸载
+const visibleIds = reactive(new Set<string>())
+const hostIds = new Map<HTMLElement, string>()
+let cardIo: IntersectionObserver | null = null
+
+function registerHost(id: string, el: unknown) {
+  const host = el as HTMLElement | null
+  if (!host || hostIds.has(host)) return
+  hostIds.set(host, id)
+  if (visibleIds.has(id)) return
+  cardIo ??= new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        const hit = hostIds.get(e.target as HTMLElement)
+        if (hit) visibleIds.add(hit)
+        cardIo?.unobserve(e.target)
+      }
+    },
+    { rootMargin: '300px' } // 提前约半屏开始渲染
+  )
+  cardIo.observe(host)
+}
+
+onBeforeUnmount(() => cardIo?.disconnect())
 
 // 卡片视图滚动近底部自动加载；表格/阅读视图不触发（阅读由 JournalReader 自带滚动加载）
 useInfiniteScroll(() => {
@@ -198,16 +243,6 @@ function goPublish() {
 
 function goSearch() {
   uni.navigateTo({ url: '/pages/search/search?kind=journal' })
-}
-
-function summary(c: ContentItem): string {
-  return stripMarkdown(c.markdownBody ?? '')
-}
-
-// 卡片预览：纯文本 ≤200 字，超出加省略号（配合 CSS 行数截断双保险）
-function preview(c: ContentItem): string {
-  const text = summary(c).trim()
-  return text.length > 200 ? text.slice(0, 200) + '…' : text
 }
 
 // 底部天气 chip（现象图标+温度，与随记页同款）
@@ -337,14 +372,18 @@ function formatWords(n: number): string {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.summary {
-  font-size: var(--hz-font-size-base);
-  color: var(--hz-color-text-secondary);
-  line-height: 1.65;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+/* cherry 懒挂载占位：挂载前撑住最小高度防滚动跳变 */
+.md-preview {
+  min-height: 60px;
+}
+/* 网格卡紧凑观感：cherry 预览小档字号/行距（顶层 :deep——uni 会把嵌套 :deep 编译成
+   落错层的 data-v 规则，MarkdownBody 教训：一律写顶层） */
+.md-preview :deep(.cherry-previewer) {
+  font-size: var(--hz-font-size-sm);
+  line-height: 1.6;
+}
+.md-preview :deep(.cherry-markdown > :first-child) {
+  margin-top: 0;
 }
 .meta {
   display: flex;
