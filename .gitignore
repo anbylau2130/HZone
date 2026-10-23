@@ -5,6 +5,8 @@ obj/
 .vscode/
 node_modules/
 dist/
+# vditor 自托管资源（src/static/vditor/dist/，离线懒加载用，需入库）
+!frontend/src/static/vditor/dist/
 unpackage/
 *.db
 *.db-shm
