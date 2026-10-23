@@ -34,21 +34,6 @@
         <!-- 三段式卡：标题 / 正文预览（cherry previewOnly 懒挂载）/ 日期+天气；整卡不跳转（②C，详情页已移除） -->
         <view v-for="c in items" :key="c.id" class="card">
           <text class="title">{{ c.title }}</text>
-          <!-- 正文预览统一 cherry previewOnly（全站读侧同一渲染引擎）；IntersectionObserver
-               懒挂载（同 JournalReader），视口 ±300px 内才实例化，挂载前 .md-preview 以
-               min-height 占位防跳变（用 div：view 的 ref 拿不到 DOM 元素） -->
-          <div
-            v-if="(c.markdownBody ?? '').trim()"
-            :ref="(el) => registerHost(c.id, el)"
-            class="md-preview"
-          >
-            <AsyncCherryEditor
-              v-if="visibleIds.has(c.id)"
-              :model-value="c.markdownBody ?? ''"
-              preview-only
-              height="auto"
-            />
-          </div>
           <view class="meta">
             <text class="date">{{ formatDateTime(c.createdAt) }}</text>
             <view v-if="weatherChip(c)" class="weather">
@@ -119,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
@@ -139,34 +124,7 @@ const { items, finished, loadMore } = pagination
 
 // cherry 编辑器懒加载：模块顶层异步组件（同 JournalReader，vite 自动拆 chunk；
 // 读侧正文渲染统一走 cherry previewOnly）
-const AsyncCherryEditor = defineAsyncComponent(() => import('../../components/CherryEditor.vue'))
 
-// ---------- 卡片正文懒挂载：IntersectionObserver（同 JournalReader 做法）----------
-// 单个观察器盯所有卡片的占位 div，进过一次视口即挂载且保持不卸载
-const visibleIds = reactive(new Set<string>())
-const hostIds = new Map<HTMLElement, string>()
-let cardIo: IntersectionObserver | null = null
-
-function registerHost(id: string, el: unknown) {
-  const host = el as HTMLElement | null
-  if (!host || hostIds.has(host)) return
-  hostIds.set(host, id)
-  if (visibleIds.has(id)) return
-  cardIo ??= new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue
-        const hit = hostIds.get(e.target as HTMLElement)
-        if (hit) visibleIds.add(hit)
-        cardIo?.unobserve(e.target)
-      }
-    },
-    { rootMargin: '300px' } // 提前约半屏开始渲染
-  )
-  cardIo.observe(host)
-}
-
-onBeforeUnmount(() => cardIo?.disconnect())
 
 // 卡片视图滚动近底部自动加载；表格/阅读视图不触发（阅读由 JournalReader 自带滚动加载）
 useInfiniteScroll(() => {
