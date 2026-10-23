@@ -180,6 +180,9 @@ async function saveJournal() {
     })
     uni.showToast({ title: t('common.saved'), icon: 'success' })
     editing.value = false
+    // 多编辑面草稿一致性：此处保存后，发布页遗留的同 ID 草稿即过期（restoreDraft 会
+    // 按时间戳丢弃），这里顺手清掉更干净
+    try { localStorage.removeItem('hz-draft-journal-e-' + props.content.id) } catch {}
     emit('updated', updated)
   } catch {
     // 错误提示由请求层统一 toast

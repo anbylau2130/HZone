@@ -288,7 +288,8 @@ async function loadForEdit() {
         })
         .catch(() => {})
     }
-    restoreDraft()
+    // 只恢复比服务端新的草稿（多编辑面过期草稿防护）
+    restoreDraft(c.updatedAt)
   } catch {
     // 请求层已 toast；停留在空编辑页，用户可返回
   }
@@ -312,8 +313,8 @@ function saveDraft() {
     try {
       const raw = JSON.stringify(
         mode.value === 'journal'
-          ? { title: title.value, markdown: markdown.value }
-          : { text: sayText.value }
+          ? { title: title.value, markdown: markdown.value, at: Date.now() }
+          : { text: sayText.value, at: Date.now() }
       )
       if (raw.length > 1_000_000) return
       localStorage.setItem(draftKey.value, raw)
@@ -323,12 +324,20 @@ function saveDraft() {
   }, 800)
 }
 
-function restoreDraft() {
+function restoreDraft(serverUpdatedAt?: string) {
   try {
     const raw = localStorage.getItem(draftKey.value)
     if (!raw) return
-    const d = JSON.parse(raw) as { title?: string; markdown?: string; text?: string }
+    const d = JSON.parse(raw) as { title?: string; markdown?: string; text?: string; at?: number }
     if (editingId.value) {
+      // 多编辑面时代（发布页/卡片内联）本地草稿不一定比服务端新：
+      // 仅当草稿时间戳晚于服务端更新时间才恢复，否则丢弃，
+      // 避免旧草稿覆盖别处刚保存的内容（多编辑面过期草稿问题）
+      const serverMs = serverUpdatedAt ? Date.parse(serverUpdatedAt) : 0
+      if (!d.at || serverMs >= d.at) {
+        localStorage.removeItem(draftKey.value)
+        return
+      }
       if (typeof d.title === 'string') title.value = d.title
       if (typeof d.markdown === 'string') markdown.value = d.markdown
       if (typeof d.text === 'string') sayText.value = d.text
