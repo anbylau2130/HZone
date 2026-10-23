@@ -580,8 +580,14 @@ defineExpose({ setMarkdown })
 /* 移动端隐藏 markdown 工具栏（用户要求）：触屏打字为主，格式工具用得少，
    还给正文更多纵向空间；cherry 0.11 的工具栏自身不响应窄屏，只能 CSS 收掉 */
 @media (max-width: 767px) {
-  .cherry-host :deep(.cherry-toolbar) {
+  /* 移动端不适合源码编辑（用户决策）：编辑页只显示渲染预览 */
+  .cherry-host :deep(.cherry-toolbar),
+  .cherry-host :deep(.cherry-editor) {
     display: none !important;
+  }
+  /* 用户主动关掉的预览（no-preview）仍尊重，不强行展开 */
+  .cherry-host:not(.no-preview) :deep(.cherry-previewer) {
+    display: block !important;
   }
 }
 
