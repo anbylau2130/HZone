@@ -4,7 +4,7 @@
     ref="host"
     :id="hostId"
     class="cherry-host"
-    :class="{ 'no-preview': !preview }"
+    :class="{ 'no-preview': !preview && !previewOnly, 'preview-only': previewOnly }"
   ></div>
 </template>
 
@@ -36,13 +36,15 @@ import 'katex/dist/katex.min.css'
 import * as ECharts from 'echarts'
 
 // compact：时间线内联编辑用精简菜单，渲染引擎与发布页同一 cherry 保证观感一致；
-// height：编辑器高度（cherry 以内联 style 写到挂载点，不传走默认 60vh）
+// height：编辑器高度（cherry 以内联 style 写到挂载点，不传走默认 60vh）；
+// previewOnly：纯预览模式（读侧正文渲染统一走 cherry，用户决策），高度自适应内容
 const props = defineProps<{
   modelValue: string
   placeholder?: string
   preview?: boolean
   compact?: boolean
   height?: string
+  previewOnly?: boolean
 }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
@@ -346,15 +348,23 @@ onMounted(() => {
     // cherry 0.11.11 无 typora 式即时渲染模式（EditorMode 仅 editOnly/previewOnly/
     // edit&preview）——edit&preview 是其内置双栏（编辑|实时预览同框，无分离预览窗）
     editor: {
-      // compact（时间线内联）也默认带实时预览（用户要求编辑时能直接看到渲染结果，
+      // previewOnly（读侧正文渲染统一走 cherry，用户决策）：纯预览无编辑区，工具栏/编辑区
+      // 由 cherry 自行隐藏；其余模式默认带实时预览（用户要求编辑时能直接看到渲染结果，
       // 与发布页一致）；预览开关仍可切换。发布页同为 edit&preview 双栏
-      defaultModel: 'edit&preview',
-      // cherry 会把该值以内联 style 写到挂载点上（内联优先于组件 css），所以高度从这传
-      height: props.height ?? '60vh',
-      // 0.11 的 placeholder 透传给 CodeMirror 走 editor.codemirror 子配置
-      codemirror: { placeholder: props.placeholder }
+      // TODO(安全): cherry 预览他人内容的 XSS 面需单独评估
+      defaultModel: props.previewOnly ? 'previewOnly' : 'edit&preview',
+      // cherry 会把该值以内联 style 写到挂载点上（内联优先于组件 css），所以高度从这传；
+      // previewOnly 传 auto（cherry 源码：挂载点无内联 height 时才写该值，'auto' 合法），
+      // 卡片/阅读页不能像编辑器那样定高 60vh，必须跟随内容伸展
+      height: props.previewOnly ? 'auto' : props.height ?? '60vh',
+      // 0.11 的 placeholder 透传给 CodeMirror 走 editor.codemirror 子配置；纯预览无输入框，不传
+      codemirror: props.previewOnly ? undefined : { placeholder: props.placeholder }
     },
-    toolbars: props.compact
+    // previewOnly：工具栏全空（cherry 在 previewOnly 下本就隐藏 toolbar，这里双保险）；
+    // TODO(安全): cherry 预览他人内容的 XSS 面需单独评估
+    toolbars: props.previewOnly
+      ? { toolbar: [], toolbarRight: [], sidebar: [], bubble: [] }
+      : props.compact
       ? {
           // compact：时间线内联编辑用精简菜单，渲染引擎与发布页同一 cherry 保证观感一致
           toolbar: [
@@ -460,6 +470,10 @@ onMounted(() => {
   // afterChange 覆盖不到的 DOM 变化（粘贴图片链接、撤销等）兜底换 src
   observer = new MutationObserver(swapMediaSrc)
   observer.observe(host.value, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] })
+  // 初次渲染发生在 new Cherry() 构造期内（同步完成），MutationObserver 挂上时预览 DOM
+  // 已就绪、不会再有 src 变更事件——previewOnly 读侧（内容仅初始化渲染一次）必须补一次
+  // 手动扫描，否则正文里的 /media/ 图/音视频永远不换授权 blob src（e2e browser-tour 实锤）
+  swapMediaSrc()
 
   // 附件链接（插入文件产出的 [名字](/media/..)）带不上鉴权头：预览区点击改走
   // downloadBlob（带 Bearer fetch → blob → 浏览器下载），捕获阶段拦截默认导航
@@ -587,19 +601,49 @@ defineExpose({ setMarkdown })
 .cherry-host :deep(.cherry-toolbar .toolbar-left::-webkit-scrollbar) {
   display: none;
 }
+/* ---------- previewOnly（读侧正文渲染统一 cherry previewOnly，用户决策） ---------- */
+/* 纯预览：去编辑器外框观感（无边框/阴影/圆角），透明背景融入宿主卡片 */
+.cherry-host.preview-only {
+  min-height: 0;
+}
+.cherry-host.preview-only :deep(.cherry) {
+  height: auto;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+/* 预览窗高度跟随内容（cherry 的 min/max-height calc(100% - toolbar) 在容器 auto 高下失义，
+   显式放开）；宽占满（单栏预览）；可选中复制（读侧正文能力与 MarkdownBody 时代一致） */
+.cherry-host.preview-only :deep(.cherry-previewer) {
+  width: 100% !important;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  overflow-y: visible;
+  border-left: none;
+  padding: 0;
+  font-size: var(--hz-font-size-base);
+  line-height: 1.8;
+  cursor: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
 /* 窄屏（<768px）：全量按钮换行多行，cherry 容器固定高（挂载点内联 60vh + overflow:hidden）
    会把溢出的工具行整个裁掉（按钮有布局盒但不可点）——窄屏放开容器高度让工具栏完整
-   展开，编辑/预览区改为定高。桌面 (>768px) 保持 60vh 单行 */
+   展开，编辑/预览区改为定高。桌面 (>768px) 保持 60vh 单行。
+   previewOnly 无工具栏且需高度自适应，排除在定高逻辑之外 */
 @media (max-width: 767px) {
-  .cherry-host {
+  .cherry-host:not(.preview-only) {
     /* 覆盖 cherry 写在挂载点上的内联 height:60vh */
     height: auto !important;
   }
-  .cherry-host :deep(.cherry) {
+  .cherry-host:not(.preview-only) :deep(.cherry) {
     height: auto;
   }
-  .cherry-host :deep(.cherry .cherry-editor),
-  .cherry-host :deep(.cherry .cherry-previewer) {
+  .cherry-host:not(.preview-only) :deep(.cherry .cherry-editor),
+  .cherry-host:not(.preview-only) :deep(.cherry .cherry-previewer) {
     /* cherry css 的 calc(100% - var(--height-toolbar)) 在容器 auto 高下失义，改定高 */
     max-height: 55vh !important;
     min-height: 320px !important;

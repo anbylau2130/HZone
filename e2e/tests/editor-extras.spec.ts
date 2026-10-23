@@ -80,13 +80,13 @@ test('image alt size syntax renders at requested size on detail', async ({ page 
 
   await loginViaUi(page, user)
   await page.goto(`/#/pages/detail/detail?id=${id}`)
-  // cherry alt 扩展语法（#宽#高）在读侧转成 style，而不是丢成普通 alt
-  const img = page.locator('.md-body img[alt="配图"]')
+  // 读侧统一 cherry previewOnly（用户决策）：cherry 预览原生解析 alt #尺寸# 语法并套
+  // width/height（与编辑器预览完全一致）；alt 文本保留原 token（cherry 语义，非泄漏）
+  const img = page.locator('.cherry-previewer img').first()
   await expect(img).toBeVisible()
+  await expect(img).toHaveAttribute('alt', /配图/)
   await expect(img).toHaveAttribute('style', /width:\s*120px/)
   await expect(img).toHaveAttribute('style', /height:\s*60px/)
-  // #token 不应泄漏在 alt 文本里
-  await expect(page.locator('.md-body img[alt*="#"]')).toHaveCount(0)
 })
 
 test('editor extras: open local md, export menu, insert file attachment', async ({ page }) => {
@@ -153,7 +153,7 @@ test('editor extras: open local md, export menu, insert file attachment', async 
   })
   const journalId = ((await mine.json()) as { items: { id: string }[] }).items[0].id
   await page.goto(`/#/pages/detail/detail?id=${journalId}`)
-  const link = page.locator('.md-body a[href^="/media/"]', { hasText: '附件说明.txt' })
+  const link = page.locator('.cherry-previewer a[href^="/media/"]', { hasText: '附件说明.txt' })
   await expect(link).toBeVisible({ timeout: 15_000 })
   const [download] = await Promise.all([page.waitForEvent('download'), link.click()])
   expect(download.suggestedFilename()).toBe('附件说明.txt')

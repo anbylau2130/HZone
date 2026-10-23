@@ -12,9 +12,11 @@
       <text v-if="contextLine" class="context-line">{{ contextLine }}</text>
 
       <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
-      <MarkdownBody
+      <!-- 读侧统一 cherry previewOnly（用户决策），与编辑器渲染完全一致 -->
+      <AsyncCherryEditor
         v-if="content.kind === 'journal' && content.markdownBody"
-        :markdown="content.markdownBody"
+        :model-value="content.markdownBody"
+        preview-only
       />
       <text v-else-if="content.kind !== 'journal'" class="text">{{ content.text }}</text>
       <MediaGrid :media="content.media" />
@@ -45,12 +47,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import { useI18n } from 'vue-i18n'
 import MediaGrid from '../../components/MediaGrid.vue'
-import MarkdownBody from '../../components/MarkdownBody.vue'
 import RecipientsBar from '../../components/RecipientsBar.vue'
 import CardOwnerActions from '../../components/CardOwnerActions.vue'
 import { formatDateTime } from '../../utils/format'
@@ -68,6 +69,9 @@ import { useAuthStore } from '../../stores/auth'
 
 const { t, te } = useI18n()
 const auth = useAuthStore()
+
+// cherry 编辑器懒加载：模块顶层异步组件，vite 自动拆 chunk（读侧正文渲染统一走 cherry previewOnly）
+const AsyncCherryEditor = defineAsyncComponent(() => import('../../components/CherryEditor.vue'))
 
 const contentId = ref('')
 const content = ref<ContentItem | null>(null)
@@ -288,7 +292,7 @@ async function postComment() {
   gap: 8px;
   align-items: center;
 }
-/* 正文渲染样式随 MarkdownBody 组件走（.md-body） */
+/* 正文渲染样式随 CherryEditor previewOnly 走（.cherry-host/.cherry-previewer） */
 @media (min-width: 768px) {
   .page {
     /* 桌面/web 拉满屏宽方便阅读（移动端无此规则，保持原样） */
@@ -296,7 +300,8 @@ async function postComment() {
     margin: 0 auto;
     padding: 24px 16px;
   }
-  .md-body {
+  /* 桌面正文 15px（此前 .md-body 时代同款）；顶层 :deep，避免 uni 嵌套 :deep 编译坑 */
+  :deep(.cherry-previewer) {
     font-size: 15px;
   }
 }

@@ -113,22 +113,22 @@ test('browser tour: journal with image/audio/video/mermaid/drawio renders on det
   }, journalId)
   console.log('SAVED BODY >>>', JSON.stringify(savedBody))
   await page.goto(`/#/pages/detail/detail?id=${journalId}`)
-  await expect(page.locator('.md-body')).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.cherry-previewer')).toBeVisible({ timeout: 15_000 })
   await page.waitForTimeout(3_000) // 等 mermaid 异步渲染 + /media 鉴权换 blob
 
   // 详情页断言：mermaid 图 / 上传图鉴权可载 / drawio 图 / 音频控件 / 视频控件
-  await expect(page.locator('.md-body .mermaid-figure svg').first()).toBeVisible({ timeout: 15_000 })
-  await expect(page.locator('.md-body img[src^="blob:"]').first()).toBeVisible({ timeout: 10_000 })
-  await expect(page.locator('.md-body img[data-type="drawio"]').first()).toBeVisible({ timeout: 10_000 })
-  const audio = page.locator('.md-body audio[controls]')
+  await expect(page.locator('.cherry-previewer figure[data-type="mermaid"] svg').first()).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.cherry-previewer img[src^="blob:"]').first()).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('.cherry-previewer img[data-type="drawio"]').first()).toBeVisible({ timeout: 10_000 })
+  const audio = page.locator('.cherry-previewer audio[controls]')
   await expect(audio.first()).toBeVisible({ timeout: 10_000 })
   expect(await audio.getAttribute('src')).toMatch(/^blob:/)
-  await expect(page.locator('.md-body video[controls]').first()).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('.cherry-previewer video[controls]').first()).toBeVisible({ timeout: 10_000 })
   await shot('05-detail-page-full')
 
   // 图片真实可解码（鉴权换 blob 后 naturalWidth > 0，防"元素在但 401 断图"）
   const imgOk = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('.md-body img')).map((i) => (i as HTMLImageElement).naturalWidth > 0)
+    Array.from(document.querySelectorAll('.cherry-previewer img')).map((i) => (i as HTMLImageElement).naturalWidth > 0)
   )
   console.log('detail images loaded:', imgOk)
   expect(imgOk.every(Boolean)).toBe(true)

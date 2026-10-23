@@ -51,13 +51,16 @@
     <template v-else>
       <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
       <text v-else class="text">{{ content.text }}</text>
-      <!-- 日志正文预览：读侧同款 Markdown 渲染（非纯文本），容器限高+渐隐截断 -->
-      <view
+      <!-- 日志正文预览：读侧统一 cherry previewOnly（用户决策），与编辑器渲染完全一致；
+           IntersectionObserver 懒挂载——列表一页 15+ 卡，滚进视口才拉取 cherry chunk 并渲染，
+           挂载前 .md-preview 以 min-height 占位防跳变（用 div：view 的 ref 拿不到 DOM 元素） -->
+      <div
         v-if="content.kind === 'journal' && (content.markdownBody ?? '').trim()"
+        ref="previewHost"
         class="md-preview"
       >
-        <MarkdownBody :markdown="content.markdownBody ?? ''" />
-      </view>
+        <AsyncCherryEditor v-if="bodyVisible" :model-value="content.markdownBody ?? ''" preview-only />
+      </div>
       <MediaGrid v-if="hasMedia" :media="content.media" />
       <RecipientsBar :recipients="content.recipients" />
     </template>
@@ -71,10 +74,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MediaGrid from './MediaGrid.vue'
-import MarkdownBody from './MarkdownBody.vue'
 import RecipientsBar from './RecipientsBar.vue'
 import CardOwnerActions from './CardOwnerActions.vue'
 import AvatarCircle from './AvatarCircle.vue'
@@ -87,6 +89,33 @@ import { useAuthStore } from '../stores/auth'
 
 // cherry 编辑器懒加载：模块顶层异步组件，vite 自动拆 chunk（只有进编辑态才加载）
 const AsyncCherryEditor = defineAsyncComponent(() => import('./CherryEditor.vue'))
+
+// ---------- 日志正文预览懒挂载 ----------
+// cherry 实例重（列表一页 15+ 卡不能每张都挂）：滚进视口才挂 AsyncCherryEditor(previewOnly)，
+// 已挂载的保持不卸载（滚出视口仍保留，避免回滚重渲染）；进入原地编辑态时预览区随 v-if
+// 卸载，退出后 watch(previewHost) 重新观察
+const bodyVisible = ref(false)
+const previewHost = ref<HTMLElement | null>(null)
+let io: IntersectionObserver | null = null
+
+function observePreview() {
+  io?.disconnect()
+  io = null
+  if (bodyVisible.value || !previewHost.value) return
+  io = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        bodyVisible.value = true
+        io?.disconnect()
+        io = null
+      }
+    },
+    { rootMargin: '200px' } // 提前半屏开始渲染，滚动到位时正文已就绪
+  )
+  io.observe(previewHost.value)
+}
+watch(previewHost, () => observePreview())
+onBeforeUnmount(() => io?.disconnect())
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -268,12 +297,17 @@ title: t('common.delete'),
   color: var(--hz-color-text);
   background: var(--hz-color-surface);
 }
-/* 日志正文预览：读侧同款 Markdown 渲染，完整显示不截断 */
-.md-preview :deep(.md-body) {
+/* 日志正文预览：cherry previewOnly 懒挂载前的占位（防列表跳变） */
+.md-preview {
+  min-height: 60px;
+}
+/* 列表卡紧凑字号/行距（此前 .md-body 时代同款）；顶层 :deep——uni 会把嵌套 :deep
+   编译成落错层的 data-v 规则（MarkdownBody 顶部注释教训），一律写顶层 */
+.md-preview :deep(.cherry-previewer) {
   font-size: var(--hz-font-size-sm);
   line-height: 1.6;
 }
-.md-preview :deep(.md-body > *:first-child) {
+.md-preview :deep(.cherry-markdown > :first-child) {
   margin-top: 0;
 }
 .edit-bar {

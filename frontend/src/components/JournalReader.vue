@@ -15,7 +15,8 @@
           <text v-if="weatherLine" class="r-meta-item">{{ weatherLine }}</text>
         </view>
         <view class="r-divider" />
-        <MarkdownBody :markdown="current.markdownBody ?? ''" />
+        <!-- 读侧统一 cherry previewOnly（用户决策），与编辑器渲染完全一致 -->
+        <AsyncCherryEditor :model-value="current.markdownBody ?? ''" preview-only />
       </view>
     </Transition>
 
@@ -43,8 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import MarkdownBody from './MarkdownBody.vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { formatDateTime } from '../utils/format'
 import { formatLunar } from '../utils/lunar'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
@@ -56,6 +56,9 @@ const props = defineProps<{
   loading: boolean
 }>()
 const emit = defineEmits<{ (e: 'load-more'): void }>()
+
+// cherry 编辑器懒加载：模块顶层异步组件，vite 自动拆 chunk（读侧正文渲染统一走 cherry previewOnly）
+const AsyncCherryEditor = defineAsyncComponent(() => import('./CherryEditor.vue'))
 
 // 默认最新一篇（列表按时间倒序，index 0 即最近）；next = 更早，prev = 更新
 const index = ref(0)
