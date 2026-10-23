@@ -10,9 +10,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-// mermaid 渲染引擎（与编辑器同款本地打包入口；default 导入——render/initialize 只在
-// default 导出上；addon 脱离 cherry 不可用，读侧直接 Mermaid.render）
-import Mermaid from 'mermaid/dist/mermaid.esm.min.mjs'
+// mermaid 渲染引擎懒加载（renderMermaidBlocks 内动态 import）：列表页卡片也复用本组件，
+// 静态 import 会给首页/时间线背上 ~1MB 的 mermaid 包；只有正文真有 mermaid 代码块才拉取
+// （与编辑器同款本地打包入口；default 导入——render/initialize 只在 default 导出上）
 import { loadMediaUrl } from '../api/media'
 import { downloadBlob } from '../api/client'
 
@@ -79,15 +79,18 @@ const html = computed(() => {
 
 // ```mermaid 代码块渲染成流程图（读侧直接走 mermaid.render，异步换入 DOM）
 let mermaidSeq = 0
-let mermaidReady = false
+let mermaidLib: typeof import('mermaid/dist/mermaid.esm.min.mjs') | null = null
 async function renderMermaidBlocks() {
   if (!root.value) return
   const blocks = root.value.querySelectorAll('pre > code.language-mermaid')
   if (!blocks.length) return
-  if (!mermaidReady) {
+  if (!mermaidLib) {
+    // 懒加载：首次遇到 mermaid 代码块才拉引擎（default 导出才有 render/initialize）
+    const { default: Mermaid } = await import('mermaid/dist/mermaid.esm.min.mjs')
     Mermaid.initialize({ startOnLoad: false })
-    mermaidReady = true
+    mermaidLib = Mermaid
   }
+  const Mermaid = mermaidLib
   for (const code of blocks) {
     const src = code.textContent ?? ''
     const id = `mermaid-mb-${++mermaidSeq}`

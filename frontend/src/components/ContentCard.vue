@@ -50,8 +50,13 @@
     <template v-else>
       <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
       <text v-else class="text">{{ content.text }}</text>
-      <!-- 日志正文预览：纯文本 ≤200 字（配合 CSS 行数截断双保险） -->
-      <text v-if="content.kind === 'journal' && bodyPreview" class="summary">{{ bodyPreview }}</text>
+      <!-- 日志正文预览：读侧同款 Markdown 渲染（非纯文本），容器限高+渐隐截断 -->
+      <view
+        v-if="content.kind === 'journal' && (content.markdownBody ?? '').trim()"
+        class="md-preview"
+      >
+        <MarkdownBody :markdown="content.markdownBody ?? ''" />
+      </view>
       <MediaGrid v-if="hasMedia" :media="content.media" />
       <RecipientsBar :recipients="content.recipients" />
     </template>
@@ -68,11 +73,12 @@
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MediaGrid from './MediaGrid.vue'
+import MarkdownBody from './MarkdownBody.vue'
 import RecipientsBar from './RecipientsBar.vue'
 import CardOwnerActions from './CardOwnerActions.vue'
 import AvatarCircle from './AvatarCircle.vue'
 import SayComposer from './SayComposer.vue'
-import { formatRelativeTime, stripMarkdown } from '../utils/format'
+import { formatRelativeTime } from '../utils/format'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
 import { deleteContent, updateContent } from '../api/endpoints'
 import type { ContentItem } from '../api/endpoints'
@@ -104,11 +110,6 @@ const weatherChip = computed(() => {
   return [icon, temp].filter(Boolean).join(' ')
 })
 
-// ---------- 正文预览：纯文本 ≤200 字，超出加省略号（配合 .summary CSS 行数截断双保险） ----------
-const bodyPreview = computed(() => {
-  const text = stripMarkdown(props.content.markdownBody ?? '').trim()
-  return text.length > 200 ? text.slice(0, 200) + '…' : text
-})
 
 // 原地编辑：卡片内直接改（不跳 publish 页）；大改仍可从详情页进 cherry 编辑器
 const editing = ref(false)
@@ -266,15 +267,29 @@ title: t('common.delete'),
   color: var(--hz-color-text);
   background: var(--hz-color-surface);
 }
-/* 日志正文预览：纯文本 ≤200 字，CSS 行数截断双保险（journals 卡片视图同款） */
-.summary {
-  font-size: var(--hz-font-size-base);
-  color: var(--hz-color-text-secondary);
-  line-height: 1.65;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
+/* 日志正文预览：读侧同款 Markdown 渲染，限高+底部渐隐截断（点编辑可看全文） */
+.md-preview {
+  position: relative;
+  max-height: 9em;
   overflow: hidden;
+}
+.md-preview::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.5em;
+  background: linear-gradient(transparent, var(--hz-color-surface));
+  pointer-events: none;
+}
+/* 预览内正文紧凑些（阅读视图行高 1.8 在卡片里太疏） */
+.md-preview :deep(.md-body) {
+  font-size: var(--hz-font-size-sm);
+  line-height: 1.6;
+}
+.md-preview :deep(.md-body > *:first-child) {
+  margin-top: 0;
 }
 .edit-bar {
   display: flex;
