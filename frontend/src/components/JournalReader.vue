@@ -24,6 +24,19 @@
           preview-only
         />
       </div>
+
+      <!-- 内联评论（①A）：详情页已移除，阅读流内直接展开评论区；
+           评论组件独立于正文懒挂载逻辑，展开时直接挂载 -->
+      <view class="r-cmt-row">
+        <text class="r-cmt-btn" @click="toggleComments(item.id)">{{
+          $t('detail.commentCount', { n: item.commentCount })
+        }}</text>
+      </view>
+      <CardComments
+        v-if="expandedIds.has(item.id)"
+        :content-id="item.id"
+        @count-change="(n) => onCommentCount(item, n)"
+      />
     </view>
 
     <view v-if="loading" class="r-hint">
@@ -45,6 +58,7 @@ import { defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref, watch 
 import { formatDateTime } from '../utils/format'
 import { formatLunar } from '../utils/lunar'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
+import CardComments from './CardComments.vue'
 import type { ContentItem } from '../api/endpoints'
 
 const props = defineProps<{
@@ -95,6 +109,22 @@ function registerHost(id: string, el: unknown) {
 }
 
 onBeforeUnmount(() => bodyIo?.disconnect())
+
+// ---------- 内联评论（①A）：点击「评论 n」展开/收起，收起即卸载 CardComments ----------
+const expandedIds = reactive(new Set<string>())
+
+function toggleComments(id: string) {
+  if (expandedIds.has(id)) {
+    expandedIds.delete(id)
+  } else {
+    expandedIds.add(id)
+  }
+}
+
+// 发送评论成功：把最新评论数回写该篇（meta 下方「评论 n」同步）
+function onCommentCount(item: ContentItem, n: number) {
+  item.commentCount = n
+}
 
 // ---------- 滚动加载 + 回顶：同一个 window scroll 监听 ----------
 // 阅读模式=连续信息流（用户决策），滚动加载替代翻页；距底 ≤300px 自动拉下一页
@@ -163,6 +193,16 @@ onBeforeUnmount(() => {
 /* cherry 懒挂载占位：挂载前撑住最小高度防滚动跳变 */
 .md-host {
   min-height: 60px;
+}
+/* 内联评论入口：与 meta 行同字号，手型提示可点 */
+.r-cmt-row {
+  border-top: 1px solid var(--hz-color-border);
+  padding-top: 8px;
+}
+.r-cmt-btn {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-interactive);
+  cursor: pointer;
 }
 .r-hint {
   display: flex;

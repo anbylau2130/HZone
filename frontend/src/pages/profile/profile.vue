@@ -21,7 +21,7 @@
           <text class="date-label">{{ g.label }}</text>
         </view>
         <view class="items-col">
-          <view v-for="c in g.items" :key="c.id" class="entry" @click="openDetail(c)">
+          <view v-for="c in g.items" :key="c.id" class="entry">
             <view class="entry-head">
               <text class="time">{{ formatRelativeTime(c.createdAt) + ' ' }}</text>
             </view>
@@ -29,12 +29,22 @@
             <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
             <RecipientsBar :recipients="c.recipients" />
             <view class="entry-foot">
-              <text class="foot-btn">{{ $t('detail.commentCount', { n: c.commentCount }) }}</text>
+              <!-- 详情页已移除：点击切换内联评论区（同 ContentCard ①A） -->
+              <text class="foot-btn" @click.stop="expandedId = expandedId === c.id ? '' : c.id">
+                {{ $t('detail.commentCount', { n: c.commentCount }) }}
+              </text>
               <view class="head-spacer" />
               <view v-if="weatherChip(c)" class="weather-chip">
                 <text class="weather-chip-text">{{ weatherChip(c) }}</text>
               </view>
             </view>
+            <!-- 内联评论区：展开才挂载，收起即卸载；评论数变化直接回写该条 -->
+            <CardComments
+              v-if="expandedId === c.id"
+              class="entry-comments"
+              :content-id="c.id"
+              @count-change="(n) => onCommentCount(c, n)"
+            />
           </view>
         </view>
       </view>
@@ -56,6 +66,7 @@ import { setNavTitle } from '../../locale'
 import MediaGrid from '../../components/MediaGrid.vue'
 import RecipientsBar from '../../components/RecipientsBar.vue'
 import ProfileHeader from '../../components/ProfileHeader.vue'
+import CardComments from '../../components/CardComments.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listFriends, listUserContents, type ContentItem, type FriendInfo } from '../../api/endpoints'
 import { formatRelativeTime, groupByCnDate } from '../../utils/format'
@@ -79,6 +90,13 @@ function weatherChip(c: ContentItem) {
   return weatherChipText(c.weather ?? null)
 }
 
+// 内联评论区展开态：同一时刻至多展开一条；发送成功后把最新评论数回写该条
+const expandedId = ref('')
+
+function onCommentCount(c: ContentItem, n: number) {
+  c.commentCount = n
+}
+
 // H5 端直接 hash 进入时 onLoad 不触发的问题不存在于 profile（从好友页进入必走 navigateTo），onLoad 足够
 onLoad((query) => {
   setNavTitle('profile.title')
@@ -97,9 +115,6 @@ onLoad((query) => {
   }
 })
 
-function openDetail(c: ContentItem) {
-  uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
-}
 </script>
 
 <style scoped>
@@ -174,6 +189,11 @@ function openDetail(c: ContentItem) {
 .foot-btn {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-interactive);
+  cursor: pointer; /* 可点击：展开/收起内联评论区 */
+}
+/* 内联评论区与正文留一档间距 */
+.entry-comments {
+  margin-top: 8px;
 }
 .weather-chip {
   padding: 2px 8px;

@@ -67,7 +67,7 @@
           <text class="date-label">{{ g.label }}</text>
         </view>
         <view class="items-col">
-          <!-- 正文与整条点击均不跳转（朋友圈式就地阅读）；进详情/评论走底部评论入口 -->
+          <!-- 正文与整条点击均不跳转（朋友圈式就地阅读）；评论走底部入口展开 -->
           <view v-for="c in g.items" :key="c.id" class="entry">
             <view class="entry-head">
               <text class="time">{{ formatRelativeTime(c.createdAt) }}</text>
@@ -85,7 +85,8 @@
               <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
               <RecipientsBar :recipients="c.recipients" />
               <view class="entry-foot">
-                <text class="foot-btn" @click.stop="openDetail(c)">
+                <!-- 详情页已移除：点击切换内联评论区（同 ContentCard ①A） -->
+                <text class="foot-btn" @click.stop="expandedId = expandedId === c.id ? '' : c.id">
                   💬 {{ $t('detail.commentCount', { n: c.commentCount }) }}
                 </text>
                 <view class="head-spacer" />
@@ -93,6 +94,13 @@
                   <text class="weather-chip-text">{{ weatherChip(c) }}</text>
                 </view>
               </view>
+              <!-- 内联评论区：展开才挂载，收起即卸载；评论数变化直接回写该条 -->
+              <CardComments
+                v-if="expandedId === c.id"
+                class="entry-comments"
+                :content-id="c.id"
+                @count-change="(n) => onCommentCount(c, n)"
+              />
             </template>
           </view>
         </view>
@@ -122,6 +130,7 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
 import ProfileHeader from '../../components/ProfileHeader.vue'
 import CardOwnerActions from '../../components/CardOwnerActions.vue'
+import CardComments from '../../components/CardComments.vue'
 import SayComposer from '../../components/SayComposer.vue'
 import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
@@ -196,6 +205,14 @@ function weatherChip(c: ContentItem) {
   return weatherChipText(c.weather ?? null)
 }
 
+// 内联评论区展开态：同一时刻至多展开一条（存内容 id，收起置空）
+const expandedId = ref('')
+
+// 发送评论成功：把最新评论数回写该条（卡片「💬 n」同步）
+function onCommentCount(c: ContentItem, n: number) {
+  c.commentCount = n
+}
+
 // ✎ 原地编辑当前条（不跳 publish）；日志类仍去 publish（cherry 编辑器）
 const editingId = ref('')
 
@@ -235,10 +252,6 @@ onShow(() => {
   // 封面/签名可能在设置页改过，回页同步最新资料
   auth.fetchMe()
 })
-
-function openDetail(c: ContentItem) {
-  uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
-}
 
 // 写随记入口：滚到页内编辑器并聚焦（不再跳 publish 页）
 const composerRef = ref<InstanceType<typeof SayComposer> | null>(null)
@@ -434,6 +447,10 @@ async function uploadCoverFile(path: string | Blob) {
 }
 .entry-edit {
   margin-top: 6px;
+}
+/* 内联评论区与正文留一档间距 */
+.entry-comments {
+  margin-top: 8px;
 }
 .entry-head {
   display: flex;

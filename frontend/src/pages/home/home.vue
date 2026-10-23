@@ -55,15 +55,10 @@
       <Footprints :items="stats.footprints" />
     </view>
 
-    <!-- 那年今天（06）：往年同月同日的内容，无历史隐藏整块 -->
+    <!-- 那年今天（06）：往年同月同日的内容，无历史隐藏整块；不跳转（②C，详情页已移除） -->
     <view v-if="otd.length" class="otd-section">
       <text class="section-title">{{ $t('home.otdTitle') }}</text>
-      <view
-        v-for="it in otd"
-        :key="it.id"
-        class="otd-item"
-        @click="openDetail({ id: it.id } as ContentItem)"
-      >
+      <view v-for="it in otd" :key="it.id" class="otd-item">
         <text class="otd-year">{{ it.year }}</text>
         <text class="otd-icon">{{ it.kind === 'journal' ? '📖' : '✏️' }}</text>
         <text class="otd-title">{{ it.title ?? it.summary }}</text>
@@ -287,10 +282,6 @@ function setKind(k: string) {
 function onStreakCard() {
   if (hasStreak.value) return
   uni.navigateTo({ url: '/pages/publish/publish' })
-}
-
-function openDetail(c: ContentItem) {
-  uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
 }
 
 // 列表卡上删除成功后移除本地列表项

@@ -65,16 +65,19 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
   await expect(page.locator('.r-title').first()).toBeVisible({ timeout: 15_000 })
 })
 
-test('image alt size syntax renders at requested size on detail', async ({ page }) => {
+test('image alt size syntax renders at requested size in reader view', async ({ page }) => {
   const user = await registerAndVerifyViaApi('SizeUser')
-  const id = await createJournalViaApi(
+  // 最新日志即阅读视图首篇（本用户仅此一篇），无需按 id 定位
+  await createJournalViaApi(
     user.token,
     '图片尺寸',
     '前文\n\n![配图 #120px#60px](/media/nonexistent.jpg)\n\n后文'
   )
 
   await loginViaUi(page, user)
-  await page.goto(`/#/pages/detail/detail?id=${id}`)
+  // 详情页已移除：改在日志页阅读视图（最新一篇在最上）断言渲染
+  await page.goto('/#/pages/journals/journals')
+  await expect(page.locator('.r-title', { hasText: '图片尺寸' })).toBeVisible({ timeout: 15_000 })
   // 读侧统一 cherry previewOnly（用户决策）：cherry 预览原生解析 alt #尺寸# 语法并套
   // width/height（与编辑器预览完全一致）；alt 文本保留原 token（cherry 语义，非泄漏）
   const img = page.locator('.cherry-previewer img').first()
@@ -147,7 +150,9 @@ test('editor extras: open local md, export menu, insert file attachment', async 
     headers: { Authorization: `Bearer ${user.token}` }
   })
   const journalId = ((await mine.json()) as { items: { id: string }[] }).items[0].id
-  await page.goto(`/#/pages/detail/detail?id=${journalId}`)
+  // 详情页已移除：改在日志页阅读视图断言附件链接点击下载
+  await page.goto('/#/pages/journals/journals')
+  await expect(page.locator('.r-title', { hasText: '编辑器扩展测试' })).toBeVisible({ timeout: 15_000 })
   const link = page.locator('.cherry-previewer a[href^="/media/"]', { hasText: '附件说明.txt' })
   await expect(link).toBeVisible({ timeout: 15_000 })
   const [download] = await Promise.all([page.waitForEvent('download'), link.click()])

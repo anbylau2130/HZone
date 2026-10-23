@@ -65,8 +65,18 @@
       <RecipientsBar :recipients="content.recipients" />
     </template>
 
+    <!-- 内联评论区（①A）：详情页已移除，评论在卡片内展开；发送期间由 CardComments 防重复 -->
+    <CardComments
+      v-if="showComments && !editing"
+      :content-id="content.id"
+      @count-change="onCommentCountChange"
+    />
+
     <view class="foot">
-      <text class="foot-item">{{ $t('detail.commentCount', { n: content.commentCount }) }}</text>
+      <!-- 点击「评论 n」展开/收起内联评论区（@click.stop 防冒泡） -->
+      <text class="foot-item" @click.stop="showComments = !showComments">{{
+        $t('detail.commentCount', { n: commentCount })
+      }}</text>
       <view class="foot-spacer" />
       <text v-if="weatherChip" class="weather-chip">{{ weatherChip }}</text>
     </view>
@@ -80,6 +90,7 @@ import MediaGrid from './MediaGrid.vue'
 import RecipientsBar from './RecipientsBar.vue'
 import CardOwnerActions from './CardOwnerActions.vue'
 import AvatarCircle from './AvatarCircle.vue'
+import CardComments from './CardComments.vue'
 import SayComposer from './SayComposer.vue'
 import { formatRelativeTime } from '../utils/format'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
@@ -131,6 +142,15 @@ const isAuthor = computed(() => props.content.author.id === auth.user?.id)
 const kindLabel = computed(() =>
   props.content.kind === 'journal' ? t('timeline.kindJournal') : t('timeline.kindSay')
 )
+// ---------- 内联评论（①A）：点击「评论 n」展开/收起，收起即卸载 CardComments ----------
+const showComments = ref(false)
+// 本地维护评论数显示：列表数据 + 发送成功后 CardComments 上抛的新值
+const commentCount = ref(props.content.commentCount)
+
+function onCommentCountChange(n: number) {
+  commentCount.value = n
+}
+
 // 列表卡只显天气（现象图标+温度），无则不显
 const weatherChip = computed(() => {
   const w = props.content.weather
@@ -277,6 +297,7 @@ title: t('common.delete'),
 .foot-item {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-interactive);
+  cursor: pointer; /* 可点击：展开/收起内联评论区 */
 }
 .foot-spacer {
   flex: 1;

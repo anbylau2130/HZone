@@ -1,5 +1,5 @@
-// 日志编辑复用创建页：detail 编辑图标 → publish?id=（cherry 全套编辑器回填）→ 保存 PUT →
-// 返回 detail 自动刷新。替代旧的 detail 内联 textarea（编辑/创建两个页面的割裂）。
+// 日志编辑复用创建页：日志页表格视图「编辑」→ publish?id=（cherry 全套编辑器回填）→
+// 保存 PUT → 返回列表刷新。（详情页已移除：编辑入口改走 journals 表格视图）
 import { expect, test } from '@playwright/test'
 import { API_BASE, loginViaUi, registerAndVerifyViaApi, uniButton } from './helpers'
 
@@ -23,11 +23,13 @@ test('edit journal reuses publish page with cherry editor', async ({ page }) => 
   const journal = (await create.json()) as { id: string }
 
   await loginViaUi(page, user)
-  await page.goto(`/#/pages/detail/detail?id=${journal.id}`)
-  await expect(page.locator('.title')).toHaveText('编辑前标题')
+  // 详情页已移除：从日志页表格视图（「编辑」保留）进入编辑
+  await page.goto('/#/pages/journals/journals')
+  await page.locator('.view-toggle .vt', { hasText: '表格' }).click()
+  await expect(page.locator('.trow .c-title', { hasText: '编辑前标题' })).toBeVisible({ timeout: 15_000 })
 
-  // 编辑图标：日志应跳 publish 编辑页（不再是 detail 内联 textarea）
-  await page.locator('.head .acts .icon-btn').first().click()
+  // 编辑按钮：日志应跳 publish 编辑页
+  await page.locator('.trow .op', { hasText: '编辑' }).first().click()
   await expect(page.locator('.cherry-editor .cm-content')).toBeVisible({ timeout: 20_000 })
   await expect(page).toHaveURL(/pages\/publish\/publish/)
 
@@ -42,10 +44,10 @@ test('edit journal reuses publish page with cherry editor', async ({ page }) => 
   await page.keyboard.press('Control+End')
   await page.keyboard.type('\n\n编辑追加段落。')
 
-  // 保存 → PUT → navigateBack 返回 detail，onShow 刷新出新标题
+  // 保存 → PUT → navigateBack 回日志列表（表格视图 onShow 刷新当前页出新标题）
   await uniButton(page, '保存').click()
-  await expect(page).toHaveURL(/pages\/detail\/detail/, { timeout: 15_000 })
-  await expect(page.locator('.title')).toHaveText('编辑后标题', { timeout: 15_000 })
+  await expect(page).toHaveURL(/pages\/journals\/journals/, { timeout: 15_000 })
+  await expect(page.locator('.trow .c-title', { hasText: '编辑后标题' })).toBeVisible({ timeout: 15_000 })
 
   // API 侧复核：标题与正文确实落库
   const after = await fetch(`${API_BASE}/contents/${journal.id}`, {

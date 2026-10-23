@@ -32,7 +32,7 @@
       <text class="hint-text">{{ $t('common.empty') }}</text>
     </view>
 
-    <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openDetail" @deleted="onCardDeleted" />
+    <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openListPage" @deleted="onCardDeleted" />
 
     <view v-if="items.length" class="more">
       <text v-if="finished" class="hint-text">{{ $t('common.noMore') }}</text>
@@ -89,8 +89,9 @@ function setKind(k: KindFilter) {
   }
 }
 
-function openDetail(c: ContentItem) {
-  uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
+// 详情页已移除（②C）：按结果类型跳对应列表页——说说→随记页、日志→日志页
+function openListPage(c: ContentItem) {
+  uni.navigateTo({ url: c.kind === 'journal' ? '/pages/journals/journals' : '/pages/moments/moments' })
 }
 
 // 列表卡上删除成功后移除本地列表项

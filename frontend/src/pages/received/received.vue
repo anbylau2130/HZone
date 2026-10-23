@@ -9,7 +9,7 @@
       <text class="hint-text">{{ $t('common.empty') }}</text>
     </view>
 
-    <ContentCard v-for="c in items" :key="c.id" :content="c" @open="openDetail" @deleted="onCardDeleted" />
+    <ContentCard v-for="c in items" :key="c.id" :content="c" @deleted="onCardDeleted" />
 
     <!-- 滚动近底部自动加载（useInfiniteScroll），结束后只留提示 -->
     <view v-if="items.length && finished" class="more">
@@ -67,10 +67,6 @@ function setKind(k: string) {
   if (kind.value === next) return
   kind.value = next
   pagination.refresh()
-}
-
-function openDetail(c: ContentItem) {
-  uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
 }
 
 // 列表卡上删除成功后移除本地列表项

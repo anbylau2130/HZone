@@ -31,8 +31,8 @@
       </view>
 
       <view v-if="items.length && viewMode === 'card'" class="cards">
-        <!-- 三段式卡：标题 / 正文预览（cherry previewOnly 懒挂载）/ 日期+天气 -->
-        <view v-for="c in items" :key="c.id" class="card" @click="openDetail(c)">
+        <!-- 三段式卡：标题 / 正文预览（cherry previewOnly 懒挂载）/ 日期+天气；整卡不跳转（②C，详情页已移除） -->
+        <view v-for="c in items" :key="c.id" class="card">
           <text class="title">{{ c.title }}</text>
           <!-- 正文预览统一 cherry previewOnly（全站读侧同一渲染引擎）；IntersectionObserver
                懒挂载（同 JournalReader），视口 ±300px 内才实例化，挂载前 .md-preview 以
@@ -58,7 +58,7 @@
         </view>
       </view>
 
-      <!-- 表格视图：标题在最前（点击进查阅页），行点击同样进详情；字数 ≥1000 用 k 单位 -->
+      <!-- 表格视图：行点击不跳转（②C，详情页已移除）；「编辑」直达 publish 编辑页；字数 ≥1000 用 k 单位 -->
       <view v-if="items.length && viewMode === 'table'" class="table">
         <view class="trow thead">
           <text class="tcell c-title">{{ $t('journals.colTitle') }}</text>
@@ -66,7 +66,7 @@
           <text class="tcell c-words">{{ $t('journals.colWords') }}</text>
           <text class="tcell c-op">{{ $t('journals.colActions') }}</text>
         </view>
-        <view v-for="c in tableItems" :key="c.id" class="trow" @click="openDetail(c)">
+        <view v-for="c in tableItems" :key="c.id" class="trow">
           <text class="tcell c-title">{{ c.title }}</text>
           <text class="tcell c-date">{{ formatDateTime(c.createdAt) }}</text>
           <text class="tcell c-words">{{ formatWords(wordCount(c)) }}</text>
@@ -227,10 +227,6 @@ function goTablePage(p: number) {
 watch(viewMode, (v) => {
   if (v === 'table') fetchTablePage(1)
 }, { immediate: true })
-
-function openDetail(c: ContentItem) {
-  uni.navigateTo({ url: `/pages/detail/detail?id=${c.id}` })
-}
 
 // 表格视图直达编辑页（与创建同一页面）
 function editJournal(c: ContentItem) {

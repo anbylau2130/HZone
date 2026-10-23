@@ -66,9 +66,9 @@ test('journey 1: register via UI, verify via email link route, login via UI', as
   await expect(page.locator('.stat-card')).toHaveCount(4)
 })
 
-// ---------- 旅程 2：A 发随记 @ B → B 站内信红点 → 详情 → 评论 → A 看到评论站内信 ----------
+// ---------- 旅程 2：A 发随记 @ B → B 站内信红点 → 列表页 → 内联评论 → A 看到评论站内信 ----------
 
-test('journey 2: say with mention, inbox red dot, detail comment loop', async ({ browser }) => {
+test('journey 2: say with mention, inbox red dot, inline comment loop', async ({ browser }) => {
   const pageA = await newSession(browser, alice)
   await openEntry(pageA, '发布内容')
   await pageA.locator('uni-textarea textarea').fill(SAY_TEXT)
@@ -86,11 +86,17 @@ test('journey 2: say with mention, inbox red dot, detail comment loop', async ({
   await expect(receivedTab.locator('.dot')).toHaveText('2')
   await openEntry(pageB, '站内信')
 
-  // 站内信列表：mentioned 事件 → 进详情 → 评论
+  // 站内信列表：mentioned 事件 → 跳对应列表页（②C：说说→随记页）
   const item = pageB.locator('.item', { hasText: '内容中 @ 了你' })
   await expect(item.first()).toBeVisible()
   await item.first().click()
-  await expect(pageB.getByText(SAY_TEXT)).toBeVisible()
+  await expect(pageB).toHaveURL(/pages\/moments\/moments/)
+
+  // 随记页只显自己的随记：B 改到「收到」页，在原随记卡片上展开内联评论区回复（①A）
+  await pageB.goto('/#/pages/received/received')
+  const card = pageB.locator('.card', { hasText: SAY_TEXT }).first()
+  await expect(card).toBeVisible({ timeout: 15_000 })
+  await card.locator('.foot-item').first().click() // 「评论 n」展开评论区
   await fillUniInput(pageB, '写评论…', 'UI 旅程评论：同意！')
   await uniButton(pageB, '发送').click()
   await expect(pageB.getByText('UI 旅程评论：同意！')).toBeVisible()
@@ -177,9 +183,9 @@ test('journey 6: guest visiting protected page redirects to login', async ({ pag
   await expect(page).toHaveURL(/pages\/login\/login/)
 })
 
-// ---------- 旅程 7：天气采集（mock 外部服务）→ 发布快照 → 详情全显 ----------
+// ---------- 旅程 7：天气采集（mock 外部服务）→ 发布快照 → 阅读视图全显 ----------
 
-test('journey 7: publish with mocked weather snapshot, detail shows lunar + weather', async ({
+test('journey 7: publish with mocked weather snapshot, reader shows lunar + weather', async ({
   browser
 }) => {
   // ticket 04：新首页会自动采集天气（getWeather 模块级缓存），mock 必须在登录前装好，
@@ -204,31 +210,32 @@ test('journey 7: publish with mocked weather snapshot, detail shows lunar + weat
 
   await loginViaUi(pageA, alice)
 
-  await openEntry(pageA, '发布内容')
-
-  // 天气条自动预览：城市 + 精确温度（含单位），mock 已就位
-  await expect(pageA.getByText('杭州').first()).toBeVisible()
+  // 直接进日志发布页（全新页面加载，?kind=journal 生效）；日记头天气条自动预览：
+  // 城市 + 精确温度（含单位），mock 已就位
+  await pageA.goto('/#/pages/publish/publish?kind=journal')
+  await expect(pageA.getByText('杭州').first()).toBeVisible({ timeout: 15_000 })
   await expect(pageA.getByText('12°C').first()).toBeVisible()
-  await expect(pageA.getByText('12°C').first()).toBeVisible()
 
-  const SAY_WITH_WEATHER = 'UI 旅程：天气快照随记'
-  await pageA.locator('uni-textarea textarea').fill(SAY_WITH_WEATHER)
+  // 详情页已移除：改发日志，在日志阅读视图 meta 行断言农历+天气全显（与随记共用天气快照）
+  await fillUniInput(pageA, '标题', '天气快照日志')
+  const cm = pageA.locator('.cherry-editor .cm-content')
+  await cm.click()
+  await pageA.keyboard.type('UI 旅程：天气快照日志正文')
   await uniButton(pageA, '选择好友').click()
   await pageA.locator('.sheet .row', { hasText: bob.nickname }).click()
   await uniButton(pageA, '确定').click()
   const respPromise = pageA.waitForResponse(
-    (r) => r.url().includes('/api/contents/says') && r.status() === 201
+    (r) => r.url().includes('/api/contents/journals') && r.status() === 201
   )
   await uniButton(pageA, '发布').click()
-  const resp = await respPromise
-  const created = (await resp.json()) as { id: string }
-  await expect(pageA.getByText('发布成功')).toBeVisible()
+  await respPromise
 
-  // 详情：农历+天气全显条（农历宽松匹配：含"年"且含"月"）
-  await pageA.goto(`/#/pages/detail/detail?id=${created.id}`)
-  const line = pageA.locator('.context-line')
-  await expect(line).toBeVisible({ timeout: 15_000 })
-  const text = (await line.textContent()) ?? ''
+  // 日志阅读视图（默认视图）：最新一篇在最上，meta 行全显农历+天气
+  // （农历宽松匹配：含"年"且含"月"；天气含城市+温度）
+  await pageA.goto('/#/pages/journals/journals')
+  const meta = pageA.locator('.article', { hasText: '天气快照日志' }).locator('.r-meta')
+  await expect(meta).toBeVisible({ timeout: 15_000 })
+  const text = (await meta.textContent()) ?? ''
   expect(text).toContain('年')
   expect(text).toContain('月')
   expect(text).toContain('杭州')

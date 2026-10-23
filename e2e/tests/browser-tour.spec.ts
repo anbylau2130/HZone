@@ -1,5 +1,6 @@
 // 浏览器自行测试（browser tour）：真实 UI 走完"发布日志（图/音/视/流程图/drawio）→ 发布
-// → 详情页阅读渲染"全链路，每步截图供人工目检。作为回归用例保留。
+// → 日志阅读视图渲染"全链路，每步截图供人工目检。作为回归用例保留。
+// （详情页已移除：读侧渲染断言迁移到 /pages/journals/journals 阅读视图信息流）
 import { test, expect } from '@playwright/test'
 import { loginViaUi, registerAndVerifyViaApi, uniButton } from './helpers'
 
@@ -12,7 +13,7 @@ const MP4 = Buffer.from('00 00 00 18 66 74 79 70 6d 70 34'.split(' ').map((h) =>
 const DRAWIO_XML =
   '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="2" value="browser tour" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="200" y="200" width="140" height="60" as="geometry"/></mxCell></root></mxGraphModel>'
 
-test('browser tour: journal with image/audio/video/mermaid/drawio renders on detail page', async ({ page }) => {
+test('browser tour: journal with image/audio/video/mermaid/drawio renders in reader view', async ({ page }) => {
   const shot = (name: string) =>
     page.screenshot({ path: `test-results/browser-tour/${name}.png`, fullPage: true })
 
@@ -95,7 +96,7 @@ test('browser tour: journal with image/audio/video/mermaid/drawio renders on det
   await uniButton(page, '发布').click()
   await page.waitForTimeout(2_500) // toast + navigateBack
 
-  // ---- 拿到新日志 id，进详情页 ----
+  // ---- 拿到新日志 id（API 侧复核正文落库）----
   const journalId = await page.evaluate(async () => {
     const token = localStorage.getItem('hz_token') ?? ''
     const r = await fetch('/api/me/contents?kind=journal&offset=0&limit=1', {
@@ -112,11 +113,17 @@ test('browser tour: journal with image/audio/video/mermaid/drawio renders on det
     return j.markdownBody ?? ''
   }, journalId)
   console.log('SAVED BODY >>>', JSON.stringify(savedBody))
-  await page.goto(`/#/pages/detail/detail?id=${journalId}`)
-  await expect(page.locator('.cherry-previewer')).toBeVisible({ timeout: 15_000 })
+
+  // 详情页已移除：改在日志页阅读视图（连续信息流，最新一篇在最上）断言渲染；
+  // JournalReader 的 cherry 懒挂载对首屏文章直接生效，无需滚动
+  await page.goto('/#/pages/journals/journals')
+  await expect(page.locator('.r-title', { hasText: '浏览器实测：多媒体与画图日志' })).toBeVisible({
+    timeout: 15_000,
+  })
+  await expect(page.locator('.cherry-previewer').first()).toBeVisible({ timeout: 15_000 })
   await page.waitForTimeout(3_000) // 等 mermaid 异步渲染 + /media 鉴权换 blob
 
-  // 详情页断言：mermaid 图 / 上传图鉴权可载 / drawio 图 / 音频控件 / 视频控件
+  // 阅读视图断言：mermaid 图 / 上传图鉴权可载 / drawio 图 / 音频控件 / 视频控件
   await expect(page.locator('.cherry-previewer figure[data-type="mermaid"] svg').first()).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.cherry-previewer img[src^="blob:"]').first()).toBeVisible({ timeout: 10_000 })
   await expect(page.locator('.cherry-previewer img[data-type="drawio"]').first()).toBeVisible({ timeout: 10_000 })
@@ -124,12 +131,12 @@ test('browser tour: journal with image/audio/video/mermaid/drawio renders on det
   await expect(audio.first()).toBeVisible({ timeout: 10_000 })
   expect(await audio.getAttribute('src')).toMatch(/^blob:/)
   await expect(page.locator('.cherry-previewer video[controls]').first()).toBeVisible({ timeout: 10_000 })
-  await shot('05-detail-page-full')
+  await shot('05-reader-view-full')
 
   // 图片真实可解码（鉴权换 blob 后 naturalWidth > 0，防"元素在但 401 断图"）
   const imgOk = await page.evaluate(() =>
     Array.from(document.querySelectorAll('.cherry-previewer img')).map((i) => (i as HTMLImageElement).naturalWidth > 0)
   )
-  console.log('detail images loaded:', imgOk)
+  console.log('reader view images loaded:', imgOk)
   expect(imgOk.every(Boolean)).toBe(true)
 })
