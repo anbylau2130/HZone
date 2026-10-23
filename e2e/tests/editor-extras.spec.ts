@@ -36,8 +36,8 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
 
   await loginViaUi(page, user)
   await page.goto('/#/pages/journals/journals')
-  // 默认即阅读视图（无记忆时）：直接是最新一篇
-  await expect(page.locator('.r-title')).toHaveText('表格视图测试', { timeout: 15_000 })
+  // 默认即阅读视图（无记忆时）：连续信息流，最新一篇在最上
+  await expect(page.locator('.r-title').first()).toHaveText('表格视图测试', { timeout: 15_000 })
 
   // 切卡片：卡可见
   await page.locator('.view-toggle .vt', { hasText: '卡片' }).click()
@@ -53,21 +53,16 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
   await expect(page.locator('.cherry-editor .cm-content')).toBeVisible({ timeout: 20_000 })
   await expect(page.locator('.j-title input')).toHaveValue('表格视图测试')
 
-  // 回列表切阅读视图：翻篇与"默认最新"断言
+  // 回列表切阅读视图：连续信息流——两篇竖向堆叠，最新在上，无翻页控件
   await page.goto('/#/pages/journals/journals')
   await page.locator('.view-toggle .vt', { hasText: '阅读' }).click()
-  await expect(page.locator('.r-title')).toHaveText('表格视图测试', { timeout: 15_000 })
-  await expect(page.locator('.r-count')).toHaveText(/^1 \/ \d+/)
-  await page.locator('.r-btn', { hasText: '下一篇' }).click()
-  await expect(page.locator('.r-count')).toHaveText(/^2 \/ \d+/, { timeout: 10_000 })
-  await expect(page.locator('.r-title')).toHaveText('更早的一篇')
-  // 第一篇（最新）可回退
-  await page.locator('.r-btn', { hasText: '上一篇' }).click()
-  await expect(page.locator('.r-count')).toHaveText(/^1 \/ \d+/, { timeout: 10_000 })
+  await expect(page.locator('.r-title', { hasText: '表格视图测试' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.r-title', { hasText: '更早的一篇' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.r-count')).toHaveCount(0)
 
   // 视图偏好 localStorage 记忆：重进仍为阅读
   await page.goto('/#/pages/journals/journals')
-  await expect(page.locator('.r-title')).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.r-title').first()).toBeVisible({ timeout: 15_000 })
 })
 
 test('image alt size syntax renders at requested size on detail', async ({ page }) => {

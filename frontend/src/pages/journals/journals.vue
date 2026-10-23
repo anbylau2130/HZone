@@ -62,7 +62,7 @@
         </view>
       </view>
 
-      <!-- 阅读视图：单篇沉浸阅读，滑动/按钮翻篇，接近末尾动态加载 -->
+      <!-- 阅读视图：连续信息流（用户决策），滚动加载替代翻页（JournalReader 自带） -->
       <JournalReader
         v-if="items.length && viewMode === 'read'"
         :items="items"
@@ -72,7 +72,7 @@
       />
 
       <!-- 卡片视图滚动近底部自动加载（useInfiniteScroll），结束后只留提示；
-           表格视图走下方经典分页；阅读视图由 JournalReader 自带预加载 -->
+           表格视图走下方经典分页；阅读视图由 JournalReader 自带滚动加载 -->
       <view v-if="items.length && viewMode === 'card' && finished" class="more">
         <text class="hint-text">{{ $t('common.noMore') }}</text>
       </view>
@@ -123,7 +123,7 @@ const pagination = usePagination<ContentItem>((offset, limit) =>
 )
 const { items, finished, loadMore } = pagination
 
-// 卡片视图滚动近底部自动加载；表格/阅读视图不触发（阅读由 JournalReader 预加载）
+// 卡片视图滚动近底部自动加载；表格/阅读视图不触发（阅读由 JournalReader 自带滚动加载）
 useInfiniteScroll(() => {
   if (viewMode.value !== 'card') return
   if (!finished.value && !pagination.loading.value) loadMore()

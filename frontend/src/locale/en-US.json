@@ -145,8 +145,6 @@
     "colWords": "Words",
     "colActions": "Actions",
     "viewRead": "Read",
-    "readerPrev": "‹ Prev",
-    "readerNext": "Next ›",
     "prevPage": "Prev page",
     "nextPage": "Next page",
     "pageOf": "Page {x} / {y}"
