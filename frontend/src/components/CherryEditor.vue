@@ -8,6 +8,13 @@
   ></div>
 </template>
 
+<script lang="ts">
+// hostId 的自增序号必须模块作用域：放 script setup 里是实例级的（每实例从 0 重新计数），
+// 同毫秒批量挂载的实例（列表懒挂载）会生成相同 id——cherry 按 id 找挂载点，
+// 结果全部挂进第一个容器，其余宿主空白（卡片视图只有标题没正文的事故根因）
+let hostSeq = 0
+</script>
+
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Cherry, { MenuHookBase } from 'cherry-markdown'
@@ -48,7 +55,9 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
-const hostId = `cherry-hz-${Date.now().toString(36)}`
+// 同毫秒多实例会撞 id（cherry 按 id 找挂载点，撞了就挂进别人容器，对方空白）——加自增序号
+let hostSeq = 0
+const hostId = `cherry-hz-${Math.random().toString(36).slice(2)}`
 const host = ref<HTMLElement | null>(null)
 let cherry: Cherry | null = null
 let observer: MutationObserver | null = null
