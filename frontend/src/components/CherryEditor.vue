@@ -588,6 +588,12 @@ defineExpose({ setMarkdown })
   /* 用户主动关掉的预览（no-preview）仍尊重，不强行展开 */
   .cherry-host:not(.no-preview) :deep(.cherry-previewer) {
     display: block !important;
+    /* 双栏分宽是 cherry 运行时算的（内联 50%），编辑面板隐藏后必须收回全宽，
+       否则内容挤在半栏里（用户反馈"内容显示太小"） */
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+    padding: 0 4px !important;
   }
 }
 
