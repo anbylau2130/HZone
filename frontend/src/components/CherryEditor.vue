@@ -19,7 +19,7 @@ import CherryMermaidPlugin from 'cherry-markdown/dist/addons/cherry-code-block-m
 // 必须 default 导入：该文件的 render/initialize 只在 default 导出上（命名导出仅 5 个
 // 布局函数），namespace 导入会让 addon 误判"找不到 mermaid"静默回退源码
 import Mermaid from 'mermaid/dist/mermaid.esm.min.mjs'
-// uni postcss 会把 css 里 input/button/textarea/video 标签选择器改写成 uni-*（实测 vditor 同款坑），
+// uni postcss 会把 css 里 input/button/textarea/video 标签选择器改写成 uni-*（实测旧编辑器同款坑），
 // cherry 运行时创建的原生 DOM（隐藏上传 input、CodeMirror textarea 等）全部失配 → 样式坏。
 // 用 ?raw 绕过 postcss，运行时原样注入（幂等，多实例只注入一次）。
 import cherryCss from 'cherry-markdown/dist/cherry-markdown.css?raw'
@@ -35,7 +35,15 @@ import Katex from 'katex'
 import 'katex/dist/katex.min.css'
 import * as ECharts from 'echarts'
 
-const props = defineProps<{ modelValue: string; placeholder?: string; preview?: boolean }>()
+// compact：时间线内联编辑用精简菜单，渲染引擎与发布页同一 cherry 保证观感一致；
+// height：编辑器高度（cherry 以内联 style 写到挂载点，不传走默认 60vh）
+const props = defineProps<{
+  modelValue: string
+  placeholder?: string
+  preview?: boolean
+  compact?: boolean
+  height?: string
+}>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
 const hostId = `cherry-hz-${Date.now().toString(36)}`
@@ -338,19 +346,48 @@ onMounted(() => {
     // cherry 0.11.11 无 typora 式即时渲染模式（EditorMode 仅 editOnly/previewOnly/
     // edit&preview）——edit&preview 是其内置双栏（编辑|实时预览同框，无分离预览窗）
     editor: {
-      defaultModel: 'edit&preview',
+      // compact（时间线内联）只出编辑区（editOnly）；发布页保持 edit&preview 双栏不变
+      defaultModel: props.compact ? 'editOnly' : 'edit&preview',
       // cherry 会把该值以内联 style 写到挂载点上（内联优先于组件 css），所以高度从这传
-      height: '60vh',
+      height: props.height ?? '60vh',
       // 0.11 的 placeholder 透传给 CodeMirror 走 editor.codemirror 子配置
       codemirror: { placeholder: props.placeholder }
     },
-    toolbars: {
-      // 照抄官方 demo（index-demo.js）的 toolbars 块，仅按 0.11.11 与离线可用性裁剪：
-      // pdf/word/file 为外部服务不抄；demo 的 customMenuA/B/C 换成自研媒体菜单。
-      // insert 组官方是 ['image','audio','video',...]——原生菜单真机不可弹文件框
-      //（kO() 未挂 DOM input）且有第二笔插入吞字缺陷，三个都换成自研
-      // insertImage/insertAudio/insertVideo（customMenu 注册，见下）
-      toolbar: [
+    toolbars: props.compact
+      ? {
+          // compact：时间线内联编辑用精简菜单，渲染引擎与发布页同一 cherry 保证观感一致
+          toolbar: [
+            'bold',
+            'italic',
+            '|',
+            'header',
+            '|',
+            'ol',
+            'ul',
+            'quote',
+            '|',
+            // insertImage 为自研菜单（customMenu 注册，真机可用）；其余均为 cherry 内置名
+            'insertImage',
+            'link',
+            'inlineCode',
+            'code',
+            '|',
+            'togglePreview',
+            'wordCount'
+          ],
+          toolbarRight: ['wordCount'],
+          sidebar: [],
+          customMenu: {
+            insertImage: InsertImageMenu
+          }
+        }
+      : {
+          // 照抄官方 demo（index-demo.js）的 toolbars 块，仅按 0.11.11 与离线可用性裁剪：
+          // pdf/word/file 为外部服务不抄；demo 的 customMenuA/B/C 换成自研媒体菜单。
+          // insert 组官方是 ['image','audio','video',...]——原生菜单真机不可弹文件框
+          //（kO() 未挂 DOM input）且有第二笔插入吞字缺陷，三个都换成自研
+          // insertImage/insertAudio/insertVideo（customMenu 注册，见下）
+          toolbar: [
         'bold',
         'italic',
         { strikethrough: ['strikethrough', 'underline', 'sub', 'sup', 'ruby'] },

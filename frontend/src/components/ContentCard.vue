@@ -21,15 +21,21 @@
         @updated="onSayUpdated"
         @cancel="editing = false"
       />
-      <!-- 日志：轻量 Markdown 内联编辑器（cherry 富文本无法内联进卡片，大改仍从详情页进 cherry） -->
+      <!-- 日志：cherry 精简内联编辑（compact） -->
       <template v-else>
         <input
           v-model="editTitle"
           class="edit-title"
           :placeholder="$t('publish.titlePlaceholder')"
         />
-        <!-- Vditor WYSIWYG：Typora 式所见即所得（动态 import 不进主包，资源走 /static/vditor 本地化） -->
-        <div ref="vditorEl" class="vditor-host" />
+        <!-- 日志：cherry 精简内联编辑（compact），与发布页同一渲染引擎保证观感一致；
+             defineAsyncComponent 懒加载，只有进编辑态才拉取 cherry chunk（不进主包） -->
+        <AsyncCherryEditor
+          v-model="editBody"
+          compact
+          height="240px"
+          :placeholder="$t('publish.bodyPlaceholder')"
+        />
         <view class="edit-bar">
           <view class="edit-spacer" />
           <button class="edit-cancel" :disabled="saving" @click="cancelEdit">
@@ -59,9 +65,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type Vditor from 'vditor'
 import MediaGrid from './MediaGrid.vue'
 import RecipientsBar from './RecipientsBar.vue'
 import CardOwnerActions from './CardOwnerActions.vue'
@@ -73,7 +78,10 @@ import { deleteContent, updateContent } from '../api/endpoints'
 import type { ContentItem } from '../api/endpoints'
 import { useAuthStore } from '../stores/auth'
 
-const { t, locale } = useI18n()
+// cherry 编辑器懒加载：模块顶层异步组件，vite 自动拆 chunk（只有进编辑态才加载）
+const AsyncCherryEditor = defineAsyncComponent(() => import('./CherryEditor.vue'))
+
+const { t } = useI18n()
 const auth = useAuthStore()
 const props = defineProps<{ content: ContentItem }>()
 
@@ -108,49 +116,8 @@ const editTitle = ref('')
 const editBody = ref('')
 const saving = ref(false)
 
-// ---------- 日志原地编辑：Vditor WYSIWYG（Typora 式所见即所得） ----------
-const vditorEl = ref<HTMLDivElement | null>(null)
-let vditor: Vditor | null = null
-// 资源本地化根目录：src/static/vditor/dist/**（Vditor 按 {cdn}/dist/... 拼资源 URL，离线环境不拉 unpkg）
-const VDITOR_CDN = '/static/vditor'
-
-// 防重复初始化 + 异步加载期间的竞态防护：加载完成后元素已被移除/实例已存在则放弃
-async function initVditor() {
-  if (vditor) return
-  await nextTick()
-  if (!vditorEl.value || vditor) return
-  const { default: VditorCtor } = await import('vditor')
-  await import('vditor/dist/index.css')
-  if (!vditorEl.value || vditor) return
-  vditor = new VditorCtor(vditorEl.value, {
-    mode: 'wysiwyg',
-    value: props.content.markdownBody ?? '',
-    cdn: VDITOR_CDN,
-    // vditor lang 与项目 i18n locale 映射（zh-CN→zh_CN / en-US→en_US）
-    lang: locale.value === 'en-US' ? 'en_US' : 'zh_CN',
-    cache: { enable: false },
-    minHeight: 200,
-    toolbar: ['headings', 'bold', 'italic', 'strike', '|', 'quote', 'list', 'ordered-list', 'link', 'table', 'code'],
-    // 同步正文到 editBody，驱动现有 canSave 保存门控
-    input: (value: string) => {
-      editBody.value = value
-    }
-  })
-}
-
-function destroyVditor() {
-  vditor?.destroy()
-  vditor = null
-}
-
-// 进入编辑态（日志）→ 懒加载初始化；退出/卸载 → destroy 防 DOM/监听泄漏
-watch(editing, (v) => {
-  if (v && props.content.kind === 'journal') void initVditor()
-  else destroyVditor()
-})
-
-onBeforeUnmount(destroyVditor)
-
+// ---------- 日志原地编辑：cherry 精简内联编辑（compact） ----------
+// 正文走 AsyncCherryEditor v-model 双向绑定直接驱动 editBody，无需额外的 input 回调桥接
 function goEdit() {
   editTitle.value = props.content.title ?? ''
   editBody.value = props.content.markdownBody ?? ''
@@ -178,7 +145,7 @@ async function saveJournal() {
     // patch 语义：只传 title/markdownBody，名单/媒体/天气不动；正文以编辑器当前值为准
     const updated = await updateContent(props.content.id, {
       title: editTitle.value.trim(),
-      markdownBody: vditor ? vditor.getValue() : editBody.value
+      markdownBody: editBody.value
     })
     uni.showToast({ title: t('common.saved'), icon: 'success' })
     editing.value = false
@@ -308,10 +275,6 @@ title: t('common.delete'),
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-/* Vditor 容器：撑满卡片宽（vditor 自带样式由动态 import 的 index.css 提供） */
-.vditor-host {
-  width: 100%;
 }
 .edit-bar {
   display: flex;
