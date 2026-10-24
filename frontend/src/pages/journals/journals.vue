@@ -339,20 +339,18 @@ function formatWords(n: number): string {
 .md-preview :deep(.cherry-markdown > :first-child) {
   margin-top: 0;
 }
+/* 日期+天气紧贴标题下方（同一信息块，不再底部吸附加分隔线） */
 .meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-top: 10px;
-  margin-top: auto;
-  border-top: 1px solid var(--hz-color-border);
+  margin-top: 4px;
 }
 .date {
   font-size: 12px;
   color: var(--hz-color-text-secondary);
 }
 .weather {
-  margin-left: auto;
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--hz-color-bg);
