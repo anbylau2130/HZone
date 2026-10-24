@@ -1096,6 +1096,22 @@ async function submit() {
   border-radius: var(--hz-radius-md);
   font-size: var(--hz-font-size-base);
 }
+/* 移动端编辑器贴边：容器去圆角去内边距，cherry 同步去圆角边框（用户要求无嵌入感）；
+   标题行单独留 12px 横向内边距，正文区满宽贴屏幕边 */
+@media (max-width: 767px) {
+  .journal-panel {
+    border-radius: 0;
+    padding: 0;
+  }
+  .j-head-row {
+    padding: 0 12px;
+  }
+  .journal-panel :deep(.cherry) {
+    border: none;
+    border-radius: 0;
+  }
+}
+
 @media (min-width: 768px) {
   /* 预览切换按钮桌面隐藏：桌面恒双栏，无需切换 */
   .preview-toggle {
