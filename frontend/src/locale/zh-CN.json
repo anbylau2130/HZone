@@ -119,7 +119,6 @@
     "moments": "随记",
     "journals": "日志",
     "received": "收到",
-    "theme": "主题",
     "settings": "设置"
   },
   "dock": {
@@ -299,7 +298,6 @@
     "coverHint": "支持 jpg/png，自动压缩"
   },
   "theme": {
-    "title": "主题",
     "mode": "模式",
     "modeLight": "浅色",
     "modeDark": "深色",

@@ -33,9 +33,9 @@ test('preferences made on device A sync to device B after re-login', async ({ pa
   await ensureInstanceInitialized()
   const user = await registerAndVerifyViaApi('prefsui')
 
-  // A 端：真实 UI 登录 → 主题页改深色 + English
+  // A 端：真实 UI 登录 → 设置页改深色 + English（tab 合并：主题设置并入设置页）
   await loginViaUi(page, user)
-  await page.goto('/#/pages/theme/theme')
+  await page.goto('/#/pages/settings/settings')
   await expect(page.locator('.seg-item', { hasText: '深色' })).toBeVisible()
   await page.locator('.seg-item', { hasText: '深色' }).click()
   await page.locator('.seg-item', { hasText: 'English' }).click()
@@ -62,10 +62,10 @@ test('preferences made on device A sync to device B after re-login', async ({ pa
   expect(bg2.trim()).toBe('#1e1712')
   expect(await page2.evaluate(() => localStorage.getItem('hz_locale'))).toBe('en-US')
 
-  // 可见证据：主题页模式区英文渲染（语言同步）
-  await page2.goto('/#/pages/theme/theme')
+  // 可见证据：设置页模式区英文渲染（语言同步）
+  await page2.goto('/#/pages/settings/settings')
   await expect(page2.locator('.seg-text', { hasText: 'Dark' })).toBeVisible({ timeout: 10_000 })
-  await expect(page2.locator('.section-title', { hasText: 'Mode' })).toBeVisible({ timeout: 10_000 })
+  await expect(page2.locator('.sec-title', { hasText: 'Mode' })).toBeVisible({ timeout: 10_000 })
   await ctx2.close()
 })
 
@@ -73,8 +73,8 @@ test('preferences made on device A sync to device B after re-login', async ({ pa
 
 test('guest changes stay local-only (no crash, no sync)', async ({ page }) => {
   await ensureInstanceInitialized()
-  // 未登录直接进主题页：改动只落本地，不 PUT（无 token 跳过）
-  await page.goto('/#/pages/theme/theme')
+  // 未登录直接进设置页：改动只落本地，不 PUT（无 token 跳过）
+  await page.goto('/#/pages/settings/settings')
   await expect(page.locator('.seg-item', { hasText: '深色' })).toBeVisible()
   await page.locator('.seg-item', { hasText: '深色' }).click()
   await expect.poll(async () =>

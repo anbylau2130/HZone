@@ -22,7 +22,7 @@
 import { onMounted } from 'vue'
 import { useInboxStore } from '../stores/inbox'
 
-type TabKey = 'index' | 'moments' | 'journals' | 'received' | 'theme' | 'settings'
+type TabKey = 'index' | 'moments' | 'journals' | 'received' | 'settings'
 
 interface TabItem {
   key: TabKey
@@ -38,7 +38,6 @@ const tabs: TabItem[] = [
   { key: 'moments', labelKey: 'tabs.moments', icon: '✎', url: '/pages/moments/moments' },
   { key: 'journals', labelKey: 'tabs.journals', icon: '▤', url: '/pages/journals/journals' },
   { key: 'received', labelKey: 'tabs.received', icon: '◉', url: '/pages/received/received' },
-  { key: 'theme', labelKey: 'tabs.theme', icon: '◐', url: '/pages/theme/theme' },
   { key: 'settings', labelKey: 'tabs.settings', icon: '⚙', url: '/pages/settings/settings' }
 ]
 

@@ -119,7 +119,6 @@
     "moments": "Moments",
     "journals": "Journals",
     "received": "Received",
-    "theme": "Theme",
     "settings": "Settings"
   },
   "moments": {
@@ -299,7 +298,6 @@
     "coverRemoved": "Cover removed"
   },
   "theme": {
-    "title": "Theme",
     "mode": "Mode",
     "modeLight": "Light",
     "modeDark": "Dark",
