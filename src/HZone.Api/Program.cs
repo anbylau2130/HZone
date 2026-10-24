@@ -29,6 +29,10 @@ builder.Services.AddDbContext<HZoneDbContext>(options =>
     options.UseSqlite(connectionString);
     options.AddInterceptors(new HZone.Api.Data.SqlitePragmaInterceptor());
 });
+// 时间戳统一 UTC 序列化（带 Z）：EF SQLite 读回 Kind=Unspecified 默认丢 Z，
+// 前端按本地时间解析导致显示偏移时区差（详见 .scratch/reviews/frontend-medium-batch.md 新发现节）
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new UtcDateTimeJsonConverter()));
 // 签发与校验复用同一来源的 JWT 键（AuthConfig 单点读取，生产未配置已 fail-fast）。
 builder.Services.AddSingleton(jwtKey);
 builder.Services.AddScoped<IContentQuery, ContentQuery>();

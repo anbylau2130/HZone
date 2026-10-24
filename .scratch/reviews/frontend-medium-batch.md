@@ -59,9 +59,9 @@
 - 头像 /media 401：已核实修复（AvatarCircle/ProfileHeader 全站 blob 换取）
 - cherry 预览图片首渲染 401：已知问题（见 .scratch/security/cherry-preview-xss-eval.md 遗留节）
 
-## 重审过程中的新发现（待单独成批）
+## 重审过程中的新发现
 
-### 时间戳序列化丢 Z 后缀 → 全站时间显示偏移时区差
+### 时间戳序列化丢 Z 后缀 → 全站时间显示偏移时区差（✅ 已修复，见后续提交）
 - 现象：刚创建的内容显示「8 小时前」（UTC+8 环境实测）
 - 根因：列表/详情接口的 createdAt 序列化为 `"2026-10-24T05:32:11.705598"`
   （无 Z）。EF Core SQLite 读回 DateTime 的 Kind=Unspecified，System.Text.Json
@@ -73,5 +73,9 @@
   SpecifyKind(Utc) 后写 ISO 带 Z），一处修复全站响应；注意跑全量后端测试
   （87 条）确认无格式断言破坏，并知会用户：修后所有历史时间会变为真实
   本地时间（比之前显示晚 8 小时，因为之前是错的）
+- **已实施**：HZone.Api/UtcDateTimeJsonConverter.cs + Program.cs
+  ConfigureHttpJsonOptions 接线。后端 116/116、e2e 23/23 通过；浏览器实测
+  刚建日志显示「1 分钟前」（修复前同场景「9 小时前」）、随记分组「今天」
+  正确、PAT 绝对时间显示真实北京时间（08:23 = 00:23Z）
 - 顺带：groupByCnDate 的中国区日界恰好因该 bug 与 +8 偏移相互抵消，
-  修复后日界计算仍正确（已推演），但建议修复时加一条当日内容的分组断言
+  修复后日界计算仍正确（实测分组「今天」断言通过）
