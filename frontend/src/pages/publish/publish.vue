@@ -125,16 +125,15 @@
         <!-- #endif -->
       </view>
       <view class="recipients">
-        <text class="label">{{ $t('publish.recipients') }}</text>
+        <text class="label link" @click="pickerVisible = true">{{ $t('publish.recipients') }}</text>
         <view class="chips">
           <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
         </view>
-        <button class="pick small" @click="pickerVisible = true">{{ $t('publish.chooseRecipients') }}</button>
+        <!-- 选择好友按钮移除：点「@ 谁」label 打开选好友（用户要求） -->
       </view>
       <button class="btn" :disabled="busy" @click="submit">
         {{ editingId ? $t('common.save') : $t('publish.submit') }}
       </button>
-      <!-- 保存按钮移入收件人行（用户要求）：贴在「@ 谁」列表之后 -->
     </template>
 
     <FriendPicker v-model:visible="pickerVisible" @confirm="onFriendsConfirmed" />
@@ -1189,6 +1188,12 @@ async function submit() {
   .preview-toggle .eye-icon {
     width: 20px;
     height: 20px;
+  }
+  /* 保存按钮贴底常显，不被编辑器挤出首屏 */
+  .page .btn {
+    position: sticky;
+    bottom: 8px;
+    z-index: 5;
   }
 
   /* 「@ 谁」可点开选好友 */
