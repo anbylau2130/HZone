@@ -31,8 +31,8 @@
       </view>
 
       <view v-if="items.length && viewMode === 'card'" class="cards">
-        <!-- 三段式卡：标题 / 正文预览（cherry previewOnly 懒挂载）/ 日期+天气；整卡不跳转（②C，详情页已移除） -->
-        <view v-for="c in items" :key="c.id" class="card">
+        <!-- 三段式卡：标题 / 日期+天气；整卡点击直达 publish 编辑页（用户要求，与表格视图「编辑」同目标） -->
+        <view v-for="c in items" :key="c.id" class="card" @click="editJournal(c)">
           <text class="title">{{ c.title }}</text>
           <view class="meta">
             <text class="date">{{ formatDateTime(c.createdAt) }}</text>
