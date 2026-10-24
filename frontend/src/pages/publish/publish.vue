@@ -1180,7 +1180,7 @@ async function submit() {
     flex-direction: column;
   }
   .j-head-row {
-    padding: 0 12px;
+    padding: 0 15px;
     flex-shrink: 0;
   }
   .journal-panel .cherry-host {
@@ -1217,11 +1217,12 @@ async function submit() {
     width: 20px;
     height: 20px;
   }
-  /* 保存按钮贴底常显，不被编辑器挤出首屏 */
+  /* 保存按钮贴底常显，不被编辑器挤出首屏；两侧 15px 与标题行/日记头/收件人行同拍 */
   .page .btn {
     position: sticky;
     bottom: 8px;
     z-index: 5;
+    margin: 0 15px;
   }
 
   /* 「@ 谁」可点开选好友 */
@@ -1229,12 +1230,21 @@ async function submit() {
     color: var(--hz-color-interactive);
     cursor: pointer;
   }
+  /* 收件人行贴边时代 15px 横向内边距（与日记头一致） */
+  .recipients {
+    padding: 12px 15px;
+  }
 }
 
 @media (min-width: 768px) {
   /* 预览切换按钮桌面隐藏：桌面恒双栏，无需切换 */
   .preview-toggle {
     display: none;
+  }
+  /* 日记头桌面限宽：48rem+ 内容宽下三行两端对齐会被拉出巨大间隙；360px = 移动端
+     内容宽（390-30），两端对齐的疏密与移动端完全一致，保持日记本页眉观感 */
+  .diary-head.in-panel {
+    max-width: 360px;
   }
   /* journal 模式占满左导航与 dock 之间的可用宽度，仅留 24px padding */
   .page {

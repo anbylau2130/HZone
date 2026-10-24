@@ -449,8 +449,9 @@ onMounted(() => {
       ],
       toolbarRight: ['export', '|', 'fullScreen', '|', 'wordCount'],
       bubble: ['bold', 'italic', 'underline', 'strikethrough', 'sub', 'sup', 'quote', 'ruby', '|', 'size', 'color'],
-      sidebar: ['mobilePreview', 'copy', 'theme', 'codeTheme'],
-      toc: { defaultModel: 'full' },
+      // 侧边悬浮工具条清空（手机预览/复制/主题/代码主题）：预览切换已由标题行眼睛图标承担、
+      // 主题跟随应用主题变量，悬浮条在移动端贴右缘占位遮挡，无存在价值（与 compact 同款处理）
+      sidebar: [],
       customMenu: {
         insertImage: InsertImageMenu,
         insertAudio: InsertAudioMenu,
@@ -613,14 +614,23 @@ defineExpose({ setMarkdown })
 .cherry-host :deep(.cherry-previewer video) {
   max-width: 100%;
 }
-/* 移动端隐藏 markdown 工具栏（用户要求）：触屏打字为主，格式工具用得少，
-   还给正文更多纵向空间；cherry 0.11 的工具栏自身不响应窄屏，只能 CSS 收掉 */
-@media (max-width: 767px) {
-  /* 编辑区源码内边距（用户指定 9px） */
+/* cherry 悬浮目录面板（cherry-flex-toc，defaultModel 仅 full/pure/fixed 无隐藏态，
+   配置层关不掉）：日志篇幅下无导航价值，移动端展开态还盖住编辑器半屏——整体隐藏 */
+.cherry-host :deep(.cherry-flex-toc) {
+  display: none !important;
+}
+/* cherry 右缘悬浮工具条外壳：配置 sidebar:[] 时 cherry 仍渲染空壳（空数组 truthy，
+   实测 30px 空条贴右缘通栏），配置层关不掉——CSS 兜底隐藏（要恢复侧栏功能时先删这条） */
+.cherry-host :deep(.cherry-sidebar) {
+  display: none !important;
+}
+/* 编辑区源码内边距（用户指定 9px）：桌面/移动统一，与预览区 9px 对齐 */
 .cherry-host :deep(.cm-lineWrapping) {
   padding: 9px !important;
 }
-
+/* 移动端隐藏 markdown 工具栏（用户要求）：触屏打字为主，格式工具用得少，
+   还给正文更多纵向空间；cherry 0.11 的工具栏自身不响应窄屏，只能 CSS 收掉 */
+@media (max-width: 767px) {
 /* 移动端隐藏工具栏（触屏以打字为主）；编辑/预览由标题后的预览图标切换，不强制 */
   .cherry-host :deep(.cherry-toolbar) {
     display: none !important;
