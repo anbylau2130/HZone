@@ -125,15 +125,15 @@
         <!-- #endif -->
       </view>
       <view class="recipients">
-        <text class="label link" @click="pickerVisible = true">{{ $t('publish.recipients') }}</text>
+        <text class="label">{{ $t('publish.recipients') }}</text>
         <view class="chips">
           <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
         </view>
-        <!-- 选择好友按钮移除：点「@ 谁」label 打开选好友；保存按钮贴其后的紧凑主色按钮（用户要求） -->
-        <button class="save-mini" :disabled="busy" @click="submit">
-          {{ editingId ? $t('common.save') : $t('publish.submit') }}
-        </button>
+        <button class="pick small" @click="pickerVisible = true">{{ $t('publish.chooseRecipients') }}</button>
       </view>
+      <button class="btn" :disabled="busy" @click="submit">
+        {{ editingId ? $t('common.save') : $t('publish.submit') }}
+      </button>
       <!-- 保存按钮移入收件人行（用户要求）：贴在「@ 谁」列表之后 -->
     </template>
 
@@ -1133,20 +1133,13 @@ async function submit() {
   gap: 6px;
   flex-wrap: wrap;
 }
-.save-mini {
-  margin-left: auto;
-  flex-shrink: 0;
-  height: 30px;
-  line-height: 30px;
-  padding: 0 16px;
-  border-radius: 999px;
+.btn {
+  height: 44px;
+  line-height: 44px;
   background: var(--hz-color-primary);
   color: #fff;
-  font-size: var(--hz-font-size-sm);
-  border: none;
-}
-.save-mini[disabled] {
-  opacity: 0.5;
+  border-radius: var(--hz-radius-md);
+  font-size: var(--hz-font-size-base);
 }
 /* 移动端编辑器贴边：容器去圆角去内边距，cherry 同步去圆角边框（用户要求无嵌入感）；标题行单独留 12px 横向内边距，正文区满宽贴屏幕边 */
 @media (max-width: 767px) {
@@ -1202,14 +1195,6 @@ async function submit() {
   .recipients .label.link {
     color: var(--hz-color-interactive);
     cursor: pointer;
-  }
-  /* 收件人行钉在底部：保存按钮（@谁 后）首屏常显 */
-  .recipients {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    background: var(--hz-color-surface);
-    padding: 8px 0;
   }
 }
 
