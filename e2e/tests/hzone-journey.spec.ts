@@ -73,6 +73,7 @@ test('journey 2: say with mention, inbox red dot, inline comment loop', async ({
   const pageA = await newSession(browser, alice)
   await openEntry(pageA, '发布内容')
   await pageA.locator('uni-textarea textarea').fill(SAY_TEXT)
+  // 随记模式：工具栏「选择好友」按钮（日志模式入口不同，见 journey 3 注释）
   await uniButton(pageA, '选择好友').click()
   await pageA.locator('.sheet .row', { hasText: bob.nickname }).click()
   await uniButton(pageA, '确定').click()
@@ -123,7 +124,8 @@ test('journey 3: journal publish visible on friend profile', async ({ browser })
   const cm = pageA.locator('.cherry-editor .cm-content')
   await cm.click()
   await pageA.keyboard.type('正文第一段，写给 Bob 看。')
-  await uniButton(pageA, '选择好友').click()
+  // 日志模式收件人入口是「@ 谁」label 链接（选择好友按钮已移除，仅随记工具栏保留）
+  await pageA.locator('.recipients .label').click()
   await pageA.locator('.sheet .row', { hasText: bob.nickname }).click()
   await uniButton(pageA, '确定').click()
   await uniButton(pageA, '发布').click()
@@ -225,7 +227,8 @@ test('journey 7: publish with mocked weather snapshot, reader shows lunar + weat
   const cm = pageA.locator('.cherry-editor .cm-content')
   await cm.click()
   await pageA.keyboard.type('UI 旅程：天气快照日志正文')
-  await uniButton(pageA, '选择好友').click()
+  // 日志模式收件人入口同上（label 链接）
+  await pageA.locator('.recipients .label').click()
   await pageA.locator('.sheet .row', { hasText: bob.nickname }).click()
   await uniButton(pageA, '确定').click()
   const respPromise = pageA.waitForResponse(

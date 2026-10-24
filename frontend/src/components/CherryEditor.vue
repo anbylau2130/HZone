@@ -365,7 +365,7 @@ onMounted(() => {
       // 由 cherry 自行隐藏（cherry init 末尾统一 switchModel(defaultModel)，全量工具栏也不显形）；
       // exclusive：发布页移动端互斥单显（预览/编辑二选一，桌面走下方双栏），initialPreview 决定首挂模式；
       // 其余（卡片内联编辑）保持 edit&preview 双栏现状
-      // TODO(安全): cherry 预览他人内容的 XSS 面需单独评估
+      // 安全：previewOnly 渲染他人内容的 XSS 面已实测评估通过（矩阵+断言见 .scratch/security/cherry-preview-xss-eval.md）
       defaultModel: props.previewOnly
         ? 'previewOnly'
         : props.exclusive
@@ -381,7 +381,7 @@ onMounted(() => {
       codemirror: props.previewOnly ? undefined : { placeholder: props.placeholder }
     },
     // previewOnly：工具栏全空（cherry 在 previewOnly 下本就隐藏 toolbar，这里双保险）；
-    // TODO(安全): cherry 预览他人内容的 XSS 面需单独评估
+    // 安全：previewOnly 渲染他人内容的 XSS 面已实测评估通过（矩阵+断言见 .scratch/security/cherry-preview-xss-eval.md）
     toolbars: props.previewOnly
       ? { toolbar: [], toolbarRight: [], sidebar: [], bubble: [] }
       : props.compact
