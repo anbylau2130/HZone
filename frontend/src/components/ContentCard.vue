@@ -8,7 +8,6 @@
         <text class="kind">{{ kindLabel }}</text>
       </view>
       <view class="head-spacer" />
-      <text class="date">{{ formatRelativeTime(content.createdAt) }}</text>
       <CardOwnerActions v-if="isAuthor" @edit="goEdit" @delete="remove" />
     </view>
 
@@ -51,6 +50,11 @@
     <template v-else>
       <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
       <text v-else class="text">{{ content.text }}</text>
+      <!-- 日期+天气紧贴标题/正文下方，与卡片一体 -->
+      <view v-if="content.kind === 'journal' || weatherChip" class="meta-line">
+        <text class="date">{{ formatRelativeTime(content.createdAt) }}</text>
+        <text v-if="weatherChip" class="weather-chip">{{ weatherChip }}</text>
+      </view>
       <!-- 日志正文预览：读侧统一 cherry previewOnly（用户决策），与编辑器渲染完全一致；
            IntersectionObserver 懒挂载——列表一页 15+ 卡，滚进视口才拉取 cherry chunk 并渲染，
            挂载前 .md-preview 以 min-height 占位防跳变（用 div：view 的 ref 拿不到 DOM 元素） -->
@@ -78,7 +82,6 @@
         $t('detail.commentCount', { n: commentCount })
       }}</text>
       <view class="foot-spacer" />
-      <text v-if="weatherChip" class="weather-chip">{{ weatherChip }}</text>
     </view>
   </view>
 </template>
@@ -258,6 +261,18 @@ title: t('common.delete'),
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
   flex-shrink: 0;
+}
+/* 日期+天气行：紧贴标题/正文下方，与卡片一体（不再右上一条、底部一条） */
+.meta-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.meta-line .weather-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--hz-color-bg);
 }
 .author {
   font-size: var(--hz-font-size-base);
