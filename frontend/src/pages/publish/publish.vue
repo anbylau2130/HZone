@@ -77,8 +77,18 @@
           <input v-model="title" class="j-title" :placeholder="$t('publish.titlePlaceholder')" />
           <!-- #ifdef H5 -->
           <!-- 预览态显示「编辑」、编辑态显示「预览」（按钮指向可切入的模式）；仅移动端显示（桌面 CSS 隐藏） -->
-          <view class="preview-toggle" :class="{ on: previewOn }" @click="previewOn = !previewOn">
-            <text class="pt-text">{{ previewOn ? $t('common.edit') : $t('publish.previewToggle') }}</text>
+          <view class="preview-toggle" :class="{ on: previewOn }" @click="previewOn = !previewOn"
+             :title="previewOn ? $t('publish.previewToggle') : $t('common.edit')">
+            <!-- 预览态=睁眼，编辑态=闭眼（图标反映当前状态） -->
+            <svg v-if="previewOn" class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <svg v-else class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
           </view>
           <!-- #endif -->
         </view>
@@ -103,11 +113,11 @@
         <!-- #endif -->
       </view>
       <view class="recipients">
-        <text class="label">{{ $t('publish.recipients') }}</text>
+        <text class="label link" @click="pickerVisible = true">{{ $t('publish.recipients') }}</text>
         <view class="chips">
           <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
         </view>
-        <button class="pick small" @click="pickerVisible = true">{{ $t('publish.chooseRecipients') }}</button>
+        <!-- 选择好友按钮移除：点「@ 谁」label 打开选好友（用户要求） -->
       </view>
       <button class="btn" :disabled="busy" @click="submit">
         {{ editingId ? $t('common.save') : $t('publish.submit') }}
@@ -174,7 +184,8 @@ import { CONDITION_ICONS, WEATHER_CONDITIONS, getWeather, type WeatherSnapshot }
 import { formatLunar } from '../../utils/lunar'
 
 onShow(() => {
-  setNavTitle(editingId.value ? 'hub.edit' : 'hub.publish')
+  // 日志编辑模式标题「日志编辑」；随记沿用 发布内容/编辑内容
+  setNavTitle(mode.value === 'journal' ? 'hub.journalEdit' : (editingId.value ? 'hub.edit' : 'hub.publish'))
   // 编辑模式：日记头日期/农历/天气由 loadForEdit 回填原内容快照，不拉今日统计
   if (editingId.value) return
   refreshDiaryHead()
@@ -1102,13 +1113,54 @@ async function submit() {
   .journal-panel {
     border-radius: 0;
     padding: 0;
+    /* 编辑器撑满首屏：面板吃掉剩余高度，保存按钮露出在下方 */
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
   .j-head-row {
     padding: 0 12px;
+    flex-shrink: 0;
+  }
+  .journal-panel .cherry-host {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0;
   }
   .journal-panel :deep(.cherry) {
     border: none;
     border-radius: 0;
+    /* 覆盖 cherry 内联 60vh，改随面板弹性填充 */
+    height: auto !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  /* 编辑态：编辑区撑满；预览态：预览区撑满（排除 cherry 的 --hidden 态，
+     否则预览模式下隐藏的编辑面板仍 flex 占位、预览内容沉底） */
+  .journal-panel :not(.preview-only) > :deep(.cherry-editor:not(.cherry-editor--hidden)) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .journal-panel :not(.preview-only) > :deep(.cm-editor:not(.cm-empty)) {
+    flex: 1;
+  }
+  .journal-panel.preview-only :deep(.cherry-previewer) {
+    flex: 1;
+  }
+  /* 眼睛图标 */
+  .preview-toggle .eye-icon {
+    width: 20px;
+    height: 20px;
+  }
+  /* 「@ 谁」可点开选好友 */
+  .recipients .label.link {
+    color: var(--hz-color-interactive);
+    cursor: pointer;
   }
 }
 
