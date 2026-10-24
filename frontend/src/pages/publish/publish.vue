@@ -816,9 +816,25 @@ async function submit() {
   color: var(--hz-color-text-secondary);
 }
 .diary-head.in-panel {
-  padding: 0 0 10px;
+  padding: 0 0 8px;
   border-bottom: 1px solid var(--hz-color-border);
   margin-bottom: 2px;
+}
+.diary-head.in-panel .dh-date {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--hz-color-text-secondary);
+}
+.diary-head.in-panel .dh-lunar {
+  font-size: 13px;
+  color: var(--hz-color-text-secondary);
+}
+.diary-head.in-panel .dh-weather-text {
+  font-size: 13px;
+  color: var(--hz-color-text-secondary);
+}
+.diary-head.in-panel .dh-weather-add {
+  font-size: 13px;
 }
 
 .dh-weather-add {
@@ -860,19 +876,18 @@ async function submit() {
   color: var(--hz-color-text);
 }
 /* 预览开关小按钮（仅 H5）：低调 pill，on 态 primary 描边+浅底 */
+/* 预览切换：图标式超链接（无边框无底色，轻量不抢戏） */
 .preview-toggle {
   flex-shrink: 0;
-  padding: 4px 10px;
-  border: 1px solid var(--hz-color-border);
-  border-radius: 999px;
-  background: var(--hz-color-bg);
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: var(--hz-color-interactive);
   cursor: pointer;
   user-select: none;
 }
 .preview-toggle.on {
-  border-color: var(--hz-color-primary);
-  color: var(--hz-color-primary);
-  background: var(--hz-color-bg);
+  color: var(--hz-color-interactive);
 }
 .pt-text {
   font-size: var(--hz-font-size-sm);
