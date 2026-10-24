@@ -336,6 +336,16 @@ title: t('common.delete'),
   color: var(--hz-color-text);
   background: var(--hz-color-surface);
 }
+/* 内联编辑器与发布页同款贴边：去圆角/边框，高度上限保证保存条在首屏可见 */
+.edit-area :deep(.cherry) {
+  border: none;
+  border-radius: 0;
+  max-height: 48vh;
+}
+.edit-area :deep(.cherry-host) {
+  max-height: 48vh;
+  overflow: hidden;
+}
 /* 日志正文预览：cherry previewOnly 懒挂载前的占位（防列表跳变） */
 .md-preview {
   min-height: 60px;
@@ -353,6 +363,12 @@ title: t('common.delete'),
   display: flex;
   align-items: center;
   gap: 6px;
+  /* 编辑长文时保存/取消始终可见（钉在编辑区底部） */
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--hz-color-surface);
+  padding: 6px 0 2px;
 }
 .edit-spacer {
   flex: 1;

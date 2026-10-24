@@ -1,7 +1,7 @@
 <template>
   <view class="page" :class="mode === 'journal' ? 'journal-mode' : 'say-mode'">
     <!-- 日记头：左侧日期+农历，右侧天气（点击弹选择器修改）。类型由入口 query 决定，页内不切换 -->
-    <view class="diary-head">
+    <view v-if="mode === 'say'" class="diary-head">
       <view class="dh-left">
         <text class="dh-date">{{ dateLine }}</text>
         <text v-if="lunarLine" class="dh-lunar">{{ lunarLine }}</text>
@@ -81,9 +81,8 @@
              :title="previewOn ? $t('publish.previewToggle') : $t('common.edit')">
             <!-- 预览态=睁眼，编辑态=闭眼（图标反映当前状态） -->
             <svg v-if="previewOn" class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
             <svg v-else class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
@@ -92,6 +91,19 @@
           </view>
           <!-- #endif -->
         </view>
+          <!-- 日记头移入卡片：日期/农历/天气在标题下方，整卡一体 -->
+          <view class="diary-head in-panel">
+            <view class="dh-left">
+              <text class="dh-date">{{ dateLine }}</text>
+              <text v-if="lunarLine" class="dh-lunar">{{ lunarLine }}</text>
+            </view>
+            <view class="dh-weather" @click="openWeatherPicker">
+              <text v-if="weather" class="dh-weather-text">
+                {{ CONDITION_ICONS[weather.condition] }} {{ weather.city }} {{ formatTemp(weather.tempC) }}
+              </text>
+              <text v-else class="dh-weather-add">{{ $t('weather.add') }}</text>
+            </view>
+          </view>
         <!-- #ifdef H5 -->
         <!-- 桌面不传 exclusive → cherry edit&preview 双栏；移动端 exclusive 互斥单显 -->
         <CherryEditor
@@ -803,6 +815,12 @@ async function submit() {
   font-size: 14px;
   color: var(--hz-color-text-secondary);
 }
+.diary-head.in-panel {
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--hz-color-border);
+  margin-bottom: 2px;
+}
+
 .dh-weather-add {
   font-size: 14px;
   color: var(--hz-color-interactive);
@@ -1107,8 +1125,7 @@ async function submit() {
   border-radius: var(--hz-radius-md);
   font-size: var(--hz-font-size-base);
 }
-/* 移动端编辑器贴边：容器去圆角去内边距，cherry 同步去圆角边框（用户要求无嵌入感）；
-   标题行单独留 12px 横向内边距，正文区满宽贴屏幕边 */
+/* 移动端编辑器贴边：容器去圆角去内边距，cherry 同步去圆角边框（用户要求无嵌入感）；标题行单独留 12px 横向内边距，正文区满宽贴屏幕边 */
 @media (max-width: 767px) {
   .journal-panel {
     border-radius: 0;
@@ -1157,6 +1174,13 @@ async function submit() {
     width: 20px;
     height: 20px;
   }
+  /* 保存按钮贴底常显，不被编辑器挤出首屏 */
+  .page .btn {
+    position: sticky;
+    bottom: 8px;
+    z-index: 5;
+  }
+
   /* 「@ 谁」可点开选好友 */
   .recipients .label.link {
     color: var(--hz-color-interactive);
