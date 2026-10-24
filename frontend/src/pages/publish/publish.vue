@@ -91,15 +91,20 @@
           </view>
           <!-- #endif -->
         </view>
-          <!-- 日记头移入卡片：日期/农历/天气在标题下方，整卡一体 -->
+          <!-- 日记头移入卡片：三行两端对齐——日期+星期 / 农历+节气 / 地址+天气；点第三行弹选择器 -->
           <view class="diary-head in-panel">
-            <view class="dh-left">
-              <text class="dh-date">{{ dateLine }}</text>
-              <text v-if="lunarLine" class="dh-lunar">{{ lunarLine }}</text>
+            <view class="dh-row">
+              <text class="dh-date">{{ datePart }}</text>
+              <text class="dh-week">{{ weekPart }}</text>
             </view>
-            <view class="dh-weather" @click="openWeatherPicker">
+            <view v-if="lunarParts" class="dh-row">
+              <text class="dh-lunar">{{ lunarParts.date }}</text>
+              <text v-if="lunarParts.term" class="dh-term">{{ lunarParts.term }}</text>
+            </view>
+            <view class="dh-row dh-weather" @click="openWeatherPicker">
+              <text v-if="weather?.city" class="dh-city">{{ weather.city }}</text>
               <text v-if="weather" class="dh-weather-text">
-                {{ CONDITION_ICONS[weather.condition] }} {{ weather.city }} {{ formatTemp(weather.tempC) }}
+                {{ CONDITION_ICONS[weather.condition] }} {{ formatTemp(weather.tempC) }}
               </text>
               <text v-else class="dh-weather-add">{{ $t('weather.add') }}</text>
             </view>
@@ -425,15 +430,23 @@ function refreshDiaryHead() {
     })
 }
 
-const dateLine = computed(() => {
+// 日记头三行拆分：日期/星期、农历/节气各成一对（in-panel 两端对齐用）；dateLine/lunarLine 供随记顶部单行沿用
+const datePart = computed(() => {
   const d = now.value
-  const date = t('home.monthDay', { m: d.getMonth() + 1, d: d.getDate() })
-  return `${date} ${t(`home.weekday${d.getDay()}`)}`
+  return t('home.monthDay', { m: d.getMonth() + 1, d: d.getDate() })
 })
+const weekPart = computed(() => t(`home.weekday${now.value.getDay()}`))
+const dateLine = computed(() => `${datePart.value} ${weekPart.value}`)
 
 const lunarLine = computed(() =>
   editingId.value ? formatLunar(editLunar.value) : formatLunar(stats.value?.today)
 )
+// 农历第二行两段：干支年+月日 | 节气（无农历整行隐藏，无节气省略右端）
+const lunarParts = computed(() => {
+  const l = (editingId.value ? editLunar.value : stats.value?.today) ?? null
+  if (!l?.ganzhiYear) return null
+  return { date: `${l.ganzhiYear} ${l.monthDay}`, term: l.term || '' }
+})
 
 // ---------- 天气（homepage-v2）：快照随发布提交，可改可清 ----------
 const weather = ref<WeatherSnapshot | null>(null)
@@ -815,23 +828,38 @@ async function submit() {
   font-size: 14px;
   color: var(--hz-color-text-secondary);
 }
+/* in-panel 三行版式：每行左右内容分列两端（space-between），左右各留 15px（用户指定） */
 .diary-head.in-panel {
-  padding: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 15px 8px;
   border-bottom: 1px solid var(--hz-color-border);
   margin-bottom: 2px;
 }
-.diary-head.in-panel .dh-date {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--hz-color-text-secondary);
+.dh-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
-.diary-head.in-panel .dh-lunar {
-  font-size: 13px;
-  color: var(--hz-color-text-secondary);
-}
+.diary-head.in-panel .dh-date,
+.diary-head.in-panel .dh-week,
+.diary-head.in-panel .dh-lunar,
+.diary-head.in-panel .dh-term,
+.diary-head.in-panel .dh-city,
 .diary-head.in-panel .dh-weather-text {
   font-size: 13px;
   color: var(--hz-color-text-secondary);
+}
+.diary-head.in-panel .dh-date {
+  font-weight: 500;
+}
+/* 天气端恒靠右：地址缺失/无天气（添加天气）时右端不落空 */
+.diary-head.in-panel .dh-weather-text,
+.diary-head.in-panel .dh-weather-add {
+  margin-left: auto;
 }
 .diary-head.in-panel .dh-weather-add {
   font-size: 13px;

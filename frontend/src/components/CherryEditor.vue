@@ -599,12 +599,12 @@ defineExpose({ setMarkdown })
   -webkit-user-select: text;
 }
 /* 预览面板全局去外框/外间隔（cherry 自带 padding: 20px 45px 20px 20px + 左侧 2px 分隔线）：
-   所有实例的预览一律裸排——预览是页面的正文本身，不再有"面板感"。宽度规则各模式自理
-   （preview-only 类/移动端规则控制 100%），避免误伤卡片内联编辑的 edit&preview 双栏 */
+   所有实例的预览统一 9px 内边距（用户指定）——预览是页面的正文本身，不留"面板感"但留呼吸空隙。
+   宽度规则各模式自理（preview-only 类/移动端规则控制 100%），避免误伤卡片内联编辑的 edit&preview 双栏 */
 .cherry-host :deep(.cherry-previewer) {
   font-size: 15px;
   line-height: 1.8;
-  padding: 0;
+  padding: 9px;
   border: none;
   margin: 0;
   overflow-y: auto;
@@ -616,9 +616,9 @@ defineExpose({ setMarkdown })
 /* 移动端隐藏 markdown 工具栏（用户要求）：触屏打字为主，格式工具用得少，
    还给正文更多纵向空间；cherry 0.11 的工具栏自身不响应窄屏，只能 CSS 收掉 */
 @media (max-width: 767px) {
-  /* 编辑区源码内边距收紧（用户指定 5px） */
+  /* 编辑区源码内边距（用户指定 9px） */
 .cherry-host :deep(.cm-lineWrapping) {
-  padding: 5px !important;
+  padding: 9px !important;
 }
 
 /* 移动端隐藏工具栏（触屏以打字为主）；编辑/预览由标题后的预览图标切换，不强制 */
@@ -687,7 +687,7 @@ defineExpose({ setMarkdown })
   min-height: 0;
   overflow-y: visible;
   border-left: none;
-  padding: 0;
+  padding: 9px;
   font-size: var(--hz-font-size-base);
   line-height: 1.8;
   cursor: auto;
