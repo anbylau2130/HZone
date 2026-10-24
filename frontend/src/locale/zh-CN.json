@@ -17,7 +17,10 @@
     "empty": "暂无内容",
     "loadMore": "加载更多",
     "noMore": "没有更多了",
-    "mediaLoadFailed": "媒体加载失败"
+    "mediaLoadFailed": "媒体加载失败",
+    "justNow": "刚刚",
+    "minutesAgo": "{n} 分钟前",
+    "hoursAgo": "{n} 小时前"
   },
   "fields": {
     "email": "邮箱",

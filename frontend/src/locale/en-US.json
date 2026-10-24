@@ -17,7 +17,10 @@
     "empty": "Nothing here yet",
     "loadMore": "Load more",
     "noMore": "No more",
-    "mediaLoadFailed": "Failed to load media"
+    "mediaLoadFailed": "Failed to load media",
+    "justNow": "Just now",
+    "minutesAgo": "{n} min ago",
+    "hoursAgo": "{n} h ago"
   },
   "fields": {
     "email": "Email",

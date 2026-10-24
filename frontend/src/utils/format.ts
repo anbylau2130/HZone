@@ -7,15 +7,15 @@ export function formatDateTime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-/** ISO 时间 → 相对时间（刚刚 / n 分钟前 / n 小时前 / 昨天 / MM-DD / YYYY-MM-DD）。 */
+/** ISO 时间 → 相对时间（刚刚 / n 分钟前 / n 小时前 / MM-DD / YYYY-MM-DD），相对段走 i18n。 */
 export function formatRelativeTime(iso: string): string {
   const d = new Date(iso)
   const now = Date.now()
   const diffMin = Math.floor((now - d.getTime()) / 60000)
-  if (diffMin < 1) return '刚刚'
-  if (diffMin < 60) return `${diffMin} 分钟前`
+  if (diffMin < 1) return i18n.global.t('common.justNow')
+  if (diffMin < 60) return i18n.global.t('common.minutesAgo', { n: diffMin })
   const diffHour = Math.floor(diffMin / 60)
-  if (diffHour < 24) return `${diffHour} 小时前`
+  if (diffHour < 24) return i18n.global.t('common.hoursAgo', { n: diffHour })
   const pad = (n: number) => String(n).padStart(2, '0')
   const sameYear = d.getFullYear() === new Date().getFullYear()
   const md = `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`

@@ -39,6 +39,9 @@ export function usePagination<T>(
       items.value = reset ? page.items : [...items.value, ...page.items]
       total.value = page.total
       loaded.value = true
+    } catch {
+      // 失败静默（提示由请求层统一 toast）：loading 由 finally 复位、
+      // loaded 保持 false → 滚动/翻页仍可重试，调用方无 unhandled rejection
     } finally {
       // 只有最新请求才动 loading：被打断的旧请求结束后新请求仍在途，不能误清
       if (seq === requestSeq) loading.value = false

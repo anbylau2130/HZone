@@ -141,7 +141,7 @@
       </button>
     </template>
 
-    <FriendPicker v-model:visible="pickerVisible" @confirm="onFriendsConfirmed" />
+    <FriendPicker v-model:visible="pickerVisible" :selected="pickedFriends" @confirm="onFriendsConfirmed" />
 
     <view v-if="weatherPickerOpen" class="overlay" @click="weatherPickerOpen = false">
       <view class="sheet" @click.stop>

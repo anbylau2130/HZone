@@ -33,7 +33,11 @@
 import { ref, watch } from 'vue'
 import { listFriends, type FriendInfo } from '../api/endpoints'
 
-const props = defineProps<{ visible: boolean }>()
+const props = defineProps<{
+  visible: boolean
+  /** 打开时已选中的好友（编辑回显）：预填勾选态，确认后整体替换 */
+  selected?: FriendInfo[]
+}>()
 
 const emit = defineEmits<{
   (e: 'update:visible', v: boolean): void
@@ -48,7 +52,8 @@ watch(
   () => props.visible,
   (v) => {
     if (v) {
-      selectedIds.value = []
+      // 编辑回显：预填调用方的已选集合（无则空——创建流程）
+      selectedIds.value = (props.selected ?? []).map((f) => f.id)
       load()
     }
   }

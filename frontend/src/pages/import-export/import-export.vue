@@ -44,7 +44,7 @@
       </view>
     </view>
 
-    <FriendPicker v-model:visible="pickerVisible" @confirm="onFriendsConfirmed" />
+    <FriendPicker v-model:visible="pickerVisible" :selected="batchFriends" @confirm="onFriendsConfirmed" />
   </view>
 </template>
 
