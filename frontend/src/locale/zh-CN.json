@@ -104,6 +104,7 @@
   },
   "hub": {
     "publish": "发布内容",
+    "journalEdit": "日志编辑",
     "timeline": "我的",
     "received": "收到的内容",
     "friends": "好友",

@@ -103,6 +103,7 @@
     "milestoneBadge": "{kind} {n} reached"
   },
   "hub": {
+    "journalEdit": "Journal Edit",
     "publish": "Publish",
     "timeline": "Mine",
     "received": "Received",
