@@ -50,8 +50,8 @@
     <template v-else>
       <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
       <text v-else class="text">{{ content.text }}</text>
-      <!-- 日期+天气紧贴标题/正文下方，与卡片一体 -->
-      <view v-if="content.kind === 'journal' || weatherChip" class="meta-line">
+      <!-- 时间+天气紧贴标题/正文下方：随记/笔记一律显示时间（用户要求），有天气再并排 -->
+      <view class="meta-line">
         <text class="date">{{ formatRelativeTime(content.createdAt) }}</text>
         <text v-if="weatherChip" class="weather-chip">{{ weatherChip }}</text>
       </view>
