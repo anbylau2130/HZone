@@ -46,12 +46,12 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
   // 默认即阅读视图（无记忆时）：连续信息流，最新一篇在最上
   await expect(page.locator('.r-title').first()).toHaveText('表格视图测试', { timeout: 15_000 })
 
-  // 切卡片：卡可见
-  await page.locator('.view-toggle .vt', { hasText: '卡片' }).click()
+  // 切卡片：卡可见（data-view 属性定位，语言无关）
+  await page.locator('.vt[data-view="card"]').click()
   await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 })
 
   // 切表格：表头 + 数据行 + 字数/操作列
-  await page.locator('.view-toggle .vt', { hasText: '表格' }).click()
+  await page.locator('.vt[data-view="table"]').click()
   await expect(page.locator('.table .thead')).toBeVisible()
   await expect(page.locator('.trow .c-title', { hasText: '表格视图测试' })).toBeVisible()
 
@@ -62,7 +62,7 @@ test('journals list toggles card/table view, edit jumps to publish', async ({ pa
 
   // 回列表切阅读视图：连续信息流——两篇竖向堆叠，最新在上，无翻页控件
   await page.goto('/#/pages/journals/journals')
-  await page.locator('.view-toggle .vt', { hasText: '阅读' }).click()
+  await page.locator('.vt[data-view="read"]').click()
   await expect(page.locator('.r-title', { hasText: '表格视图测试' })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.r-title', { hasText: '更早的一篇' })).toBeVisible({ timeout: 15_000 })
   await expect(page.locator('.r-count')).toHaveCount(0)

@@ -23,9 +23,9 @@ test('edit journal reuses publish page with cherry editor', async ({ page }) => 
   const journal = (await create.json()) as { id: string }
 
   await loginViaUi(page, user)
-  // 详情页已移除：从日志页表格视图（「编辑」保留）进入编辑
+  // 详情页已移除：从日志页表格视图（「编辑」保留）进入编辑；data-view 属性定位（语言无关）
   await page.goto('/#/pages/journals/journals')
-  await page.locator('.view-toggle .vt', { hasText: '表格' }).click()
+  await page.locator('.vt[data-view="table"]').click()
   await expect(page.locator('.trow .c-title', { hasText: '编辑前标题' })).toBeVisible({ timeout: 15_000 })
 
   // 编辑按钮：日志应跳 publish 编辑页；新规则默认预览模式，先切「编辑」

@@ -4,38 +4,76 @@
       <view class="topbar">
         <text class="topbar-title">{{ $t('journals.title') }}</text>
         <view class="topbar-actions">
-          <!-- 页内检索（与随记页同款）：关键词走 /search（自己的笔记），空=全部 -->
-          <view v-if="items.length > 0 || keyword" class="search-btn" @click="toggleSearch">
-            <text class="search-ico">🔍</text>
+          <!-- 搜索态：输入框原地接管按钮区（检索时切视图无意义），取消收回 -->
+          <view v-if="searchOpen" class="search-inline">
+            <svg class="si-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <circle cx="9" cy="9" r="5.5" />
+              <path d="M13.2 13.2L17.5 17.5" />
+            </svg>
+            <input
+              v-model="keyword"
+              class="si-input"
+              :placeholder="$t('search.placeholder')"
+              confirm-type="search"
+              @confirm="refreshNow"
+            />
+            <text v-if="keyword" class="si-clear" @click="keyword = ''">×</text>
+            <text class="si-cancel" @click="closeSearch">{{ $t('common.cancel') }}</text>
           </view>
-          <!-- 卡片/表格/阅读视图切换（阅读在前、默认阅读；localStorage 记忆） -->
-          <view v-if="items.length > 0" class="view-toggle">
-            <text class="vt" :class="{ on: viewMode === 'read' }" @click="setViewMode('read')">
-              {{ $t('journals.viewRead') }}
-            </text>
-            <text class="vt" :class="{ on: viewMode === 'card' }" @click="setViewMode('card')">
-              {{ $t('journals.viewCard') }}
-            </text>
-            <text class="vt" :class="{ on: viewMode === 'table' }" @click="setViewMode('table')">
-              {{ $t('journals.viewTable') }}
-            </text>
+          <!-- 单 pill 工具组：视图三格（图标）+ 分隔 + 搜索格；title/aria 保语义，data-view 供 e2e -->
+          <view v-else-if="items.length > 0 || keyword" class="toolbar-pill">
+            <view
+              class="vt"
+              :class="{ on: viewMode === 'read' }"
+              data-view="read"
+              role="tab"
+              :aria-label="$t('journals.viewRead')"
+              :title="$t('journals.viewRead')"
+              @click="setViewMode('read')"
+            >
+              <svg class="vt-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <path d="M3 4.5h9M3 8h14M3 11.5h14M3 15h8" />
+              </svg>
+            </view>
+            <view
+              class="vt"
+              :class="{ on: viewMode === 'card' }"
+              data-view="card"
+              role="tab"
+              :aria-label="$t('journals.viewCard')"
+              :title="$t('journals.viewCard')"
+              @click="setViewMode('card')"
+            >
+              <svg class="vt-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <rect x="3" y="3.5" width="6" height="6" rx="1.4" />
+                <rect x="11" y="3.5" width="6" height="6" rx="1.4" />
+                <rect x="3" y="10.5" width="6" height="6" rx="1.4" />
+                <rect x="11" y="10.5" width="6" height="6" rx="1.4" />
+              </svg>
+            </view>
+            <view
+              class="vt"
+              :class="{ on: viewMode === 'table' }"
+              data-view="table"
+              role="tab"
+              :aria-label="$t('journals.viewTable')"
+              :title="$t('journals.viewTable')"
+              @click="setViewMode('table')"
+            >
+              <svg class="vt-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <rect x="3" y="4" width="14" height="12" rx="1.4" />
+                <path d="M3 10h14M9.5 4v12" />
+              </svg>
+            </view>
+            <view class="pill-sep" />
+            <view class="vt search" :title="$t('search.button')" :aria-label="$t('search.button')" @click="toggleSearch">
+              <svg class="vt-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="9" cy="9" r="5.5" />
+                <path d="M13.2 13.2L17.5 17.5" />
+              </svg>
+            </view>
           </view>
         </view>
-      </view>
-
-      <!-- 搜索行：输入防抖 400ms 即时筛选；清空恢复全部；三视图共用同一关键词 -->
-      <view v-if="searchOpen" class="search-row">
-        <input
-          v-model="keyword"
-          class="search-field"
-          :placeholder="$t('search.placeholder')"
-          confirm-type="search"
-          @confirm="refreshNow"
-        />
-        <view v-if="keyword" class="search-clear" @click="keyword = ''">
-          <text class="search-clear-txt">×</text>
-        </view>
-        <text class="search-close" @click="closeSearch">{{ $t('common.cancel') }}</text>
       </view>
 
       <view v-if="pagination.loading.value && !items.length" class="hint">
@@ -149,12 +187,10 @@ const pagination = usePagination<ContentItem>((offset, limit) => {
 const { items, finished, loadMore } = pagination
 
 function toggleSearch() {
-  searchOpen.value = !searchOpen.value
-  if (searchOpen.value) {
-    nextTick(() => {
-      document.querySelector('.search-field input')?.focus?.()
-    })
-  }
+  searchOpen.value = true
+  nextTick(() => {
+    document.querySelector('.si-input input')?.focus?.()
+  })
 }
 
 function closeSearch() {
@@ -302,56 +338,88 @@ function formatWords(n: number): string {
   align-items: center;
   gap: 8px;
 }
-.search-btn {
-  width: 32px;
+/* 工具 pill：视图三格（图标）+ 分隔 + 搜索格，统一 32px 高 */
+.toolbar-pill {
+  display: inline-flex;
+  align-items: center;
   height: 32px;
-  border-radius: 50%;
   border: 1px solid var(--hz-color-border);
+  border-radius: 999px;
+  overflow: hidden;
   background: var(--hz-color-surface);
+}
+.vt {
+  width: 34px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  color: var(--hz-color-text-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.search-ico {
-  font-size: 14px;
-  line-height: 1;
+.vt:hover {
+  color: var(--hz-color-text);
 }
-/* 搜索行（与随记页同款） */
-.search-row {
+.vt.on {
+  background: var(--hz-color-primary);
+  color: #fff;
+}
+.vt-ico {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.pill-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--hz-color-border);
+  margin: 0 2px;
+}
+/* 搜索态：输入框接管按钮区（同一行），高度与 pill 一致 */
+.search-inline {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.search-field {
+  height: 32px;
   flex: 1;
-  height: 36px;
-  border: 1px solid var(--hz-color-border);
+  min-width: 0;
+  max-width: 260px;
+  border: 1px solid var(--hz-color-primary);
   border-radius: 999px;
-  padding: 0 14px;
-  font-size: var(--hz-font-size-base);
-  color: var(--hz-color-text);
+  padding: 0 6px 0 12px;
   background: var(--hz-color-surface);
-  box-sizing: border-box;
 }
-.search-clear {
-  width: 28px;
-  height: 28px;
+.si-ico {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--hz-color-text-secondary);
+}
+.si-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text);
+  background: transparent;
+}
+.si-clear {
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: var(--hz-color-bg);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.search-clear-txt {
-  font-size: 16px;
+  font-size: 13px;
   color: var(--hz-color-text-secondary);
-}
-.search-close {
   flex-shrink: 0;
-  padding: 4px 10px;
+  cursor: pointer;
+}
+.si-cancel {
+  flex-shrink: 0;
+  padding: 0 6px;
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
   cursor: pointer;
@@ -485,23 +553,6 @@ function formatWords(n: number): string {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
   font-variant-numeric: tabular-nums;
-}
-/* 视图切换：两个小 pill 并排，on 态 primary */
-.view-toggle {
-  display: inline-flex;
-  border: 1px solid var(--hz-color-border);
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--hz-color-surface);
-}
-.vt {
-  padding: 4px 12px;
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-}
-.vt.on {
-  background: var(--hz-color-primary);
-  color: #fff;
 }
 /* 表格视图：view 网格模拟（跨端不用 <table>） */
 .table {
