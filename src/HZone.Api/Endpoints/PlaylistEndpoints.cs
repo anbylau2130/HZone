@@ -10,13 +10,97 @@ namespace HZone.Api.Endpoints;
 /// <summary>
 /// 账号级播放列表（每用户一张）：双音源（media = 自己上传的音频资产 / url = 外部直链）。
 /// 排序为端到端整体重排：PUT /me/playlist/reorder 传完整 id 序列，服务端按下标重编 SortOrder。
+/// 另含服务器音乐库：admin 配置一个磁盘目录，目录内音频文件作为所有用户播放器的默认列表
+///（虚拟项，与用户项合并展示；配置键 player.musicDir，文件经 /player/file/{name} 鉴权流式下发）。
 /// </summary>
 public static class PlaylistEndpoints
 {
     private const int MaxItemsPerUser = 100;
+    public const string MusicDirKey = "player.musicDir";
+    private static readonly string[] ServerAudioExtensions =
+        [".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".oga", ".opus"];
 
     public static void MapPlaylistEndpoints(this IEndpointRouteBuilder app)
     {
+        // ---------- 服务器音乐库 ----------
+        // 目录列表：所有登录用户可见（admin 配置、全员共享的默认曲库）；按文件名排序，仅顶层文件。
+        app.MapGet("/me/player/server-library", [Authorize] async (
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var dir = await db.SystemConfigs.AsNoTracking()
+                .Where(c => c.Key == MusicDirKey)
+                .Select(c => c.Value)
+                .FirstOrDefaultAsync(ct);
+            var lib = ListServerAudio(dir);
+            return Results.Ok(new
+            {
+                musicDir = lib is null ? null : dir,
+                files = lib?.Files.ToList() ?? [],
+            });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // 目录配置（仅 admin）：路径必须已存在（空串 = 清除，库停用）。
+        app.MapPut("/player/music-dir", [Authorize] async (
+            SetMusicDirRequest request,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var dir = request.MusicDir?.Trim();
+            if (string.IsNullOrEmpty(dir))
+            {
+                var clear = await db.SystemConfigs.FirstOrDefaultAsync(c => c.Key == MusicDirKey, ct);
+                if (clear is not null)
+                {
+                    db.SystemConfigs.Remove(clear);
+                    await db.SaveChangesAsync(ct);
+                }
+                return Results.Ok(new { musicDir = (string?)null });
+            }
+            if (!Directory.Exists(dir))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["musicDir"] = new[] { "directory does not exist" },
+                });
+            }
+            var existing = await db.SystemConfigs.FirstOrDefaultAsync(c => c.Key == MusicDirKey, ct);
+            if (existing is null)
+            {
+                db.SystemConfigs.Add(new SystemConfig { Key = MusicDirKey, Value = dir });
+            }
+            else
+            {
+                existing.Value = dir;
+            }
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { musicDir = dir });
+        }).AddEndpointFilter(SetupState.RequireAdmin);
+
+        // 文件下发：name 必须是纯文件名（拒绝路径穿越），仅限配置目录顶层，Range 支持（进度条 seek）。
+        app.MapGet("/player/file/{name}", [Authorize] async (
+            string name,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            if (Path.GetFileName(name) != name || name.Contains(".."))
+            {
+                return Results.BadRequest(new { error = "invalid file name" });
+            }
+            var dir = await db.SystemConfigs.AsNoTracking()
+                .Where(c => c.Key == MusicDirKey)
+                .Select(c => c.Value)
+                .FirstOrDefaultAsync(ct);
+            var files = ListServerAudio(dir);
+            if (files is null || !files.Value.Files.Any(f => f.Name == name))
+            {
+                return Results.NotFound(new { error = "file not found" });
+            }
+            var fullPath = Path.Combine(files.Value.Dir, name);
+            return Results.File(fullPath, ContentTypeFor(name), enableRangeProcessing: true);
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // ---------- 账号播放列表 ----------
         // 列表：本人播放列表按 SortOrder 升序；media 项附带 storedName 供前端拼 /media 播放路径。
         app.MapGet("/me/playlist", [Authorize] async (
             ClaimsPrincipal principal,
@@ -206,8 +290,39 @@ public static class PlaylistEndpoints
             ? id
             : throw new InvalidOperationException("missing sub claim");
     }
+
+    /// <summary>目录音频清单（顶层、按文件名排序）；null = 未配置目录（库停用）。</summary>
+    private static (string Dir, IEnumerable<ServerAudioFile> Files)? ListServerAudio(string? dir)
+    {
+        if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+        {
+            return null;
+        }
+        var files = Directory.EnumerateFiles(dir)
+            .Where(p => ServerAudioExtensions.Contains(Path.GetExtension(p).ToLowerInvariant()))
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .Select(p => new ServerAudioFile(Path.GetFileName(p), new FileInfo(p).Length))
+            .ToList();
+        return (dir, files);
+    }
+
+    private static string ContentTypeFor(string name) => Path.GetExtension(name).ToLowerInvariant() switch
+    {
+        ".mp3" => "audio/mpeg",
+        ".m4a" => "audio/mp4",
+        ".aac" => "audio/aac",
+        ".wav" => "audio/wav",
+        ".flac" => "audio/flac",
+        ".ogg" or ".oga" => "audio/ogg",
+        ".opus" => "audio/opus",
+        _ => "application/octet-stream",
+    };
+
+    public sealed record ServerAudioFile(string Name, long SizeBytes);
 }
 
 public sealed record AddPlaylistItemRequest(string SourceKind, string? Title, string? Url, Guid? MediaAssetId);
 
 public sealed record ReorderPlaylistRequest(List<Guid> Ids);
+
+public sealed record SetMusicDirRequest(string? MusicDir);

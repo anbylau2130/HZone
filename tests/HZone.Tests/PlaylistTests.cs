@@ -117,6 +117,65 @@ public class PlaylistTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         Assert.Equal(1, aliceList.GetProperty("total").GetInt32());
     }
 
+    [Fact]
+    public async Task Server_music_library_admin_config_and_streaming()
+    {
+        var admin = await _factory.EnsureAdminAsync();
+        var user = await _factory.SeedUserAsync("pl7@test.local", "Pl7");
+        var adminClient = _factory.CreateAuthorizedClient(admin.Id, admin.Nickname);
+        var userClient = _factory.CreateAuthorizedClient(user.Id, user.Nickname);
+
+        // 未配置：库停用（musicDir null、files 空）。
+        var empty = await userClient.GetFromJsonAsync<JsonElement>("/me/player/server-library");
+        Assert.Null(empty.GetProperty("musicDir").GetString());
+
+        // 非 admin 配置 → 403。
+        var denied = await userClient.PutAsJsonAsync("/player/music-dir", new { musicDir = "/tmp" });
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+
+        // admin 配置临时目录：2 音频 + 1 jpg（jpg 不进清单），文件名排序。
+        var dir = Path.Combine(Path.GetTempPath(), $"hzone-music-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "b-track.mp3"), "fake-mp3-payload");
+            await File.WriteAllTextAsync(Path.Combine(dir, "a-track.wav"), "fake-wav");
+            await File.WriteAllTextAsync(Path.Combine(dir, "cover.jpg"), "not-audio");
+
+            var set = await adminClient.PutAsJsonAsync("/player/music-dir", new { musicDir = dir });
+            Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+
+            var lib = await userClient.GetFromJsonAsync<JsonElement>("/me/player/server-library");
+            Assert.Equal(dir, lib.GetProperty("musicDir").GetString());
+            Assert.Equal(2, lib.GetProperty("files").GetArrayLength());
+            Assert.Equal("a-track.wav", lib.GetProperty("files")[0].GetProperty("name").GetString());
+
+            // 文件下发：字节正确 + Content-Type 按扩展名；路径穿越与不存在名被拒。
+            var file = await userClient.GetAsync($"/player/file/{Uri.EscapeDataString("a-track.wav")}");
+            Assert.Equal(HttpStatusCode.OK, file.StatusCode);
+            Assert.Equal("audio/wav", file.Content.Headers.ContentType?.MediaType);
+            Assert.Equal("fake-wav", await file.Content.ReadAsStringAsync());
+            var bad = await userClient.GetAsync("/player/file/..%2Fhzone.db");
+            Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+            var missing = await userClient.GetAsync("/player/file/nope.mp3");
+            Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+            // 目录不存在 → 400。
+            var badDir = await adminClient.PutAsJsonAsync("/player/music-dir", new { musicDir = "/definitely/not/here" });
+            Assert.Equal(HttpStatusCode.BadRequest, badDir.StatusCode);
+
+            // 空串清除：库回到停用态。
+            var clear = await adminClient.PutAsJsonAsync("/player/music-dir", new { musicDir = "" });
+            Assert.Equal(HttpStatusCode.OK, clear.StatusCode);
+            var after = await userClient.GetFromJsonAsync<JsonElement>("/me/player/server-library");
+            Assert.Null(after.GetProperty("musicDir").GetString());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static async Task<JsonElement> AddUrlAsync(HttpClient client, string title, string url)
     {
         var res = await client.PostAsJsonAsync("/me/playlist",

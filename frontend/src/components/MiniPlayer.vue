@@ -1,7 +1,7 @@
 <template>
   <!-- 全局 mini 桥：<1200px 常驻（≥1200 由 ToolDock 右栏 PlayerPanel 接管，CSS 隐藏本条）。
-       音频本体在 player store 单例上下文里，本条只是遥控器——页面切换不中断。 -->
-  <view v-if="player.items.length" class="mp">
+       音频本体在 player store 模块单例里，本条只是遥控器——页面切换不中断。 -->
+  <view v-if="player.tracks.length" class="mp">
     <view class="mp-bar">
       <view class="mp-btn" @click="player.toggle()">
         <text class="mp-ico">{{ player.playing ? '⏸' : '▶' }}</text>
@@ -30,18 +30,19 @@
         <!-- 添加块（与桌面右栏面板共享）：移动端配置播放列表的唯一入口 -->
         <PlayerAdd />
         <scroll-view scroll-y class="mp-list">
-          <view v-if="!player.items.length" class="mp-empty">
+          <view v-if="!player.tracks.length" class="mp-empty">
             <text class="mp-empty-text">{{ $t('player.playlistEmpty') }}</text>
           </view>
           <view
-            v-for="(it, i) in player.items"
+            v-for="(it, i) in player.tracks"
             :key="it.id"
             class="mp-row"
             :class="{ on: i === player.currentIndex }"
             @click="player.playIndex(i)"
           >
+            <text class="mp-row-ico">{{ it.sourceKind === 'server' ? '💿' : '' }}</text>
             <text class="mp-row-title">{{ it.title }}</text>
-            <text class="mp-row-del" @click.stop="player.removeAndSync(it.id)">✕</text>
+            <text v-if="it.sourceKind !== 'server'" class="mp-row-del" @click.stop="player.removeAndSync(it.id)">✕</text>
           </view>
         </scroll-view>
       </view>
@@ -197,6 +198,10 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.mp-row-ico {
+  font-size: 13px;
+  line-height: 1;
 }
 .mp-row.on .mp-row-title {
   color: var(--hz-color-primary);

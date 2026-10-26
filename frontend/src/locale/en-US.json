@@ -282,7 +282,14 @@
   },
   "admin": {
     "title": "Admin",
-    "todo": "Admin backend is not merged yet. This page is a placeholder."
+    "todo": "Admin backend is not merged yet. This page is a placeholder.",
+    "musicDir": {
+      "title": "Server music directory",
+      "hint": "Point to a directory on the server. Audio files inside (mp3/m4a/aac/wav/flac/ogg/opus) become the default library for every user's player — streamed directly, no upload needed.",
+      "placeholder": "Absolute path on the server, e.g. /data/music",
+      "clear": "Clear",
+      "count": "{n} audio files found"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -340,6 +347,7 @@
     "importNoAudio": "No audio files in the folder",
     "libraryEmpty": "No audio uploaded yet",
     "playlistEmpty": "Playlist is empty",
+    "serverGroup": "Server music",
     "loadFailed": "Failed to load audio"
   }
 }

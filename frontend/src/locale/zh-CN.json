@@ -282,7 +282,14 @@
   },
   "admin": {
     "title": "管理后台",
-    "todo": "后端管理接口尚未合入，此页暂为占位"
+    "todo": "后端管理接口尚未合入，此页暂为占位",
+    "musicDir": {
+      "title": "服务器音乐目录",
+      "hint": "配置服务器上的一个磁盘目录，目录内的音频文件（mp3/m4a/aac/wav/flac/ogg/opus）将作为所有用户播放器的默认曲库，直接流式播放、无需上传。",
+      "placeholder": "服务器上的绝对路径，如 /data/music",
+      "clear": "清除",
+      "count": "已识别 {n} 首音频"
+    }
   },
   "settings": {
     "title": "设置",
@@ -340,6 +347,7 @@
     "importNoAudio": "文件夹里没有音频文件",
     "libraryEmpty": "还没有上传过音频",
     "playlistEmpty": "播放列表为空",
+    "serverGroup": "服务器音乐",
     "loadFailed": "音频加载失败"
   }
 }

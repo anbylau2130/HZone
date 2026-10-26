@@ -466,3 +466,24 @@ export function removePlaylistItem(id: string) {
 export function listMyAudioAssets() {
   return request<{ items: AudioAssetInfo[]; total: number }>('/api/me/media')
 }
+
+// ---------- 服务器音乐库（admin 配置磁盘目录，全员默认曲库） ----------
+
+export interface ServerAudioFile {
+  name: string
+  sizeBytes: number
+}
+
+export function getServerMusicLibrary() {
+  return request<{ musicDir: string | null; files: ServerAudioFile[] }>(
+    '/api/me/player/server-library'
+  )
+}
+
+/** 配置/清除服务器音乐目录（空串清除；仅 admin，目录必须已存在）。 */
+export function setServerMusicDir(musicDir: string) {
+  return request<{ musicDir: string | null }>('/api/player/music-dir', {
+    method: 'PUT',
+    data: { musicDir }
+  })
+}

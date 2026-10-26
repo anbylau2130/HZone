@@ -1,12 +1,14 @@
 /**
- * 全局播放器（账号级播放列表）：状态与音频上下文全部挂在**模块顶层**——
- * uni-app H5 每个页面是独立 Vue 应用、pinia 不跨页共享（实测 auth 也靠每页
- * fetchMe 重拉），pinia store 在切页后是全新实例；而 Vite 模块身份全局唯一，
- * 模块级单例（refs + InnerAudioContext）才能真正跨页存活、播放不中断。
- * UI 三件套共用本 store：首页右栏 PlayerPanel（ToolDock ≥1200px）、
- * MiniPlayer 全局桥（<1200px 常驻 + 移动端抽屉）。
- * 音源双轨：url 项直接拉流；media 项走 loadMediaUrl 授权 blob（/media 需 Bearer，
- * 音频标签与 <img> 同样带不了请求头）。
+ * 全局播放器（账号级播放列表 + 服务器音乐库）：状态与音频上下文全部挂在
+ * **模块顶层**——uni-app H5 每个页面是独立 Vue 应用、pinia 不跨页共享（实测
+ * auth 也靠每页 fetchMe 重拉），pinia store 在切页后是全新实例；而 Vite 模块
+ * 身份全局唯一，模块级单例（refs + InnerAudioContext）才能真正跨页存活、
+ * 播放不中断。
+ * 列表 = tracks 合并序列：服务器音乐库（admin 配置的磁盘目录，虚拟项，在前）
+ * + 用户播放列表项（media 上传 / url 外链，在后）；播放/切歌/循环对整个序列
+ * 生效，增删/排序仅作用于用户项。
+ * 音源三轨：url 直连；media 走 loadMediaUrl 授权 blob；server 走
+ * /api/player/file/{name} 授权 blob（音频标签与 <img> 同样带不了请求头）。
  */
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
@@ -15,13 +17,29 @@ import {
   addPlaylistItem,
   reorderPlaylist,
   removePlaylistItem,
+  getServerMusicLibrary,
   type PlaylistItem
 } from '../api/endpoints'
 import { loadMediaUrl } from '../api/media'
 import { i18n } from '../locale'
 
+/** 播放器统一曲目：用户项（PlaylistItem）+ 服务器音乐虚拟项的并集形状。 */
+export interface PlayerTrack {
+  id: string
+  sourceKind: 'media' | 'url' | 'server'
+  title: string
+  url: string | null
+  mediaStoredName: string | null
+  /** server 项的文件名（配置目录顶层音频文件）。 */
+  serverFile: string | null
+  sortOrder: number
+  createdAt: string
+}
+
 // ---------- 模块级单例状态（跨页面应用共享的真正载体） ----------
 const items = ref<PlaylistItem[]>([])
+const serverFiles = ref<{ name: string; sizeBytes: number }[]>([])
+const musicDir = ref<string | null>(null)
 const loaded = ref(false)
 const currentIndex = ref(-1)
 const playing = ref(false)
@@ -30,8 +48,30 @@ const duration = ref(0) // 秒
 const loopMode = ref<'list' | 'one'>('list')
 const switching = ref(false) // 换曲中（src 异步解析），防重入
 
+/** 合并曲目序列：服务器音乐（默认曲库，在前）+ 用户项（在后）。 */
+const tracks = computed<PlayerTrack[]>(() => [
+  ...serverFiles.value.map(
+    (f): PlayerTrack => ({
+      id: `srv:${f.name}`,
+      sourceKind: 'server',
+      title: f.name.replace(/\.[^.]+$/, ''),
+      url: null,
+      mediaStoredName: null,
+      serverFile: f.name,
+      sortOrder: 0,
+      createdAt: ''
+    })
+  ),
+  ...items.value.map(
+    (it): PlayerTrack => ({
+      ...it,
+      serverFile: null
+    })
+  )
+])
+
 const current = computed(() =>
-  currentIndex.value >= 0 ? items.value[currentIndex.value] ?? null : null
+  currentIndex.value >= 0 ? tracks.value[currentIndex.value] ?? null : null
 )
 
 // 单例音频上下文：H5 底层即 audio 元素，App 端为原生播放器；挂模块层不随页面卸载
@@ -68,42 +108,72 @@ function ensureCtx(): UniApp.InnerAudioContext {
     playing.value = false
     uni.showToast({ title: i18n.global.t('player.loadFailed'), icon: 'none' })
     consecutiveErrors++
-    if (items.value.length > 1 && consecutiveErrors < items.value.length) {
+    if (tracks.value.length > 1 && consecutiveErrors < tracks.value.length) {
       void next()
     }
   })
   return ctx
 }
 
-/** 拉取账号播放列表（幂等；已拉过不重复拉）。 */
+/** 拉取账号播放列表 + 服务器音乐库（幂等；已拉过不重复拉）。 */
 async function load(force = false) {
   if (loaded.value && !force) return
+  const wasId = currentId()
   try {
-    const res = await listPlaylist()
-    items.value = res.items
-    if (currentIndex.value >= items.value.length) currentIndex.value = -1
+    const [pl, lib] = await Promise.all([listPlaylist(), getServerMusicLibrary()])
+    items.value = pl.items
+    serverFiles.value = lib.files
+    musicDir.value = lib.musicDir
     loaded.value = true
+    restoreIndexById(wasId)
   } catch {
-    // 请求层已 toast；面板保持空列表态
+    // 请求层已 toast；面板保持已有状态
   }
 }
 
-/** 解析可播放 src：url 直连；media 换授权 blob（模块级缓存，二次播放零开销）。 */
-async function resolveSrc(item: PlaylistItem): Promise<string> {
-  if (item.sourceKind === 'url') return item.url ?? ''
-  if (!item.mediaStoredName) throw new Error('missing mediaStoredName')
-  return loadMediaUrl(`/media/${item.mediaStoredName}`)
+/** 重载服务器音乐库（admin 改目录后调）。 */
+async function reloadServerLibrary() {
+  try {
+    const lib = await getServerMusicLibrary()
+    serverFiles.value = lib.files
+    musicDir.value = lib.musicDir
+    const wasId = currentId()
+    restoreIndexById(wasId)
+  } catch {
+    // 请求层已 toast
+  }
+}
+
+function currentId(): string | null {
+  return tracks.value[currentIndex.value]?.id ?? null
+}
+
+function restoreIndexById(id: string | null) {
+  if (!id) return
+  const i = tracks.value.findIndex((t) => t.id === id)
+  currentIndex.value = i // 消失（被删/库清空）则 -1
+}
+
+/** 解析可播放 src：url 直连；media/server 换授权 blob（模块级缓存，二次播放零开销）。 */
+async function resolveSrc(track: PlayerTrack): Promise<string> {
+  if (track.sourceKind === 'url') return track.url ?? ''
+  if (track.sourceKind === 'server') {
+    if (!track.serverFile) throw new Error('missing serverFile')
+    return loadMediaUrl(`/api/player/file/${encodeURIComponent(track.serverFile)}`)
+  }
+  if (!track.mediaStoredName) throw new Error('missing mediaStoredName')
+  return loadMediaUrl(`/media/${track.mediaStoredName}`)
 }
 
 async function playIndex(i: number) {
-  if (i < 0 || i >= items.value.length) return
+  if (i < 0 || i >= tracks.value.length) return
   if (switching.value) return
   switching.value = true
   currentIndex.value = i
   position.value = 0
   duration.value = 0
   try {
-    const src = await resolveSrc(items.value[i])
+    const src = await resolveSrc(tracks.value[i])
     const c = ensureCtx()
     c.stop()
     c.src = src
@@ -121,7 +191,7 @@ function toggle() {
   const c = ensureCtx()
   if (current.value == null) {
     // 未选曲：默认播第一首
-    if (items.value.length) void playIndex(0)
+    if (tracks.value.length) void playIndex(0)
     return
   }
   if (playing.value) c.pause()
@@ -129,13 +199,13 @@ function toggle() {
 }
 
 async function next() {
-  if (!items.value.length) return
-  void playIndex((currentIndex.value + 1) % items.value.length)
+  if (!tracks.value.length) return
+  void playIndex((currentIndex.value + 1) % tracks.value.length)
 }
 
 async function prev() {
-  if (!items.value.length) return
-  void playIndex((currentIndex.value - 1 + items.value.length) % items.value.length)
+  if (!tracks.value.length) return
+  void playIndex((currentIndex.value - 1 + tracks.value.length) % tracks.value.length)
 }
 
 function seek(sec: number) {
@@ -153,38 +223,37 @@ function applyAdded(item: PlaylistItem) {
   items.value = [...items.value, item]
 }
 
+/** 删除用户列表项（服务器音乐为虚拟项，不可删——不响应）。 */
 async function removeAndSync(id: string) {
+  if (id.startsWith('srv:')) return
   try {
     await removePlaylistItem(id)
   } catch {
     return // 请求层已 toast
   }
-  const idx = items.value.findIndex((x) => x.id === id)
-  if (idx < 0) return
-  const wasCurrent = idx === currentIndex.value
+  const wasCurrent = currentId() === id
   items.value = items.value.filter((x) => x.id !== id)
   if (wasCurrent) {
-    // 删的是当前曲：停播并尽量接播同位置下一首
+    // 删的是当前曲：停播并接播原位置的下一首（删除后它顶到同一坐标）
     ctx?.stop()
     playing.value = false
+    const i = currentIndex.value
     currentIndex.value = -1
-    if (items.value.length) void playIndex(Math.min(idx, items.value.length - 1))
-  } else if (idx < currentIndex.value) {
-    currentIndex.value -= 1
+    if (i < tracks.value.length) void playIndex(i)
+  } else {
+    restoreIndexById(currentId())
   }
 }
 
-/** 上移/下移：本地换序 + 服务端整体重排。 */
-async function moveAndSync(index: number, dir: -1 | 1) {
-  const j = index + dir
+/** 用户项上移/下移（id 定位，服务器项不响应）：本地换序 + 服务端整体重排。 */
+async function moveAndSync(id: string, dir: -1 | 1) {
+  const idx = items.value.findIndex((x) => x.id === id)
+  if (idx < 0) return
+  const j = idx + dir
   if (j < 0 || j >= items.value.length) return
   const swapped = [...items.value]
-  ;[swapped[index], swapped[j]] = [swapped[j], swapped[index]]
-  const wasCurrent = currentIndex.value === index
-  const wasCurrentJ = currentIndex.value === j
+  ;[swapped[idx], swapped[j]] = [swapped[j], swapped[idx]]
   items.value = swapped
-  if (wasCurrent) currentIndex.value = j
-  else if (wasCurrentJ) currentIndex.value = index
   try {
     await reorderPlaylist(swapped.map((x) => x.id))
   } catch {
@@ -207,14 +276,18 @@ async function addMedia(mediaAssetId: string, title?: string) {
 /** pinia 薄壳：uni H5 每页独立 pinia 实例，但 setup 闭包到的都是上面的模块态。 */
 export const usePlayerStore = defineStore('player', () => ({
   items,
+  serverFiles,
+  musicDir,
   loaded,
   currentIndex,
   playing,
   position,
   duration,
   loopMode,
+  tracks,
   current,
   load,
+  reloadServerLibrary,
   playIndex,
   toggle,
   next,

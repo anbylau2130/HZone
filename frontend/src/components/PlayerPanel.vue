@@ -28,23 +28,26 @@
     <!-- 添加块（与移动端抽屉共享）：音频库+上传 / 外链 -->
     <PlayerAdd />
 
-    <!-- 播放列表 -->
+    <!-- 播放列表：合并序列 = 服务器音乐（默认曲库，仅可播）+ 用户项（可排序/删除） -->
     <scroll-view scroll-y class="pp-list">
-      <view v-if="!player.items.length" class="pp-empty">
+      <view v-if="!player.tracks.length" class="pp-empty">
         <text class="pp-empty-text">{{ $t('player.playlistEmpty') }}</text>
       </view>
+      <view v-if="player.serverFiles.length" class="pp-group">
+        <text class="pp-group-label">{{ $t('player.serverGroup') }}</text>
+      </view>
       <view
-        v-for="(it, i) in player.items"
+        v-for="(it, i) in player.tracks"
         :key="it.id"
         class="pp-row"
-        :class="{ on: i === player.currentIndex }"
+        :class="{ on: i === player.currentIndex, srv: it.sourceKind === 'server' }"
         @click="player.playIndex(i)"
       >
-        <text class="pp-row-ico">{{ i === player.currentIndex && player.playing ? '🔊' : it.sourceKind === 'url' ? '🔗' : '🎵' }}</text>
+        <text class="pp-row-ico">{{ i === player.currentIndex && player.playing ? '🔊' : it.sourceKind === 'url' ? '🔗' : it.sourceKind === 'server' ? '💿' : '🎵' }}</text>
         <text class="pp-row-title">{{ it.title }}</text>
-        <view class="pp-row-ops" @click.stop>
-          <text class="pp-op" :class="{ dim: i === 0 }" @click="player.moveAndSync(i, -1)">↑</text>
-          <text class="pp-op" :class="{ dim: i === player.items.length - 1 }" @click="player.moveAndSync(i, 1)">↓</text>
+        <view v-if="it.sourceKind !== 'server'" class="pp-row-ops" @click.stop>
+          <text class="pp-op" :class="{ dim: userIndexOf(it.id) <= 0 }" @click="player.moveAndSync(it.id, -1)">↑</text>
+          <text class="pp-op" :class="{ dim: userIndexOf(it.id) >= player.items.length - 1 }" @click="player.moveAndSync(it.id, 1)">↓</text>
           <text class="pp-op danger" @click="player.removeAndSync(it.id)">✕</text>
         </view>
       </view>
@@ -62,6 +65,11 @@ const player = usePlayerStore()
 onMounted(() => {
   void player.load()
 })
+
+/** 用户项在其子序列中的下标（排序按钮边界判断用）。 */
+function userIndexOf(id: string): number {
+  return player.items.findIndex((x) => x.id === id)
+}
 
 const barPercent = computed(() =>
   player.duration > 0 ? Math.min(100, (player.position / player.duration) * 100) : 0
@@ -181,6 +189,17 @@ function onSeek(e: MouseEvent) {
 }
 .pp-list {
   max-height: 280px;
+}
+.pp-group {
+  padding: 4px 6px 2px;
+}
+.pp-group-label {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  letter-spacing: 0.04em;
+}
+.pp-row.srv .pp-row-title {
+  color: var(--hz-color-text-secondary);
 }
 .pp-empty {
   padding: 12px 0;
