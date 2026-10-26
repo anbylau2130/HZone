@@ -89,7 +89,7 @@
     "weekday5": "星期五",
     "weekday6": "星期六",
     "statsSays": "随记",
-    "statsJournals": "日志",
+    "statsJournals": "笔记",
     "statsFriends": "好友",
     "statsStreak": "连续记录",
     "startToday": "从今天开始",
@@ -107,7 +107,7 @@
   },
   "hub": {
     "publish": "发布内容",
-    "journalEdit": "日志编辑",
+    "journalEdit": "笔记编辑",
     "timeline": "我的",
     "received": "收到的内容",
     "friends": "好友",
@@ -121,7 +121,7 @@
   "tabs": {
     "index": "首页",
     "moments": "随记",
-    "journals": "日志",
+    "journals": "笔记",
     "received": "收到",
     "settings": "设置"
   },
@@ -140,10 +140,10 @@
     "noSignature": "未设置签名，去设置页写一个吧"
   },
   "journals": {
-    "title": "日志",
+    "title": "笔记",
     "desc": "沉淀长文与思考",
-    "empty": "还没有日志，去写一篇吧",
-    "write": "写日志",
+    "empty": "还没有笔记，去写一篇吧",
+    "write": "写笔记",
     "viewCard": "卡片视图",
     "viewTable": "表格视图",
     "colDate": "日期",
@@ -211,7 +211,7 @@
   "timeline": {
     "filterAll": "全部",
     "kindSay": "随记",
-    "kindJournal": "日志",
+    "kindJournal": "笔记",
     "filterDate": "已筛选 {d}",
     "clearDate": "清除"
   },
@@ -267,7 +267,7 @@
   },
   "ie": {
     "exportSection": "导出全部内容",
-    "exportDesc": "打包你的全部随记、日志与媒体为 zip 下载",
+    "exportDesc": "打包你的全部随记、笔记与媒体为 zip 下载",
     "exportBtn": "导出 zip",
     "exported": "导出已开始下载",
     "importSection": "导入 zip",

@@ -89,7 +89,7 @@
     "weekday5": "Friday",
     "weekday6": "Saturday",
     "statsSays": "Moments",
-    "statsJournals": "Journals",
+    "statsJournals": "Notes",
     "statsFriends": "Friends",
     "statsStreak": "Streak",
     "startToday": "Start today",
@@ -106,7 +106,7 @@
     "milestoneBadge": "{kind} {n} reached"
   },
   "hub": {
-    "journalEdit": "Journal Edit",
+    "journalEdit": "Note Edit",
     "publish": "Publish",
     "timeline": "Mine",
     "received": "Received",
@@ -121,7 +121,7 @@
   "tabs": {
     "index": "Home",
     "moments": "Moments",
-    "journals": "Journals",
+    "journals": "Notes",
     "received": "Received",
     "settings": "Settings"
   },
@@ -137,10 +137,10 @@
     "yesterday": "Yesterday"
   },
   "journals": {
-    "title": "Journals",
+    "title": "Notes",
     "desc": "Longer reads and deeper thoughts",
-    "empty": "No journals yet. Write your first one!",
-    "write": "Write a journal",
+    "empty": "No notes yet. Write your first one!",
+    "write": "Write a note",
     "viewCard": "Cards",
     "viewTable": "Table",
     "colDate": "Date",
@@ -211,7 +211,7 @@
   "timeline": {
     "filterAll": "All",
     "kindSay": "Moments",
-    "kindJournal": "Journals",
+    "kindJournal": "Notes",
     "filterDate": "Filtered to {d}",
     "clearDate": "Clear"
   },

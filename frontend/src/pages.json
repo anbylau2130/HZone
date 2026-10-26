@@ -9,7 +9,7 @@
     { "path": "pages/reset-password/reset-password", "style": { "navigationBarTitleText": "重置密码" } },
     { "path": "pages/publish/publish", "style": { "navigationBarTitleText": "发布内容" } },
     { "path": "pages/moments/moments", "style": { "navigationBarTitleText": "随记" } },
-    { "path": "pages/journals/journals", "style": { "navigationBarTitleText": "日志" } },
+    { "path": "pages/journals/journals", "style": { "navigationBarTitleText": "笔记" } },
     { "path": "pages/timeline/timeline", "style": { "navigationBarTitleText": "我的" } },
     { "path": "pages/received/received", "style": { "navigationBarTitleText": "收到的内容" } },
     { "path": "pages/friends/friends", "style": { "navigationBarTitleText": "好友" } },

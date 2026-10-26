@@ -4,6 +4,10 @@
       <view class="topbar">
         <text class="topbar-title">{{ $t('journals.title') }}</text>
         <view class="topbar-actions">
+          <!-- 页内检索（与随记页同款）：关键词走 /search（自己的笔记），空=全部 -->
+          <view v-if="items.length > 0 || keyword" class="search-btn" @click="toggleSearch">
+            <text class="search-ico">🔍</text>
+          </view>
           <!-- 卡片/表格/阅读视图切换（阅读在前、默认阅读；localStorage 记忆） -->
           <view v-if="items.length > 0" class="view-toggle">
             <text class="vt" :class="{ on: viewMode === 'read' }" @click="setViewMode('read')">
@@ -17,6 +21,21 @@
             </text>
           </view>
         </view>
+      </view>
+
+      <!-- 搜索行：输入防抖 400ms 即时筛选；清空恢复全部；三视图共用同一关键词 -->
+      <view v-if="searchOpen" class="search-row">
+        <input
+          v-model="keyword"
+          class="search-field"
+          :placeholder="$t('search.placeholder')"
+          confirm-type="search"
+          @confirm="refreshNow"
+        />
+        <view v-if="keyword" class="search-clear" @click="keyword = ''">
+          <text class="search-clear-txt">×</text>
+        </view>
+        <text class="search-close" @click="closeSearch">{{ $t('common.cancel') }}</text>
       </view>
 
       <view v-if="pagination.loading.value && !items.length" class="hint">
@@ -105,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
@@ -115,14 +134,51 @@ import MiniPlayer from '../../components/MiniPlayer.vue'
 import JournalReader from '../../components/JournalReader.vue'
 import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
-import { listMyContents, type ContentItem } from '../../api/endpoints'
+import { listMyContents, searchContents, type ContentItem } from '../../api/endpoints'
 import { formatDateTime, stripMarkdown } from '../../utils/format'
 import { weatherChipText } from '../../utils/weather'
 
-const pagination = usePagination<ContentItem>((offset, limit) =>
-  listMyContents('journal', offset, limit)
-)
+// ---------- 页内检索（与随记页同款）：关键词走 /search（自己的笔记），空=全部 ----------
+const searchOpen = ref(false)
+const keyword = ref('')
+
+const pagination = usePagination<ContentItem>((offset, limit) => {
+  const kw = keyword.value.trim()
+  return kw ? searchContents(kw, 'journal', offset, limit) : listMyContents('journal', offset, limit)
+})
 const { items, finished, loadMore } = pagination
+
+function toggleSearch() {
+  searchOpen.value = !searchOpen.value
+  if (searchOpen.value) {
+    nextTick(() => {
+      document.querySelector('.search-field input')?.focus?.()
+    })
+  }
+}
+
+function closeSearch() {
+  searchOpen.value = false
+  if (keyword.value) {
+    keyword.value = ''
+    pagination.refresh()
+  }
+}
+
+function refreshNow() {
+  pagination.refresh()
+}
+
+// 输入防抖 400ms 即时筛选（三视图共用）；清空恢复全部
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(keyword, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    pagination.refresh()
+    // 表格视图数据流独立（经典分页），关键词变化同样回到第 1 页
+    if (viewMode.value === 'table') fetchTablePage(1)
+  }, 400)
+})
 
 // cherry 编辑器懒加载：模块顶层异步组件（同 JournalReader，vite 自动拆 chunk；
 // 读侧正文渲染统一走 cherry previewOnly）
@@ -168,7 +224,10 @@ const tablePages = computed(() => Math.max(1, Math.ceil(tableTotal.value / TABLE
 async function fetchTablePage(page: number) {
   tableLoading.value = true
   try {
-    const res = await listMyContents('journal', (page - 1) * TABLE_PAGE_SIZE, TABLE_PAGE_SIZE)
+    const kw = keyword.value.trim()
+    const res = kw
+      ? await searchContents(kw, 'journal', (page - 1) * TABLE_PAGE_SIZE, TABLE_PAGE_SIZE)
+      : await listMyContents('journal', (page - 1) * TABLE_PAGE_SIZE, TABLE_PAGE_SIZE)
     tableItems.value = res.items
     tableTotal.value = res.total
     tablePage.value = page
@@ -195,10 +254,6 @@ function editJournal(c: ContentItem) {
 
 function goPublish() {
   uni.navigateTo({ url: '/pages/publish/publish?kind=journal' })
-}
-
-function goSearch() {
-  uni.navigateTo({ url: '/pages/search/search?kind=journal' })
 }
 
 // 底部天气 chip（现象图标+温度，与随记页同款）
@@ -256,11 +311,50 @@ function formatWords(n: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+}
+.search-ico {
+  font-size: 14px;
+  line-height: 1;
+}
+/* 搜索行（与随记页同款） */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.search-field {
+  flex: 1;
+  height: 36px;
+  border: 1px solid var(--hz-color-border);
+  border-radius: 999px;
+  padding: 0 14px;
+  font-size: var(--hz-font-size-base);
+  color: var(--hz-color-text);
+  background: var(--hz-color-surface);
+  box-sizing: border-box;
+}
+.search-clear {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--hz-color-bg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.search-clear-txt {
+  font-size: 16px;
   color: var(--hz-color-text-secondary);
 }
-.search-icon {
-  width: 16px;
-  height: 16px;
+.search-close {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  cursor: pointer;
 }
 .write-btn {
   display: none;

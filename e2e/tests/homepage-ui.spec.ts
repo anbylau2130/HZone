@@ -44,8 +44,8 @@ test('home modules render: today card, stats, heatmap, footprints, timeline', as
   await expect(page.locator('[class*="today"]').first()).toBeVisible()
   await expect(page.getByText(/月.*日/).first()).toBeVisible()
 
-  // 统计行四卡标签
-  for (const label of ['随记', '日志', '好友', '连续记录']) {
+  // 统计行四卡标签（「日志」已全站改名「笔记」）
+  for (const label of ['随记', '笔记', '好友', '连续记录']) {
     await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
   }
 
