@@ -114,6 +114,9 @@
       </view>
     </view>
     <view class="entries">
+      <view class="entry" @click="go('/pages/photos/photos')">
+        <text class="entry-label">{{ $t('photos.title') }}</text>
+      </view>
       <view class="entry" @click="go('/pages/friends/friends')">
         <text class="entry-label">{{ $t('hub.friends') }}</text>
       </view>

@@ -335,6 +335,10 @@
     "presetGreen": "Eye-care Green",
     "presetSpace": "Deep Space Purple"
   },
+  "photos": {
+    "title": "Photo Wall",
+    "empty": "No photos yet — attach images to moments and they gather here"
+  },
   "player": {
     "title": "Player",
     "idle": "Nothing playing",

@@ -259,6 +259,37 @@ public static class MediaEndpoints
                 .ToListAsync(ct);
             return Results.Ok(new { items, total = items.Count });
         }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // 照片墙：本人图片资产分页（新→旧，带缩略图与所属内容），网格浏览用。
+        app.MapGet("/me/media/photos", [Authorize] async (
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            int? offset,
+            int? limit,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var skip = Math.Max(0, offset ?? 0);
+            var take = limit is null or <= 0 ? 30 : Math.Min(limit.Value, 100);
+            var q = db.MediaAssets
+                .Where(m => m.OwnerUserId == userId && m.Kind == MediaKind.Image)
+                .OrderByDescending(m => m.CreatedAt)
+                .ThenByDescending(m => m.Id);
+            var total = await q.CountAsync(ct);
+            var items = await q
+                .Skip(skip)
+                .Take(take)
+                .Select(m => new
+                {
+                    m.Id,
+                    m.StoredName,
+                    ThumbStoredName = m.ThumbStoredName ?? m.StoredName,
+                    m.ContentId,
+                    m.CreatedAt,
+                })
+                .ToListAsync(ct);
+            return Results.Ok(new { items, total, offset = skip, limit = take });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
     }
 
     internal static MediaKind? ClassifyKind(string? contentType, string? fileName = null)

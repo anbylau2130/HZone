@@ -335,8 +335,11 @@
     "presetGreen": "护眼绿",
     "presetSpace": "深空紫"
   },
-  "player": {
-    "title": "播放器",
+  "photos": {
+    "title": "照片墙",
+    "empty": "还没有照片，发随记配图后自动收集在这里"
+  },
+  "player": {    "title": "播放器",
     "idle": "未选曲",
     "loopList": "列表循环",
     "loopOne": "单曲循环",
