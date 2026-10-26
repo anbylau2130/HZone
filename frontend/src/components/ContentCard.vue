@@ -8,7 +8,11 @@
         <text class="kind">{{ kindLabel }}</text>
       </view>
       <view class="head-spacer" />
-      <text class="head-date">{{ formatDateTime(content.createdAt) }}</text>
+      <!-- 右上角两行：日期时间 + 天气·位置（右对齐；任一缺失只显存在的部分） -->
+      <view class="head-right">
+        <text class="head-date">{{ formatDateTime(content.createdAt) }}</text>
+        <text v-if="weatherLine" class="head-weather">{{ weatherLine }}</text>
+      </view>
     </view>
 
     <!-- 编辑态：不渲染正文区，原地渲染编辑器（@click.stop 防编辑器内点击冒泡误开详情页） -->
@@ -50,10 +54,6 @@
     <template v-else>
       <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
       <text v-else class="text">{{ content.text }}</text>
-      <!-- 天气 chip 紧贴标题/正文下方（日期时间已移右上角；无天气不渲染该行） -->
-      <view v-if="weatherChip" class="meta-line">
-        <text class="weather-chip">{{ weatherChip }}</text>
-      </view>
       <!-- 日志正文预览：读侧统一 cherry previewOnly（用户决策），与编辑器渲染完全一致；
            IntersectionObserver 懒挂载——列表一页 15+ 卡，滚进视口才拉取 cherry chunk 并渲染，
            挂载前 .md-preview 以 min-height 占位防跳变（用 div：view 的 ref 拿不到 DOM 元素） -->
@@ -155,13 +155,15 @@ function onCommentCountChange(n: number) {
   commentCount.value = n
 }
 
-// 列表卡只显天气（现象图标+温度），无则不显
-const weatherChip = computed(() => {
+// 右上角第二行：天气（现象图标+温度）· 位置（城市）——不再依赖城市存在
+//（旧实现无城市连天气一起藏，用户反馈「天气没显示」的根因）
+const weatherLine = computed(() => {
   const w = props.content.weather
-  if (!w?.city) return ''
-  const icon = CONDITION_ICONS[w.condition as WeatherCondition] ?? ''
-  const temp = w.tempC !== null && w.tempC !== undefined ? Math.round(w.tempC) + '°C' : ''
-  return [icon, temp].filter(Boolean).join(' ')
+  if (!w || (!w.condition && w.tempC == null && !w.city)) return ''
+  const icon = w.condition ? CONDITION_ICONS[w.condition as WeatherCondition] ?? '' : ''
+  const temp = w.tempC !== null && w.tempC !== undefined ? `${Math.round(w.tempC)}°C` : ''
+  const weather = [icon, temp].filter(Boolean).join(' ')
+  return [weather, w.city].filter(Boolean).join(' · ')
 })
 
 
@@ -258,25 +260,24 @@ title: t('common.delete'),
 .head-spacer {
   flex: 1;
 }
-/* 右上角绝对日期+时间（用户要求）：小字号 secondary，窄屏防挤压 */
+/* 右上角信息列：第一行日期时间，第二行天气·位置（右对齐，小字号 secondary） */
+.head-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
 .head-date {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
-  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* 日期+天气行：紧贴标题/正文下方，与卡片一体（不再右上一条、底部一条） */
-.meta-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
-}
-.meta-line .weather-chip {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--hz-color-bg);
+.head-weather {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  white-space: nowrap;
 }
 .author {
   font-size: var(--hz-font-size-base);
