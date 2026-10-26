@@ -65,10 +65,35 @@
       </view>
     </view>
 
-    <!-- 我的时间线：带全部/随记/日志筛选，复用 timeline 数据逻辑 -->
+    <!-- 我的时间线：带全部/随记/笔记筛选 + 页内检索（搜索态输入框接管工具行） -->
     <view class="timeline-section">
       <text class="section-title">{{ $t('home.timeline') }}</text>
-      <SegmentedFilter :model-value="kind" :options="kinds" @update:model-value="setKind" />
+      <view v-if="searchOpen" class="search-inline">
+        <svg class="si-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="9" cy="9" r="5.5" />
+          <path d="M13.2 13.2L17.5 17.5" />
+        </svg>
+        <input
+          v-model="keyword"
+          class="si-input"
+          :placeholder="$t('search.placeholder')"
+          confirm-type="search"
+          @confirm="refreshNow"
+        />
+        <text v-if="keyword" class="si-clear" @click="keyword = ''">×</text>
+        <text class="si-cancel" @click="closeSearch">{{ $t('common.cancel') }}</text>
+      </view>
+      <view v-else class="tool-row">
+        <view class="filter-wrap">
+          <SegmentedFilter :model-value="kind" :options="kinds" @update:model-value="setKind" />
+        </view>
+        <view v-if="items.length > 0 || keyword" class="search-cell" :title="$t('search.button')" @click="toggleSearch">
+          <svg class="si-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="9" cy="9" r="5.5" />
+            <path d="M13.2 13.2L17.5 17.5" />
+          </svg>
+        </view>
+      </view>
 
       <view v-if="pagination.loading.value && !items.length" class="hint">
         <text class="hint-text">{{ $t('common.loading') }}</text>
@@ -93,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useAuthStore } from '../../stores/auth'
 import { useInboxStore } from '../../stores/inbox'
@@ -103,6 +128,7 @@ import {
   getOnThisDay,
   getInteractionSummary,
   listMyContents,
+  searchContents,
   type ContentItem,
   type KindFilter,
   type MeStats,
@@ -206,10 +232,41 @@ const kinds: { value: KindFilter; label: string }[] = [
 ]
 const kind = ref<KindFilter>('')
 
-const pagination = usePagination<ContentItem>((offset, limit) =>
-  listMyContents(kind.value, offset, limit)
-)
+// ---------- 时间线页内检索：关键词走 /search（与类型筛选叠加），空=全部 ----------
+const searchOpen = ref(false)
+const keyword = ref('')
+
+const pagination = usePagination<ContentItem>((offset, limit) => {
+  const kw = keyword.value.trim()
+  return kw ? searchContents(kw, kind.value, offset, limit) : listMyContents(kind.value, offset, limit)
+})
 const { items, finished, loadMore } = pagination
+
+function toggleSearch() {
+  searchOpen.value = true
+  nextTick(() => {
+    document.querySelector('.si-input input')?.focus?.()
+  })
+}
+
+function closeSearch() {
+  searchOpen.value = false
+  if (keyword.value) {
+    keyword.value = ''
+    pagination.refresh()
+  }
+}
+
+function refreshNow() {
+  pagination.refresh()
+}
+
+// 输入防抖 400ms 即时筛选；清空恢复全部
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(keyword, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => pagination.refresh(), 400)
+})
 
 // 滚动近底部自动加载；回调防重入由 usePagination 短路（loading/finished 已判断）
 useInfiniteScroll(() => {
@@ -447,6 +504,74 @@ function onCardUpdated(c: ContentItem) {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+/* 工具行：筛选左、搜索格右；搜索态由 search-inline 接管（与笔记/收到页同款） */
+.tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.filter-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.search-cell {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hz-color-border);
+  border-radius: 999px;
+  background: var(--hz-color-surface);
+  color: var(--hz-color-text-secondary);
+  cursor: pointer;
+}
+.search-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  border: 1px solid var(--hz-color-primary);
+  border-radius: 999px;
+  padding: 0 6px 0 12px;
+  background: var(--hz-color-surface);
+}
+.si-ico {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--hz-color-text-secondary);
+}
+.si-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text);
+  background: transparent;
+}
+.si-clear {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--hz-color-bg);
+  font-size: 13px;
+  color: var(--hz-color-text-secondary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.si-cancel {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  cursor: pointer;
 }
 .heatmap-section,
 .footprints-section {
