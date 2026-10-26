@@ -1,6 +1,6 @@
 <template>
   <view class="card">
-    <!-- 头部一行：头像+作者/类型 … 日期+编辑/删除贴右上角 -->
+    <!-- 头部一行：头像+作者/类型 … 日期时间贴右上角（用户要求：绝对日期+时间） -->
     <view class="head">
       <AvatarCircle :nickname="content.author.nickname" :avatar-url="content.author.avatarUrl" :size="44" />
       <view class="head-mid">
@@ -8,7 +8,7 @@
         <text class="kind">{{ kindLabel }}</text>
       </view>
       <view class="head-spacer" />
-      <CardOwnerActions v-if="isAuthor" @edit="goEdit" @delete="remove" />
+      <text class="head-date">{{ formatDateTime(content.createdAt) }}</text>
     </view>
 
     <!-- 编辑态：不渲染正文区，原地渲染编辑器（@click.stop 防编辑器内点击冒泡误开详情页） -->
@@ -50,10 +50,9 @@
     <template v-else>
       <text v-if="content.kind === 'journal'" class="title">{{ content.title }}</text>
       <text v-else class="text">{{ content.text }}</text>
-      <!-- 时间+天气紧贴标题/正文下方：随记/笔记一律显示时间（用户要求），有天气再并排 -->
-      <view class="meta-line">
-        <text class="date">{{ formatRelativeTime(content.createdAt) }}</text>
-        <text v-if="weatherChip" class="weather-chip">{{ weatherChip }}</text>
+      <!-- 天气 chip 紧贴标题/正文下方（日期时间已移右上角；无天气不渲染该行） -->
+      <view v-if="weatherChip" class="meta-line">
+        <text class="weather-chip">{{ weatherChip }}</text>
       </view>
       <!-- 日志正文预览：读侧统一 cherry previewOnly（用户决策），与编辑器渲染完全一致；
            IntersectionObserver 懒挂载——列表一页 15+ 卡，滚进视口才拉取 cherry chunk 并渲染，
@@ -82,6 +81,8 @@
         $t('detail.commentCount', { n: commentCount })
       }}</text>
       <view class="foot-spacer" />
+      <!-- 编辑/删除贴评论行最右（用户要求，原在右上角） -->
+      <CardOwnerActions v-if="isAuthor" @edit="goEdit" @delete="remove" />
     </view>
   </view>
 </template>
@@ -95,7 +96,7 @@ import CardOwnerActions from './CardOwnerActions.vue'
 import AvatarCircle from './AvatarCircle.vue'
 import CardComments from './CardComments.vue'
 import SayComposer from './SayComposer.vue'
-import { formatRelativeTime } from '../utils/format'
+import { formatDateTime } from '../utils/format'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
 import { deleteContent, updateContent } from '../api/endpoints'
 import type { ContentItem } from '../api/endpoints'
@@ -257,10 +258,13 @@ title: t('common.delete'),
 .head-spacer {
   flex: 1;
 }
-.date {
+/* 右上角绝对日期+时间（用户要求）：小字号 secondary，窄屏防挤压 */
+.head-date {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 /* 日期+天气行：紧贴标题/正文下方，与卡片一体（不再右上一条、底部一条） */
 .meta-line {
