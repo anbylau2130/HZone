@@ -40,6 +40,9 @@ builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 builder.Services.AddSingleton<IFFmpegCompressor, FFmpegCompressor>();
+// 自动备份：BackupRunner 纯逻辑（可单测）+ HostedService 调度（每 24h，保留 7 份）
+builder.Services.AddSingleton<BackupRunner>();
+builder.Services.AddHostedService<AutoBackupService>();
 
 builder.Services
     .AddAuthentication(options => options.DefaultScheme = "HZone.Auth")
