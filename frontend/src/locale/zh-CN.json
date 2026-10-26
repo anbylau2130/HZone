@@ -177,6 +177,8 @@
     "journalEmpty": "标题和正文不能为空",
     "tagPlaceholder": "加标签，回车确认",
     "tagLimit": "最多 10 个标签",
+    "voiceClip": "语音",
+    "voiceWithMediaOnly": "语音需单独发送（不能与图片/视频混搭）",
     "submit": "发布",
     "uploading": "上传中…",
     "recordPermissionDenied": "无法访问摄像头，可用「添加视频」上传",

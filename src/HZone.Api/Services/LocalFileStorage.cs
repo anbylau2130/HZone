@@ -25,6 +25,9 @@ public sealed class LocalFileStorage : IFileStorage
         ["audio/wav"] = ".wav",
         ["audio/x-wav"] = ".wav",
         ["audio/ogg"] = ".ogg",
+        // 语音随记 H5 MediaRecorder 产物（Chromium/Firefox 默认 opus-in-webm）
+        ["audio/webm"] = ".webm",
+        ["audio/x-matroska"] = ".webm",
     };
 
     private readonly string _mediaDirectory;
