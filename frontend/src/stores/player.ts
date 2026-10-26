@@ -36,6 +36,9 @@ const current = computed(() =>
 
 // 单例音频上下文：H5 底层即 audio 元素，App 端为原生播放器；挂模块层不随页面卸载
 let ctx: UniApp.InnerAudioContext | null = null
+// 连续失败计数（onPlay 清零）：列表循环下坏曲自动跳下一首，
+// 但整表连坏时收手——避免坏表无限空转
+let consecutiveErrors = 0
 function ensureCtx(): UniApp.InnerAudioContext {
   if (ctx) return ctx
   ctx = uni.createInnerAudioContext()
@@ -45,7 +48,10 @@ function ensureCtx(): UniApp.InnerAudioContext {
     position.value = ctx!.currentTime
     duration.value = ctx!.duration || 0
   })
-  ctx.onPlay(() => (playing.value = true))
+  ctx.onPlay(() => {
+    playing.value = true
+    consecutiveErrors = 0
+  })
   ctx.onPause(() => (playing.value = false))
   ctx.onStop(() => (playing.value = false))
   ctx.onEnded(() => {
@@ -57,9 +63,14 @@ function ensureCtx(): UniApp.InnerAudioContext {
     }
   })
   ctx.onError(() => {
-    // 拉流失败（外链失效/格式不支持）：提示并停住，由用户手动跳下一首
+    // 拉流失败（外链失效/文件损坏/格式不支持）：提示后跳下一首——
+    // 坏曲不应终结整表播放；全表连坏（≥表长）才真正停下
     playing.value = false
     uni.showToast({ title: i18n.global.t('player.loadFailed'), icon: 'none' })
+    consecutiveErrors++
+    if (items.value.length > 1 && consecutiveErrors < items.value.length) {
+      void next()
+    }
   })
   return ctx
 }
