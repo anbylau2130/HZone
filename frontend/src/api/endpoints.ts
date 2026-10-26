@@ -137,9 +137,10 @@ function listContents(
   kind: KindFilter,
   offset: number,
   limit: number,
-  date?: string
+  date?: string,
+  q?: string
 ) {
-  return request<ContentPage>(`${path}${qs({ kind, offset, limit, date })}`)
+  return request<ContentPage>(`${path}${qs({ kind, offset, limit, date, q: q || undefined })}`)
 }
 
 /** date=yyyy-MM-dd：热力格点格下钻按天过滤（后端按中国区本地日取 UTC 区间）。 */
@@ -152,8 +153,8 @@ export function listMyContents(
   return listContents('/api/me/contents', kind, offset, limit, date)
 }
 
-export function listReceived(kind: KindFilter, offset: number, limit: number) {
-  return listContents('/api/me/received', kind, offset, limit)
+export function listReceived(kind: KindFilter, offset: number, limit: number, q?: string) {
+  return listContents('/api/me/received', kind, offset, limit, undefined, q)
 }
 
 export function listUserContents(

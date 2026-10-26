@@ -377,6 +377,7 @@ public static class ContentEndpoints
             IContentQuery contentQuery,
             HZoneDbContext db,
             string? kind,
+            string? q,
             int? offset,
             int? limit,
             CancellationToken ct) =>
@@ -395,6 +396,8 @@ public static class ContentEndpoints
                 RecipientId = me,
                 ExcludeAuthorId = me,
                 Kind = kind,
+                // 收到页检索：随记文本 / 笔记标题+正文 LIKE 匹配（与 /search 同一实现）
+                SearchText = string.IsNullOrWhiteSpace(q) ? null : q.Trim(),
                 Offset = skip,
                 Limit = take,
             }, ct);

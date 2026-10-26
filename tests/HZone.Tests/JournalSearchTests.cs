@@ -223,6 +223,45 @@ public class JournalSearchTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         var text = await response.Content.ReadAsStringAsync();
         return JsonDocument.Parse(text).RootElement.Clone();
     }
+
+    [Fact]
+    public async Task Received_search_filters_by_keyword_across_kinds()
+    {
+        var a = await _factory.SeedUserAsync("rcv8a@test.local", "Rcv8a");
+        var b = await _factory.SeedUserAsync("rcv8b@test.local", "Rcv8b");
+        await _factory.SeedFriendshipAsync(a, b);
+        var aClient = _factory.CreateAuthorizedClient(a.Id, a.Nickname);
+        var bClient = _factory.CreateAuthorizedClient(b.Id, b.Nickname);
+
+        // a 发给 b：一条随记（正文命中）+ 三篇笔记（标题命中 / 正文命中 / 都不命中）
+        await CreateSayAsync(aClient, "周末徒步的记录", new[] { b.Id });
+        await CreateJournalAsync(aClient, "京都行程", "# day1", new[] { b.Id });
+        await CreateJournalAsync(aClient, "杂记", "藏了一个关键词在正文", new[] { b.Id });
+        await CreateJournalAsync(aClient, "无关内容", "# nothing", new[] { b.Id });
+
+        var bReceived = await bClient.GetFromJsonAsync<JsonElement>("/me/received");
+        Assert.Equal(4, bReceived.GetProperty("total").GetInt32());
+
+        // q=徒步：只命中随记正文
+        var bySay = await bClient.GetFromJsonAsync<JsonElement>("/me/received?q=" + Uri.EscapeDataString("徒步"));
+        Assert.Equal(1, bySay.GetProperty("total").GetInt32());
+        Assert.Equal("周末徒步的记录", bySay.GetProperty("items")[0].GetProperty("text").GetString());
+
+        // q=行程：命中笔记标题
+        var byTitle = await bClient.GetFromJsonAsync<JsonElement>("/me/received?q=" + Uri.EscapeDataString("行程"));
+        Assert.Equal(1, byTitle.GetProperty("total").GetInt32());
+        Assert.Equal("京都行程", byTitle.GetProperty("items")[0].GetProperty("title").GetString());
+
+        // q=关键词：命中笔记正文
+        var byBody = await bClient.GetFromJsonAsync<JsonElement>("/me/received?q=" + Uri.EscapeDataString("关键词"));
+        Assert.Equal(1, byBody.GetProperty("total").GetInt32());
+
+        // 不命中：空结果；q 传空白等同未传
+        var none = await bClient.GetFromJsonAsync<JsonElement>("/me/received?q=zzz");
+        Assert.Equal(0, none.GetProperty("total").GetInt32());
+        var blank = await bClient.GetFromJsonAsync<JsonElement>("/me/received?q=%20%20");
+        Assert.Equal(4, blank.GetProperty("total").GetInt32());
+    }
 }
 
 /// <summary>
