@@ -87,6 +87,7 @@
 
     <AppSidebar current="index" />
     <ToolDock />
+    <MiniPlayer />
     <AppTabBar current="index" />
   </view>
 </template>
@@ -111,6 +112,7 @@ import {
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
+import MiniPlayer from '../../components/MiniPlayer.vue'
 import ContentCard from '../../components/ContentCard.vue'
 import SegmentedFilter from '../../components/SegmentedFilter.vue'
 import Heatmap from '../../components/Heatmap.vue'

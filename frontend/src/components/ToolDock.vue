@@ -11,12 +11,15 @@
       <text v-if="weatherLine" class="today-weather">{{ weatherLine }}</text>
     </view>
 
-    <!-- 后续工具占位：音乐播放器等（另行讨论） -->
+    <!-- 音乐播放器（dock 预留位兑现）：面板只是遥控器，音频本体在 player store
+         单例上下文（切换页面不中断）；<1200px 由全局 MiniPlayer 桥接管 -->
+    <PlayerPanel />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import PlayerPanel from './PlayerPanel.vue'
 import { getMyStats, type MeStats } from '../api/endpoints'
 import { getWeather, CONDITION_ICONS, type WeatherSnapshot } from '../utils/weather'
 import { formatLunar } from '../utils/lunar'

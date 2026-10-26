@@ -130,6 +130,7 @@
     <button class="btn ghost" @click="logout">{{ $t('home.logout') }}</button>
 
     <AppSidebar current="settings" />
+    <MiniPlayer />
     <AppTabBar current="settings" />
   </view>
 </template>

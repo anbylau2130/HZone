@@ -322,5 +322,20 @@
     "presetWarm": "Warm Orange",
     "presetGreen": "Eye-care Green",
     "presetSpace": "Deep Space Purple"
+  },
+  "player": {
+    "title": "Player",
+    "idle": "Nothing playing",
+    "loopList": "Loop list",
+    "loopOne": "Loop one",
+    "addFromLibrary": "From library",
+    "addLink": "Add link",
+    "linkTitle": "Name",
+    "linkUrl": "Audio URL (https://…)",
+    "library": "Audio library",
+    "upload": "Upload",
+    "libraryEmpty": "No audio uploaded yet",
+    "playlistEmpty": "Playlist is empty",
+    "loadFailed": "Failed to load audio"
   }
 }

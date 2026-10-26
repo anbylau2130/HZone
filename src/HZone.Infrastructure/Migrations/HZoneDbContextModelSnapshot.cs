@@ -317,6 +317,46 @@ namespace HZone.Infrastructure.Migrations
                     b.ToTable("PersonalAccessTokens");
                 });
 
+            modelBuilder.Entity("HZone.Core.Entities.PlaylistItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("MediaAssetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SourceKind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaAssetId");
+
+                    b.HasIndex("UserId", "SortOrder");
+
+                    b.ToTable("PlaylistItems");
+                });
+
             modelBuilder.Entity("HZone.Core.Entities.SystemConfig", b =>
                 {
                     b.Property<string>("Key")
@@ -496,6 +536,16 @@ namespace HZone.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("HZone.Core.Entities.PlaylistItem", b =>
+                {
+                    b.HasOne("HZone.Core.Entities.MediaAsset", "MediaAsset")
+                        .WithMany()
+                        .HasForeignKey("MediaAssetId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("MediaAsset");
                 });
 
             modelBuilder.Entity("HZone.Core.Entities.Content", b =>

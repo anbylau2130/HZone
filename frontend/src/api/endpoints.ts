@@ -417,3 +417,52 @@ export function batchRecipients(contentIds: string[], addRecipientIds: string[])
     data: { contentIds, addRecipientIds }
   })
 }
+
+// ---------- 播放列表（账号级，每用户一张）+ 音频库 ----------
+
+export interface PlaylistItem {
+  id: string
+  sourceKind: 'media' | 'url'
+  title: string
+  url: string | null
+  mediaAssetId: string | null
+  /** media 项的资产文件名（拼 /media/{storedName} 播放路径，前端 blob 换取用）。 */
+  mediaStoredName: string | null
+  sortOrder: number
+  createdAt: string
+}
+
+export interface AudioAssetInfo {
+  id: string
+  originalName: string
+  storedName: string
+  sizeBytes: number
+  createdAt: string
+}
+
+export function listPlaylist() {
+  return request<{ items: PlaylistItem[]; total: number }>('/api/me/playlist')
+}
+
+export function addPlaylistItem(payload: {
+  sourceKind: 'media' | 'url'
+  title?: string
+  url?: string
+  mediaAssetId?: string
+}) {
+  return request<PlaylistItem>('/api/me/playlist', { method: 'POST', data: payload })
+}
+
+/** 整体重排：完整 id 序列（与现集合一致），服务端按下标重编顺序。 */
+export function reorderPlaylist(ids: string[]) {
+  return request<{ ok: boolean }>('/api/me/playlist/reorder', { method: 'PUT', data: { ids } })
+}
+
+export function removePlaylistItem(id: string) {
+  return request<{ ok: boolean }>(`/api/me/playlist/${id}`, { method: 'DELETE' })
+}
+
+/** 音频库：本人上传的音频资产（新→旧），播放列表「从音频库添加」用。 */
+export function listMyAudioAssets() {
+  return request<{ items: AudioAssetInfo[]; total: number }>('/api/me/media')
+}

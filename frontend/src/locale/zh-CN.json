@@ -322,5 +322,20 @@
     "presetWarm": "暖橙",
     "presetGreen": "护眼绿",
     "presetSpace": "深空紫"
+  },
+  "player": {
+    "title": "播放器",
+    "idle": "未选曲",
+    "loopList": "列表循环",
+    "loopOne": "单曲循环",
+    "addFromLibrary": "从音频库添加",
+    "addLink": "添加链接",
+    "linkTitle": "名称",
+    "linkUrl": "音频直链（https://…）",
+    "library": "音频库",
+    "upload": "上传",
+    "libraryEmpty": "还没有上传过音频",
+    "playlistEmpty": "播放列表为空",
+    "loadFailed": "音频加载失败"
   }
 }

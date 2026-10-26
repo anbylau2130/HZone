@@ -237,6 +237,28 @@ public static class MediaEndpoints
                 return Results.NotFound(new { error = "media not found" });
             }
         });
+
+        // 音频库（播放器）：本人音频资产列表，新→旧；播放列表「从音频库添加」用。
+        app.MapGet("/me/media", [Authorize] async (
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var items = await db.MediaAssets
+                .Where(m => m.OwnerUserId == userId && m.Kind == MediaKind.Audio)
+                .OrderByDescending(m => m.CreatedAt)
+                .Select(m => new
+                {
+                    m.Id,
+                    m.OriginalName,
+                    m.StoredName,
+                    m.SizeBytes,
+                    m.CreatedAt,
+                })
+                .ToListAsync(ct);
+            return Results.Ok(new { items, total = items.Count });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
     }
 
     internal static MediaKind? ClassifyKind(string? contentType, string? fileName = null)

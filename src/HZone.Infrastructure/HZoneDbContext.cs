@@ -20,6 +20,7 @@ public class HZoneDbContext : DbContext
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
     public DbSet<PersonalAccessToken> PersonalAccessTokens => Set<PersonalAccessToken>();
+    public DbSet<PlaylistItem> PlaylistItems => Set<PlaylistItem>();
     public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
     public DbSet<EmailToken> EmailTokens => Set<EmailToken>();
 
@@ -110,6 +111,19 @@ public class HZoneDbContext : DbContext
         modelBuilder.Entity<PersonalAccessToken>(e =>
         {
             e.HasIndex(p => p.TokenHash).IsUnique();
+        });
+
+        modelBuilder.Entity<PlaylistItem>(e =>
+        {
+            // 每用户一张列表：按 (UserId, SortOrder) 索引取序；列表项引用的音频资产
+            // 不随内容删除联动（Restrict）——资产被内容解绑不废列表项。
+            e.HasIndex(p => new { p.UserId, p.SortOrder });
+            e.HasOne(p => p.MediaAsset)
+                .WithMany()
+                .HasForeignKey(p => p.MediaAssetId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.Property(p => p.Title).HasMaxLength(200);
+            e.Property(p => p.Url).HasMaxLength(2048);
         });
     }
 }

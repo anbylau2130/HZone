@@ -98,6 +98,7 @@
 
     <AppSidebar current="journals" />
     <ToolDock />
+    <MiniPlayer />
     <AppTabBar current="journals" />
     <view class="fab" @click="goPublish">＋</view>
   </view>
@@ -110,6 +111,7 @@ import { setNavTitle } from '../../locale'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
+import MiniPlayer from '../../components/MiniPlayer.vue'
 import JournalReader from '../../components/JournalReader.vue'
 import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'

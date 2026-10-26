@@ -152,6 +152,7 @@ app.MapAdminEndpoints();
 app.MapInviteEndpoints();
 app.MapAuthEndpoints();
 app.MapPatEndpoints();
+app.MapPlaylistEndpoints();
 
 app.Run();
 

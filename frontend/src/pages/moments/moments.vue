@@ -114,6 +114,7 @@
 
     <AppSidebar current="moments" />
     <ToolDock />
+    <MiniPlayer />
     <AppTabBar current="moments" />
     <view class="fab" @click="focusComposer">＋</view>
   </view>
@@ -128,6 +129,7 @@ import RecipientsBar from '../../components/RecipientsBar.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
+import MiniPlayer from '../../components/MiniPlayer.vue'
 import ProfileHeader from '../../components/ProfileHeader.vue'
 import CardOwnerActions from '../../components/CardOwnerActions.vue'
 import CardComments from '../../components/CardComments.vue'

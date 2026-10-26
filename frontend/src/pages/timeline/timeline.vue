@@ -26,6 +26,7 @@
 
     <AppSidebar current="mine" />
     <ToolDock />
+    <MiniPlayer />
     <AppTabBar current="mine" />
   </view>
 </template>
@@ -39,6 +40,7 @@ import SegmentedFilter from '../../components/SegmentedFilter.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
+import MiniPlayer from '../../components/MiniPlayer.vue'
 import { usePagination } from '../../composables/usePagination'
 import { listMyContents, type ContentItem, type KindFilter } from '../../api/endpoints'
 
