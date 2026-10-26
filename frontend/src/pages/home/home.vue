@@ -7,6 +7,16 @@
       <text v-if="weatherLine" class="today-weather">{{ weatherLine }}</text>
     </view>
 
+    <!-- 周年提醒：今天恰有整年同月日内容时强调（点回那年今天区）；安静记录不配被忘记 -->
+    <view v-if="anniversary" class="anniv-card" @click="scrollToOnThisDay">
+      <text class="anniv-emoji">🎉</text>
+      <view class="anniv-mid">
+        <text class="anniv-title">{{ $t('home.anniversary', { n: anniversary.years }) }}</text>
+        <text class="anniv-line">{{ anniversary.preview }}</text>
+      </view>
+      <text class="anniv-arrow">›</text>
+    </view>
+
     <!-- 统计数字行：四张卡（随记/日志/好友/连续记录天数） -->
     <view class="stats-row">
       <view class="stat-card">
@@ -154,6 +164,20 @@ const inbox = useInboxStore()
 const stats = ref<MeStats | null>(null)
 const weather = ref<WeatherSnapshot | null>(null)
 const otd = ref<OnThisDayItem[]>([])
+
+// 周年提醒：最新一条整年「那年今天」（preview 一行钩子；点卡滚到那年今天区）
+const anniversary = computed(() => {
+  const nowYear = new Date().getFullYear()
+  const hit = otd.value.find((it) => nowYear - it.year >= 1)
+  if (!hit) return null
+  const preview = (hit.title || hit.summary || '').trim().slice(0, 40)
+  return { years: nowYear - hit.year, preview }
+})
+
+function scrollToOnThisDay() {
+  const el = document.querySelector('.otd-section')
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 const interactions = ref<InteractionSummary | null>(null)
 
 // 公历日期「10月20日 星期二」：本地（浏览器）日期即可，农历才由后端推导。
@@ -370,6 +394,44 @@ function onCardUpdated(c: ContentItem) {
   background: linear-gradient(180deg, var(--hz-color-primary) 0%, transparent 100%);
   opacity: 0.92;
   animation: today-fade-in 0.5s ease-out;
+}
+/* 周年提醒强调卡：今日卡正下方，暖色描边轻强调，点击滚到那年今天 */
+.anniv-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--hz-color-primary);
+  border-radius: var(--hz-radius-md);
+  background: var(--hz-color-surface);
+  cursor: pointer;
+}
+.anniv-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+.anniv-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.anniv-title {
+  font-size: var(--hz-font-size-base);
+  font-weight: 600;
+  color: var(--hz-color-text);
+}
+.anniv-line {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.anniv-arrow {
+  font-size: 20px;
+  color: var(--hz-color-text-secondary);
 }
 .today-date {
   font-size: 32px;

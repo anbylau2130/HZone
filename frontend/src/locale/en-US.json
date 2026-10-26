@@ -93,6 +93,7 @@
     "statsFriends": "Friends",
     "statsStreak": "Streak",
     "startToday": "Start today",
+    "anniversary": "{n} years ago today",
     "timeline": "My timeline",
     "heatmapTitle": "Heatmap · Last 90 days",
     "heatmapLess": "Less",
