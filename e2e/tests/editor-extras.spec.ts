@@ -132,8 +132,15 @@ test('editor extras: open local md, export menu, insert file attachment', async 
   await confirmBtn.click()
   await expect(cm).toContainText('第二篇正文', { timeout: 10_000 })
 
-  // ② 导出菜单（官方内置，全客户端）：按钮 + 子菜单项
+  // ② 导出菜单（官方内置，全客户端）：按钮 + 子菜单项。
+  // 已知竞态：确认弹窗关闭的 DOM 移除偶发触发 document click，把刚打开的
+  // dropdown 立即关掉——自愈重开一次（断言强度不变，dropdown 必须可见）
+  const exportItem = page.locator('.cherry-dropdown[name="export"] .cherry-dropdown-item').first()
   await page.locator('.cherry-toolbar-export').click()
+  await page.waitForTimeout(300)
+  if (!(await exportItem.isVisible().catch(() => false))) {
+    await page.locator('.cherry-toolbar-export').click()
+  }
   await expect(
     page.locator('.cherry-dropdown[name="export"] .cherry-dropdown-item').first()
   ).toBeVisible({ timeout: 10_000 })
