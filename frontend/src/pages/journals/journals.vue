@@ -76,6 +76,18 @@
         </view>
       </view>
 
+      <!-- 标签筛选行：全部 + 我的标签（计数），单选切换；卡片标签 chip 跳转入口同款状态 -->
+      <view v-if="!searchOpen && tagOptions.length" class="tag-filter-row">
+        <text class="tf-chip" :class="{ on: !activeTag }" @click="setActiveTag('')">{{ $t('timeline.filterAll') }}</text>
+        <text
+          v-for="t in tagOptions"
+          :key="t.tag"
+          class="tf-chip"
+          :class="{ on: activeTag === t.tag }"
+          @click="setActiveTag(t.tag)"
+        ># {{ t.tag }} <text class="tf-count">{{ t.count }}</text></text>
+      </view>
+
       <view v-if="pagination.loading.value && !items.length" class="hint">
         <text class="hint-text">{{ $t('common.loading') }}</text>
       </view>
@@ -172,7 +184,7 @@ import MiniPlayer from '../../components/MiniPlayer.vue'
 import JournalReader from '../../components/JournalReader.vue'
 import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
-import { listMyContents, searchContents, type ContentItem } from '../../api/endpoints'
+import { listMyContents, searchContents, listMyTags, type ContentItem, type TagCloudItem } from '../../api/endpoints'
 import { formatDateTime, stripMarkdown } from '../../utils/format'
 import { weatherChipText } from '../../utils/weather'
 
@@ -180,11 +192,32 @@ import { weatherChipText } from '../../utils/weather'
 const searchOpen = ref(false)
 const keyword = ref('')
 
+// ---------- 标签筛选（与关键词/类型可叠加；卡片标签 chip 跳转经 hz-journals-tag） ----------
+const activeTag = ref('')
+const tagOptions = ref<TagCloudItem[]>([])
+
 const pagination = usePagination<ContentItem>((offset, limit) => {
   const kw = keyword.value.trim()
-  return kw ? searchContents(kw, 'journal', offset, limit) : listMyContents('journal', offset, limit)
+  const tag = activeTag.value || undefined
+  return kw
+    ? searchContents(kw, 'journal', offset, limit, tag)
+    : listMyContents('journal', offset, limit, undefined, tag)
 })
 const { items, finished, loadMore } = pagination
+
+async function loadTags() {
+  try {
+    tagOptions.value = (await listMyTags()).items
+  } catch {
+    tagOptions.value = []
+  }
+}
+
+function setActiveTag(tag: string) {
+  activeTag.value = tag
+  pagination.refresh()
+  if (viewMode.value === 'table') fetchTablePage(1)
+}
 
 function toggleSearch() {
   searchOpen.value = true
@@ -229,6 +262,13 @@ useInfiniteScroll(() => {
 // onShow 而非 onLoad：H5 端直接 hash 进入时 onLoad 不触发，onShow 稳定
 onShow(() => {
   setNavTitle('journals.title')
+  // 卡片标签 chip 跳转入口：应用并清掉一次性标记
+  const jumpTag = uni.getStorageSync('hz-journals-tag')
+  if (jumpTag && typeof jumpTag === 'string' && jumpTag !== activeTag.value) {
+    activeTag.value = jumpTag
+  }
+  if (jumpTag) uni.removeStorageSync('hz-journals-tag')
+  void loadTags()
   pagination.refresh()
   // 表格视图有独立分页状态：编辑保存回来后刷新当前页（首次进入由 watch(viewMode) 负责）
   if (viewMode.value === 'table' && tableItems.value.length) fetchTablePage(tablePage.value)
@@ -261,9 +301,10 @@ async function fetchTablePage(page: number) {
   tableLoading.value = true
   try {
     const kw = keyword.value.trim()
+    const tag = activeTag.value || undefined
     const res = kw
-      ? await searchContents(kw, 'journal', (page - 1) * TABLE_PAGE_SIZE, TABLE_PAGE_SIZE)
-      : await listMyContents('journal', (page - 1) * TABLE_PAGE_SIZE, TABLE_PAGE_SIZE)
+      ? await searchContents(kw, 'journal', (page - 1) * TABLE_PAGE_SIZE, TABLE_PAGE_SIZE, tag)
+      : await listMyContents('journal', (page - 1) * TABLE_PAGE_SIZE, TABLE_PAGE_SIZE, undefined, tag)
     tableItems.value = res.items
     tableTotal.value = res.total
     tablePage.value = page
@@ -423,6 +464,38 @@ function formatWords(n: number): string {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
   cursor: pointer;
+}
+/* 标签筛选行：横向滚动 chips，on 态主色 */
+.tag-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+.tag-filter-row::-webkit-scrollbar {
+  display: none;
+}
+.tf-chip {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--hz-color-border);
+  background: var(--hz-color-surface);
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tf-chip.on {
+  background: var(--hz-color-primary);
+  border-color: var(--hz-color-primary);
+  color: #fff;
+}
+.tf-count {
+  font-size: 12px;
+  opacity: 0.75;
 }
 .write-btn {
   display: none;

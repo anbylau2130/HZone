@@ -66,6 +66,15 @@
       </div>
       <MediaGrid v-if="hasMedia" :media="content.media" />
       <RecipientsBar :recipients="content.recipients" />
+      <!-- 标签 chips：正文下方横排（点 chip 即跳笔记页按标签筛选） -->
+      <view v-if="(content.tags?.length ?? 0) > 0" class="tags-line">
+        <text
+          v-for="tag in content.tags"
+          :key="tag"
+          class="tag-chip"
+          @click.stop="goTag(tag)"
+        ># {{ tag }}</text>
+      </view>
     </template>
 
     <!-- 内联评论区（①A）：详情页已移除，评论在卡片内展开；发送期间由 CardComments 防重复 -->
@@ -179,6 +188,13 @@ function goEdit() {
   editTitle.value = props.content.title ?? ''
   editBody.value = props.content.markdownBody ?? ''
   editing.value = true
+}
+
+/** 点标签 chip → 笔记页按标签筛选（tab 页间用 redirectTo——与自绘 AppTabBar 同款；
+ *  switchTab 需原生 tabBar 配置，本项目自绘无配置，H5 下静默失败） */
+function goTag(tag: string) {
+  uni.setStorageSync('hz-journals-tag', tag)
+  uni.redirectTo({ url: '/pages/journals/journals' })
 }
 
 function cancelEdit() {
@@ -317,7 +333,23 @@ title: t('common.delete'),
 .foot-item {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-interactive);
-  cursor: pointer; /* 可点击：展开/收起内联评论区 */
+  cursor: pointer;
+}
+/* 标签 chips 行：正文下方横排 */
+.tags-line {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.tag-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--hz-color-bg);
+  border: 1px solid var(--hz-color-border);
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-interactive);
+  cursor: pointer;
 }
 .foot-spacer {
   flex: 1;

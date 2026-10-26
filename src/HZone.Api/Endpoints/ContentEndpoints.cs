@@ -38,6 +38,11 @@ public static class ContentEndpoints
             {
                 return Results.BadRequest(new { error = recipientsResult.Error });
             }
+            var tagError = ValidateTags(request.Tags, out var tags);
+            if (tagError is not null)
+            {
+                return Results.BadRequest(new { error = tagError });
+            }
 
             var now = DateTime.UtcNow;
             var say = new Say
@@ -82,11 +87,15 @@ public static class ContentEndpoints
             }
 
             db.Contents.Add(say);
+            if (tags.Count > 0)
+            {
+                await ApplyTagsAsync(db, say.Id, tags, now, ct);
+            }
             await db.SaveChangesAsync(ct);
 
             var media = await LoadMediaAsync(db, say.Id, ct);
             var author = await LoadAuthorAsync(db, say.AuthorId, ct);
-            return Results.Created($"/contents/{say.Id}", ToResponse(say, author, recipientsResult.Recipients, media, commentCount: 0));
+            return Results.Created($"/contents/{say.Id}", ToResponse(say, author, recipientsResult.Recipients, media, commentCount: 0, tags));
         }).AddEndpointFilter(RequireInitialized);
 
         app.MapPost("/contents/journals", [Authorize] async (
@@ -100,6 +109,11 @@ public static class ContentEndpoints
             if (recipientsResult.Error is not null)
             {
                 return Results.BadRequest(new { error = recipientsResult.Error });
+            }
+            var journalTagError = ValidateTags(request.Tags, out var journalTags);
+            if (journalTagError is not null)
+            {
+                return Results.BadRequest(new { error = journalTagError });
             }
 
             var now = DateTime.UtcNow;
@@ -139,10 +153,14 @@ public static class ContentEndpoints
             }
 
             db.Contents.Add(journal);
+            if (journalTags.Count > 0)
+            {
+                await ApplyTagsAsync(db, journal.Id, journalTags, now, ct);
+            }
             await db.SaveChangesAsync(ct);
 
             var author = await LoadAuthorAsync(db, journal.AuthorId, ct);
-            return Results.Created($"/contents/{journal.Id}", ToResponse(journal, author, recipientsResult.Recipients, new List<MediaResponse>(), commentCount: 0));
+            return Results.Created($"/contents/{journal.Id}", ToResponse(journal, author, recipientsResult.Recipients, new List<MediaResponse>(), commentCount: 0, journalTags));
         }).AddEndpointFilter(RequireInitialized);
 
         app.MapGet("/contents/{id:guid}", [Authorize] async (
@@ -168,7 +186,8 @@ public static class ContentEndpoints
 
             var media = await LoadMediaAsync(db, id, ct);
             var commentCount = await db.Comments.CountAsync(c => c.ContentId == id, ct);
-            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount));
+            var detailTags = await LoadTagsAsync(db, id, ct);
+            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount, detailTags));
         });
 
         app.MapPut("/contents/{id:guid}", [Authorize] async (
@@ -280,6 +299,18 @@ public static class ContentEndpoints
                 changed = true;
             }
 
+            // 标签整体替换（非 null 才动：空数组 = 清空全部标签）
+            if (request.Tags is not null)
+            {
+                var updateTagError = ValidateTags(request.Tags, out var updateTags);
+                if (updateTagError is not null)
+                {
+                    return Results.BadRequest(new { error = updateTagError });
+                }
+                await ApplyTagsAsync(db, id, updateTags, DateTime.UtcNow, ct);
+                changed = true;
+            }
+
             if (changed)
             {
                 content.UpdatedAt = DateTime.UtcNow;
@@ -290,7 +321,8 @@ public static class ContentEndpoints
             var recipients = await LoadRecipientsAsync(db, id, ct);
             var media = await LoadMediaAsync(db, id, ct);
             var commentCount = await db.Comments.CountAsync(c => c.ContentId == id, ct);
-            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount));
+            var updatedTags = await LoadTagsAsync(db, id, ct);
+            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount, updatedTags));
         });
 
         app.MapDelete("/contents/{id:guid}", [Authorize] async (
@@ -332,6 +364,7 @@ public static class ContentEndpoints
             HZoneDbContext db,
             string? kind,
             string? date,
+            string? tag,
             int? offset,
             int? limit,
             CancellationToken ct) =>
@@ -367,6 +400,7 @@ public static class ContentEndpoints
                 Kind = kind,
                 CreatedFrom = dayFrom,
                 CreatedTo = dayTo,
+                Tag = string.IsNullOrWhiteSpace(tag) ? null : tag.Trim(),
                 Offset = skip,
                 Limit = take,
             }, ct);
@@ -437,6 +471,7 @@ public static class ContentEndpoints
             HZoneDbContext db,
             string q,
             string? kind,
+            string? tag,
             int? offset,
             int? limit,
             CancellationToken ct) =>
@@ -455,9 +490,27 @@ public static class ContentEndpoints
                 AuthorId = me,
                 SearchText = q,
                 Kind = kind,
+                Tag = string.IsNullOrWhiteSpace(tag) ? null : tag.Trim(),
                 Offset = skip,
                 Limit = take,
             }, contentQuery: contentQuery, db: db, ct: ct);
+        }).AddEndpointFilter(RequireInitialized);
+
+        // 标签云：我的全部标签 + 各自内容计数（按计数降序，同数按名称）。
+        app.MapGet("/me/tags", [Authorize] async (
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var me = CurrentUserId(principal);
+            var tags = await db.ContentTags
+                .Where(t => t.Content!.AuthorId == me)
+                .GroupBy(t => t.Tag)
+                .Select(g => new { Tag = g.Key, Count = g.Count() })
+                .OrderByDescending(x => x.Count)
+                .ThenBy(x => x.Tag)
+                .ToListAsync(ct);
+            return Results.Ok(new { items = tags });
         }).AddEndpointFilter(RequireInitialized);
     }
 
@@ -466,21 +519,60 @@ public static class ContentEndpoints
         AuthorResponse author,
         List<RecipientResponse> recipients,
         List<MediaResponse> media,
-        int commentCount)
+        int commentCount,
+        List<string>? tags = null)
     {
         return content switch
         {
             Say s => new ContentResponse(
                 s.Id, "say", author, s.Text, null, null,
                 recipients, s.CreatedAt, s.UpdatedAt, commentCount, media,
-                WeatherOf(s), LunarOf(s)),
+                WeatherOf(s), LunarOf(s), tags ?? new()),
             Journal j => new ContentResponse(
                 j.Id, "journal", author, null, j.Title, j.MarkdownBody,
                 recipients, j.CreatedAt, j.UpdatedAt, commentCount, media,
-                WeatherOf(j), LunarOf(j)),
+                WeatherOf(j), LunarOf(j), tags ?? new()),
             _ => throw new InvalidOperationException("unknown content type"),
         };
     }
+
+    /// <summary>
+    /// 标签规范化：trim → 去空 → 去重（保序）。超过 10 个或单条超 32 字符 → 错误消息。
+    /// </summary>
+    private static string? ValidateTags(List<string>? tags, out List<string> normalized)
+    {
+        normalized = (tags ?? new())
+            .Select(t => t.Trim())
+            .Where(t => t.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (normalized.Count > 10)
+        {
+            return "too many tags (max 10)";
+        }
+        if (normalized.Any(t => t.Length > 32))
+        {
+            return "tag too long (max 32 chars)";
+        }
+        return null;
+    }
+
+    /// <summary>标签整体替换：删旧行 + 插新行（与内容同 SaveChanges 事务）。</summary>
+    private static async Task ApplyTagsAsync(HZoneDbContext db, Guid contentId, List<string> tags, DateTime now, CancellationToken ct)
+    {
+        var existing = await db.ContentTags.Where(t => t.ContentId == contentId).ToListAsync(ct);
+        foreach (var row in existing)
+        {
+            db.ContentTags.Remove(row);
+        }
+        foreach (var tag in tags)
+        {
+            db.ContentTags.Add(new ContentTag { Id = Guid.NewGuid(), ContentId = contentId, Tag = tag, CreatedAt = now });
+        }
+    }
+
+    private static async Task<List<string>> LoadTagsAsync(HZoneDbContext db, Guid contentId, CancellationToken ct) =>
+        (await db.ContentTags.Where(t => t.ContentId == contentId).OrderBy(t => t.CreatedAt).Select(t => t.Tag).ToListAsync(ct));
 
     /// <summary>
     /// 农历三字段装配：旧内容（农历列空）由 CreatedAt 惰性推导，不回写库。
@@ -577,6 +669,15 @@ public static class ContentEndpoints
             .ToListAsync(ct);
         var commentByContent = commentCounts.ToDictionary(x => x.ContentId, x => x.Count);
 
+        var tagsByContent = (await db.ContentTags
+                .Where(t => ids.Contains(t.ContentId))
+                .Select(t => new { t.ContentId, t.Tag, t.CreatedAt })
+                .ToListAsync(ct))
+            .GroupBy(t => t.ContentId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(t => t.CreatedAt).Select(t => t.Tag).ToList());
+
         return items.Select(c => new ContentResponse(
             c.Id,
             c is Say ? "say" : "journal",
@@ -591,7 +692,8 @@ public static class ContentEndpoints
             commentByContent.GetValueOrDefault(c.Id),
             mediaByContent.GetValueOrDefault(c.Id) ?? new(),
             WeatherOf(c),
-            LunarOf(c))).ToList();
+            LunarOf(c),
+            tagsByContent.GetValueOrDefault(c.Id) ?? new())).ToList();
     }
 
     /// <summary>kind 查询参数校验：say/journal/null 之外 → 错误消息。</summary>

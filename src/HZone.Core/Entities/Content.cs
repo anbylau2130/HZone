@@ -25,4 +25,7 @@ public abstract class Content
     public string? LunarTerm { get; set; }
 
     public ICollection<ContentRecipient> Recipients { get; set; } = new List<ContentRecipient>();
+
+    // 标签（整体替换语义，保存时传全量数组；跨时间主题检索用）
+    public ICollection<ContentTag> Tags { get; set; } = new List<ContentTag>();
 }

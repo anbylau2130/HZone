@@ -172,6 +172,8 @@
     "chooseRecipients": "Choose friends",
     "sayEmpty": "A moment needs text or media",
     "journalEmpty": "Title and body are required",
+    "tagPlaceholder": "Add a tag, Enter to confirm",
+    "tagLimit": "Up to 10 tags",
     "submit": "Publish",
     "uploading": "Uploading…",
     "recordPermissionDenied": "Camera unavailable — use “Add video” instead",

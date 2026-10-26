@@ -117,6 +117,31 @@ namespace HZone.Infrastructure.Migrations
                     b.ToTable("ContentRecipients");
                 });
 
+            modelBuilder.Entity("HZone.Core.Entities.ContentTag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ContentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tag")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentId", "Tag")
+                        .IsUnique();
+
+                    b.ToTable("ContentTags");
+                });
+
             modelBuilder.Entity("HZone.Core.Entities.EmailToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -488,6 +513,17 @@ namespace HZone.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("HZone.Core.Entities.ContentTag", b =>
+                {
+                    b.HasOne("HZone.Core.Entities.Content", "Content")
+                        .WithMany("Tags")
+                        .HasForeignKey("ContentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Content");
+                });
+
             modelBuilder.Entity("HZone.Core.Entities.EmailToken", b =>
                 {
                     b.HasOne("HZone.Core.Entities.User", "User")
@@ -551,6 +587,8 @@ namespace HZone.Infrastructure.Migrations
             modelBuilder.Entity("HZone.Core.Entities.Content", b =>
                 {
                     b.Navigation("Recipients");
+
+                    b.Navigation("Tags");
                 });
 #pragma warning restore 612, 618
         }

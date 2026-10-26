@@ -15,17 +15,20 @@ public record CreateSayRequest(
     string Text,
     List<Guid> RecipientIds,
     List<Guid>? MediaIds = null,
-    WeatherSnapshotRequest? Weather = null);
+    WeatherSnapshotRequest? Weather = null,
+    List<string>? Tags = null);
 
 public record CreateJournalRequest(
     string Title,
     string Markdown,
     List<Guid> RecipientIds,
-    WeatherSnapshotRequest? Weather = null);
+    WeatherSnapshotRequest? Weather = null,
+    List<string>? Tags = null);
 
 /// <summary>
 /// 内容编辑：只更新显式提供的字段（null = 不修改）。recipientIds 非空时整体替换可见名单
 /// （story 14）：新增者收 Mentioned 站内信，被移除者立即失权。weather 非空时整体替换快照。
+/// tags 非空时整体替换标签（空数组 = 清空全部标签）。
 /// </summary>
 public record UpdateContentRequest(
     string? Text = null,
@@ -33,7 +36,8 @@ public record UpdateContentRequest(
     string? MarkdownBody = null,
     List<Guid>? MediaIds = null,
     List<Guid>? RecipientIds = null,
-    WeatherSnapshotRequest? Weather = null);
+    WeatherSnapshotRequest? Weather = null,
+    List<string>? Tags = null);
 
 public record RecipientResponse(Guid UserId, string Nickname);
 
@@ -72,7 +76,8 @@ public record ContentResponse(
     int CommentCount,
     List<MediaResponse>? Media = null,
     WeatherResponse? Weather = null,
-    LunarResponse? Lunar = null);
+    LunarResponse? Lunar = null,
+    List<string>? Tags = null);
 
 /// <summary>
 /// 列表/搜索分页响应：total 为过滤后（分页前）总数。

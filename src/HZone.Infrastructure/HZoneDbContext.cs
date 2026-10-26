@@ -16,6 +16,7 @@ public class HZoneDbContext : DbContext
     public DbSet<Journal> Journals => Set<Journal>();
     public DbSet<ContentRecipient> ContentRecipients => Set<ContentRecipient>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<ContentTag> ContentTags => Set<ContentTag>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
@@ -71,6 +72,19 @@ public class HZoneDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(c => c.AuthorId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ContentTag>(e =>
+        {
+            // 每内容每标签唯一；随内容级联删除（内容没了标签无意义）。
+            // WithMany(c => c.Tags) 显式配对双向导航——漏配会生成第二个 FK 列
+            //（ContentId1），查询 join 错列恒空（实测踩中）
+            e.HasIndex(t => new { t.ContentId, t.Tag }).IsUnique();
+            e.HasOne(t => t.Content)
+                .WithMany(c => c.Tags)
+                .HasForeignKey(t => t.ContentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.Property(t => t.Tag).HasMaxLength(32);
         });
 
         modelBuilder.Entity<InboxMessage>(e =>

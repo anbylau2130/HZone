@@ -63,6 +63,8 @@ export interface ContentItem {
   media?: MediaItem[] | null
   lunar?: LunarInfo | null
   weather?: WeatherInfo | null
+  /** 标签（作者打的分类标记，整体替换语义）。 */
+  tags?: string[] | null
 }
 
 export interface ContentPage {
@@ -89,11 +91,12 @@ export function createSay(
   text: string,
   recipientIds: string[],
   mediaIds?: string[],
-  weather?: WeatherSnapshotInput
+  weather?: WeatherSnapshotInput,
+  tags?: string[]
 ) {
   return request<ContentItem>('/api/contents/says', {
     method: 'POST',
-    data: { text, recipientIds, mediaIds: mediaIds ?? [], weather }
+    data: { text, recipientIds, mediaIds: mediaIds ?? [], weather, tags }
   })
 }
 
@@ -101,11 +104,12 @@ export function createJournal(
   title: string,
   markdown: string,
   recipientIds: string[],
-  weather?: WeatherSnapshotInput
+  weather?: WeatherSnapshotInput,
+  tags?: string[]
 ) {
   return request<ContentItem>('/api/contents/journals', {
     method: 'POST',
-    data: { title, markdown, recipientIds, weather }
+    data: { title, markdown, recipientIds, weather, tags }
   })
 }
 
@@ -123,6 +127,7 @@ export function updateContent(
     mediaIds?: string[]
     recipientIds?: string[]
     weather?: WeatherSnapshotInput
+    tags?: string[]
   }
 ) {
   return request<ContentItem>(`/api/contents/${id}`, { method: 'PUT', data: { ...payload } })
@@ -138,19 +143,23 @@ function listContents(
   offset: number,
   limit: number,
   date?: string,
-  q?: string
+  q?: string,
+  tag?: string
 ) {
-  return request<ContentPage>(`${path}${qs({ kind, offset, limit, date, q: q || undefined })}`)
+  return request<ContentPage>(
+    `${path}${qs({ kind, offset, limit, date, q: q || undefined, tag: tag || undefined })}`
+  )
 }
 
-/** date=yyyy-MM-dd：热力格点格下钻按天过滤（后端按中国区本地日取 UTC 区间）。 */
+/** date=yyyy-MM-dd：热力格点格下钻按天过滤；tag=标签筛选。 */
 export function listMyContents(
   kind: KindFilter,
   offset: number,
   limit: number,
-  date?: string
+  date?: string,
+  tag?: string
 ) {
-  return listContents('/api/me/contents', kind, offset, limit, date)
+  return listContents('/api/me/contents', kind, offset, limit, date, undefined, tag)
 }
 
 export function listReceived(kind: KindFilter, offset: number, limit: number, q?: string) {
@@ -166,8 +175,26 @@ export function listUserContents(
   return listContents(`/api/users/${userId}/contents`, kind, offset, limit)
 }
 
-export function searchContents(q: string, kind: KindFilter, offset: number, limit: number) {
-  return request<ContentPage>(`/api/search${qs({ q, kind, offset, limit })}`)
+export function searchContents(
+  q: string,
+  kind: KindFilter,
+  offset: number,
+  limit: number,
+  tag?: string
+) {
+  return request<ContentPage>(`/api/search${qs({ q, kind, offset, limit, tag: tag || undefined })}`)
+}
+
+// ---------- 标签（跨时间主题检索） ----------
+
+export interface TagCloudItem {
+  tag: string
+  count: number
+}
+
+/** 我的标签云：全部标签 + 各自内容计数（计数降序）。 */
+export function listMyTags() {
+  return request<{ items: TagCloudItem[] }>('/api/me/tags')
 }
 
 // ---------- 我的统计（首页 ticket 04） ----------

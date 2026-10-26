@@ -25,6 +25,9 @@ public sealed record ContentQuerySpec
     /// <summary>LIKE 关键词：命中说说文本 / 日志标题+正文。</summary>
     public string? SearchText { get; init; }
 
+    /// <summary>按标签过滤（ContentTags 含该标签的内容，可与关键词叠加）。</summary>
+    public string? Tag { get; init; }
+
     /// <summary>CreatedAt UTC 下界（含）——热力格点格下钻按中国区本地日取 UTC 区间。</summary>
     public DateTime? CreatedFrom { get; init; }
 

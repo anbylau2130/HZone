@@ -40,6 +40,27 @@
       <view v-if="pickedFriends.length" class="chips-row">
         <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
       </view>
+      <!-- 标签行：回车/确认添加，chip × 删除；上限 10、单条 ≤32 字符 -->
+      <view class="tags-row">
+        <text class="tags-label">#</text>
+        <view v-for="(t, i) in tags" :key="t" class="tag-chip">
+          <text class="tag-text">{{ t }}</text>
+          <text class="tag-x" @click="removeTag(i)">×</text>
+        </view>
+        <!-- 非受控 uni-input + :key 重建：H5 受控有异步回写/滞后怪癖、手动清 DOM
+             会被内部 buffer 回写（实测三轮）——提交后 key 变化销毁重建，天然空框 -->
+        <input
+          v-if="tags.length < 10"
+          :key="tags.length"
+          class="tag-input"
+          :placeholder="tags.length ? '' : $t('publish.tagPlaceholder')"
+          confirm-type="done"
+          :maxlength="32"
+          @input="onTagInput"
+          @confirm="addTagEvent($event, true)"
+          @blur="addTagEvent"
+        />
+      </view>
       <view class="toolbar">
         <!-- 表情包开关（面板在输入区下方，连点即连插） -->
         <view class="rec-btn" :class="{ on: emojiOpen }" @click="emojiOpen = !emojiOpen">
@@ -135,6 +156,27 @@
           <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
         </view>
         <!-- 选择好友按钮移除：点「@ 谁」label 打开选好友（用户要求） -->
+      </view>
+      <!-- 标签行（与随记面板同款）：回车/确认添加，chip × 删除 -->
+      <view class="tags-row">
+        <text class="tags-label">#</text>
+        <view v-for="(t, i) in tags" :key="t" class="tag-chip">
+          <text class="tag-text">{{ t }}</text>
+          <text class="tag-x" @click="removeTag(i)">×</text>
+        </view>
+        <!-- 非受控 uni-input + :key 重建：H5 受控有异步回写/滞后怪癖、手动清 DOM
+             会被内部 buffer 回写（实测三轮）——提交后 key 变化销毁重建，天然空框 -->
+        <input
+          v-if="tags.length < 10"
+          :key="tags.length"
+          class="tag-input"
+          :placeholder="tags.length ? '' : $t('publish.tagPlaceholder')"
+          confirm-type="done"
+          :maxlength="32"
+          @input="onTagInput"
+          @confirm="addTagEvent($event, true)"
+          @blur="addTagEvent"
+        />
       </view>
       <button class="btn" :disabled="busy" @click="submit">
         {{ editingId ? $t('common.save') : $t('publish.submit') }}
@@ -310,6 +352,7 @@ async function loadForEdit() {
       }
     }
     pickedFriends.value = c.recipients.map((r) => ({ id: r.userId, nickname: r.nickname, email: '' }))
+    tags.value = c.tags ?? []
     for (const m of c.media ?? []) {
       if (m.kind === 'audio') continue // 随记只有图/视频，防御跳过
       mediaItems.value.push({
@@ -490,6 +533,44 @@ function toSnapshot(): WeatherSnapshotInput | undefined {
 
 function onFriendsConfirmed(friends: FriendInfo[]) {
   pickedFriends.value = friends
+}
+
+// ---------- 标签（跨时间主题检索）：回车/失焦添加，chip × 删除，上限 10 ----------
+const tags = ref<string[]>([])
+// uni-input H5 深坑（实测两轮）：v-model 快速输入+回车滞后丢字；受控清空后
+// 内部 buffer 异步回写旧文本——彻底绕开：keydown.enter 原生处理 + 直接读
+// DOM 值（keydown 时刻无竞态窗口），不用 v-model/confirm
+let lastTagInput = ''
+
+function onTagInput(e: { detail: { value: string } }) {
+  lastTagInput = e.detail.value
+}
+
+function addTagEvent(e?: { detail?: { value: string } }, fromConfirm = false) {
+  const raw = (e?.detail?.value || lastTagInput).trim()
+  lastTagInput = ''
+  if (!raw) return
+  commitTag(raw)
+  if (fromConfirm) {
+    // :key 重建后焦点随旧组件销毁——回焦新框，连续输入不断流
+    nextTick(() => {
+      document.querySelector<HTMLInputElement>('.tag-input input')?.focus()
+    })
+  }
+}
+
+function commitTag(raw: string) {
+  if (tags.value.length >= 10) {
+    uni.showToast({ title: t('publish.tagLimit'), icon: 'none' })
+    return
+  }
+  if (!tags.value.some((x) => x.toLowerCase() === raw.toLowerCase())) {
+    tags.value = [...tags.value, raw]
+  }
+}
+
+function removeTag(i: number) {
+  tags.value = tags.value.filter((_, idx) => idx !== i)
 }
 
 const MAX_IMAGES = 9
@@ -736,10 +817,11 @@ async function submit() {
           text: sayText.value,
           mediaIds,
           recipientIds,
-          weather: toSnapshot()
+          weather: toSnapshot(),
+          tags: tags.value
         })
       } else {
-        await createSay(sayText.value, recipientIds, mediaIds, toSnapshot())
+        await createSay(sayText.value, recipientIds, mediaIds, toSnapshot(), tags.value)
       }
     } else {
       if (!title.value.trim() || !markdown.value.trim()) {
@@ -751,10 +833,11 @@ async function submit() {
           title: title.value,
           markdownBody: markdown.value,
           recipientIds,
-          weather: toSnapshot()
+          weather: toSnapshot(),
+          tags: tags.value
         })
       } else {
-        await createJournal(title.value, markdown.value, recipientIds, toSnapshot())
+        await createJournal(title.value, markdown.value, recipientIds, toSnapshot(), tags.value)
       }
     }
     uni.showToast({
@@ -1159,6 +1242,44 @@ async function submit() {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+/* 标签行：# 前缀 + chips + 内联输入（随记面板与笔记模板共用） */
+.tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tags-label {
+  font-size: var(--hz-font-size-sm);
+  font-weight: 700;
+  color: var(--hz-color-interactive);
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--hz-color-bg);
+  border: 1px solid var(--hz-color-border);
+}
+.tag-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-interactive);
+}
+.tag-x {
+  font-size: 13px;
+  color: var(--hz-color-text-secondary);
+  padding: 0 2px;
+  cursor: pointer;
+}
+.tag-input {
+  flex: 1;
+  min-width: 90px;
+  height: 28px;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text);
 }
 .btn {
   height: 44px;

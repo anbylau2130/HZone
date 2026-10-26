@@ -57,6 +57,11 @@ public class ContentQuery : IContentQuery
                     || EF.Functions.Like(((Journal)c).MarkdownBody, pattern, "\\"))));
         }
 
+        if (spec.Tag is { Length: > 0 } tag)
+        {
+            query = query.Where(c => c.Tags.Any(t => t.Tag == tag));
+        }
+
         switch (spec.Kind)
         {
             case "say":
