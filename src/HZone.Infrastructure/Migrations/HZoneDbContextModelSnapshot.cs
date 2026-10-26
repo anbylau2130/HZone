@@ -405,6 +405,42 @@ namespace HZone.Infrastructure.Migrations
                     b.ToTable("PlaylistItems");
                 });
 
+            modelBuilder.Entity("HZone.Core.Entities.ShareLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ContentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("ShareLinks");
+                });
+
             modelBuilder.Entity("HZone.Core.Entities.SystemConfig", b =>
                 {
                     b.Property<string>("Key")
@@ -616,6 +652,17 @@ namespace HZone.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("MediaAsset");
+                });
+
+            modelBuilder.Entity("HZone.Core.Entities.ShareLink", b =>
+                {
+                    b.HasOne("HZone.Core.Entities.Content", "Content")
+                        .WithMany()
+                        .HasForeignKey("ContentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Content");
                 });
 
             modelBuilder.Entity("HZone.Core.Entities.Content", b =>

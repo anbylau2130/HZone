@@ -2,6 +2,19 @@
   <view class="acts" @click.stop>
     <view
       class="icon-btn"
+      :aria-label="$t('share.create')"
+      :title="$t('share.create')"
+      @click="$emit('share')"
+    >
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="6" cy="12" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+      </svg>
+    </view>
+    <view
+      class="icon-btn"
       :aria-label="$t('common.edit')"
       :title="$t('common.edit')"
       @click="$emit('edit')"
@@ -26,9 +39,9 @@
 </template>
 
 <script setup lang="ts">
-// 卡片/详情共用的作者操作入口：编辑 ✎ + 删除 🗑 图标（仅作者本人可见，由父级控制渲染）。
+// 卡片作者操作入口：分享 🔗 + 编辑 ✎ + 删除 🗑（仅作者本人可见，由父级控制渲染）。
 // @click.stop 防止冒泡到卡片整体的 open 跳转。
-defineEmits<{ (e: 'edit'): void; (e: 'delete'): void }>()
+defineEmits<{ (e: 'edit'): void; (e: 'delete'): void; (e: 'share'): void }>()
 </script>
 
 <style scoped>

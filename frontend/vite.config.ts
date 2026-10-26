@@ -20,6 +20,11 @@ export default defineConfig({
       '/media': {
         target: 'http://localhost:5000',
         changeOrigin: true
+      },
+      // 分享外链公开读（/public/shared/*）：匿名只读，原样转发
+      '/public': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
       }
     }
   }

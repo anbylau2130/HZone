@@ -159,6 +159,7 @@ app.MapInviteEndpoints();
 app.MapAuthEndpoints();
 app.MapPatEndpoints();
 app.MapPlaylistEndpoints();
+app.MapShareLinkEndpoints();
 
 app.Run();
 

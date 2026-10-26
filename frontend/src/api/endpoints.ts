@@ -148,6 +148,33 @@ export function toggleLike(id: string) {
   })
 }
 
+// ---------- 只读分享外链（token 化，给未注册家人看） ----------
+
+export interface ShareLinkInfo {
+  id: string
+  contentId: string
+  contentTitle: string | null
+  expiresAt: string
+  createdAt: string
+  revokedAt: string | null
+}
+
+/** 创建分享链（仅作者；days 1-30 默认 7）。明文 token 仅本次响应返回。 */
+export function createShareLink(contentId: string, days = 7) {
+  return request<{ id: string; token: string; expiresAt: string; url: string }>(
+    `/api/contents/${contentId}/share-links`,
+    { method: 'POST', data: { days } }
+  )
+}
+
+export function listMyShareLinks() {
+  return request<{ items: ShareLinkInfo[] }>('/api/me/share-links')
+}
+
+export function revokeShareLink(id: string) {
+  return request<{ ok: boolean }>(`/api/share-links/${id}`, { method: 'DELETE' })
+}
+
 function listContents(
   path: string,
   kind: KindFilter,

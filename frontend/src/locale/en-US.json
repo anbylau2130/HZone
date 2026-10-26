@@ -335,6 +335,16 @@
     "presetGreen": "Eye-care Green",
     "presetSpace": "Deep Space Purple"
   },
+  "share": {
+    "title": "Shared",
+    "notFound": "Link invalid or expired",
+    "footer": "Shared privately via HZone",
+    "create": "Share",
+    "created": "Link created",
+    "days": "Valid days",
+    "copyLink": "Copy link",
+    "copiedTip": "Copied"
+  },
   "photos": {
     "title": "Photo Wall",
     "empty": "No photos yet — attach images to moments and they gather here"

@@ -335,6 +335,16 @@
     "presetGreen": "护眼绿",
     "presetSpace": "深空紫"
   },
+  "share": {
+    "title": "分享",
+    "notFound": "链接无效或已过期",
+    "footer": "通过 HZone 私密分享",
+    "create": "分享",
+    "created": "链接已创建",
+    "days": "有效期（天）",
+    "copyLink": "复制链接",
+    "copiedTip": "已复制"
+  },
   "photos": {
     "title": "照片墙",
     "empty": "还没有照片，发随记配图后自动收集在这里"

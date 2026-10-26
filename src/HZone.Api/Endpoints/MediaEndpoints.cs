@@ -183,7 +183,7 @@ public static class MediaEndpoints
             CancellationToken ct) =>
         {
             // 存储层对非法名抛 ArgumentException → 500，先校验给 404。
-            if (!IsValidStoredName(storedName))
+            if (!IsValidMediaName(storedName))
             {
                 return Results.NotFound(new { error = "media not found" });
             }
@@ -350,7 +350,8 @@ public static class MediaEndpoints
         return (mainMs.ToArray(), thumbMs.ToArray());
     }
 
-    private static bool IsValidStoredName(string storedName)
+    /// <summary>媒体文件名白名单校验（ShareLink 公开媒体端点共用）。</summary>
+    internal static bool IsValidMediaName(string storedName)
     {
         return ValidStoredName.IsMatch(storedName) && !storedName.Contains("..");
     }
