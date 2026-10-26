@@ -17,6 +17,7 @@ public class HZoneDbContext : DbContext
     public DbSet<ContentRecipient> ContentRecipients => Set<ContentRecipient>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<ContentTag> ContentTags => Set<ContentTag>();
+    public DbSet<ContentLike> ContentLikes => Set<ContentLike>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
@@ -85,6 +86,16 @@ public class HZoneDbContext : DbContext
                 .HasForeignKey(t => t.ContentId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.Property(t => t.Tag).HasMaxLength(32);
+        });
+
+        modelBuilder.Entity<ContentLike>(e =>
+        {
+            // 每人每内容至多一赞；随内容级联删除
+            e.HasIndex(l => new { l.ContentId, l.UserId }).IsUnique();
+            e.HasOne(l => l.Content)
+                .WithMany()
+                .HasForeignKey(l => l.ContentId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<InboxMessage>(e =>

@@ -77,7 +77,9 @@ public record ContentResponse(
     List<MediaResponse>? Media = null,
     WeatherResponse? Weather = null,
     LunarResponse? Lunar = null,
-    List<string>? Tags = null);
+    List<string>? Tags = null,
+    int LikeCount = 0,
+    bool LikedByMe = false);
 
 /// <summary>
 /// 列表/搜索分页响应：total 为过滤后（分页前）总数。

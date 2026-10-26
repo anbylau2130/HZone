@@ -92,6 +92,29 @@ namespace HZone.Infrastructure.Migrations
                     b.UseTphMappingStrategy();
                 });
 
+            modelBuilder.Entity("HZone.Core.Entities.ContentLike", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ContentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ContentLikes");
+                });
+
             modelBuilder.Entity("HZone.Core.Entities.ContentRecipient", b =>
                 {
                     b.Property<Guid>("Id")
@@ -490,6 +513,17 @@ namespace HZone.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Author");
+
+                    b.Navigation("Content");
+                });
+
+            modelBuilder.Entity("HZone.Core.Entities.ContentLike", b =>
+                {
+                    b.HasOne("HZone.Core.Entities.Content", "Content")
+                        .WithMany()
+                        .HasForeignKey("ContentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Content");
                 });

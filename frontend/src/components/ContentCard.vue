@@ -89,6 +89,13 @@
       <text class="foot-item" @click.stop="showComments = !showComments">{{
         $t('detail.commentCount', { n: commentCount })
       }}</text>
+      <!-- 点赞切换：已赞主色高亮（@click.stop 防冒泡到卡片跳转） -->
+      <view class="foot-like" :class="{ on: likedByMe }" @click.stop="onToggleLike">
+        <svg class="like-ico" :class="{ pop: likePopped }" viewBox="0 0 24 24" :fill="likedByMe ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+        </svg>
+        <text class="like-count">{{ likeCount }}</text>
+      </view>
       <view class="foot-spacer" />
       <!-- 编辑/删除贴评论行最右（用户要求，原在右上角） -->
       <CardOwnerActions v-if="isAuthor" @edit="goEdit" @delete="remove" />
@@ -107,7 +114,7 @@ import CardComments from './CardComments.vue'
 import SayComposer from './SayComposer.vue'
 import { formatDateTime } from '../utils/format'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
-import { deleteContent, updateContent } from '../api/endpoints'
+import { deleteContent, updateContent, toggleLike } from '../api/endpoints'
 import type { ContentItem } from '../api/endpoints'
 import { useAuthStore } from '../stores/auth'
 
@@ -162,6 +169,33 @@ const commentCount = ref(props.content.commentCount)
 
 function onCommentCountChange(n: number) {
   commentCount.value = n
+}
+
+// ---------- 点赞：乐观更新 + 失败回滚；图标弹一下给即时反馈 ----------
+const likeCount = ref(props.content.likeCount ?? 0)
+const likedByMe = ref(props.content.likedByMe ?? false)
+const likePopped = ref(false)
+const likeBusy = ref(false)
+
+async function onToggleLike() {
+  if (likeBusy.value) return
+  likeBusy.value = true
+  // 乐观翻转（点赞要跟手，不能等网络）
+  likedByMe.value = !likedByMe.value
+  likeCount.value += likedByMe.value ? 1 : -1
+  likePopped.value = likedByMe.value
+  try {
+    const res = await toggleLike(props.content.id)
+    likedByMe.value = res.liked
+    likeCount.value = res.likeCount
+  } catch {
+    // 失败回滚（提示由请求层统一 toast）
+    likedByMe.value = !likedByMe.value
+    likeCount.value += likedByMe.value ? 1 : -1
+  } finally {
+    likeBusy.value = false
+    if (!likedByMe.value) likePopped.value = false
+  }
 }
 
 // 右上角第二行：天气（现象图标+温度）· 位置（城市）——不再依赖城市存在
@@ -341,6 +375,34 @@ title: t('common.delete'),
   gap: 6px;
   flex-wrap: wrap;
   margin-top: 2px;
+}
+/* 点赞：评论行内按钮，已赞主色 + 图标弹跳动画 */
+.foot-like {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--hz-color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.foot-like.on {
+  color: var(--hz-color-primary);
+}
+.like-ico {
+  width: 16px;
+  height: 16px;
+}
+.like-ico.pop {
+  animation: like-pop 0.3s ease;
+}
+@keyframes like-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.like-count {
+  font-size: var(--hz-font-size-sm);
+  font-variant-numeric: tabular-nums;
 }
 .tag-chip {
   padding: 2px 9px;

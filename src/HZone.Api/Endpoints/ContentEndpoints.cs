@@ -187,7 +187,9 @@ public static class ContentEndpoints
             var media = await LoadMediaAsync(db, id, ct);
             var commentCount = await db.Comments.CountAsync(c => c.ContentId == id, ct);
             var detailTags = await LoadTagsAsync(db, id, ct);
-            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount, detailTags));
+            var (likeCount, likedByMe) = await LoadLikeStateAsync(db, id, viewerId, ct);
+            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount, detailTags)
+                with { LikeCount = likeCount, LikedByMe = likedByMe });
         });
 
         app.MapPut("/contents/{id:guid}", [Authorize] async (
@@ -322,7 +324,9 @@ public static class ContentEndpoints
             var media = await LoadMediaAsync(db, id, ct);
             var commentCount = await db.Comments.CountAsync(c => c.ContentId == id, ct);
             var updatedTags = await LoadTagsAsync(db, id, ct);
-            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount, updatedTags));
+            var (updateLikeCount, updateLiked) = await LoadLikeStateAsync(db, id, authorId, ct);
+            return Results.Ok(ToResponse(content, await LoadAuthorAsync(db, content.AuthorId, ct), recipients, media, commentCount, updatedTags)
+                with { LikeCount = updateLikeCount, LikedByMe = updateLiked });
         });
 
         app.MapDelete("/contents/{id:guid}", [Authorize] async (
@@ -496,6 +500,42 @@ public static class ContentEndpoints
             }, contentQuery: contentQuery, db: db, ct: ct);
         }).AddEndpointFilter(RequireInitialized);
 
+        // 点赞切换（可见即可赞；再点撤销）。不可见/不存在统一 404。
+        app.MapPost("/contents/{id:guid}/like", [Authorize] async (
+            Guid id,
+            ClaimsPrincipal principal,
+            IContentQuery contentQuery,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var me = CurrentUserId(principal);
+            var content = await contentQuery.FindVisibleAsync(id, me, ct);
+            if (content is null)
+            {
+                return Results.NotFound(new { error = "content not found" });
+            }
+
+            var existing = await db.ContentLikes
+                .FirstOrDefaultAsync(l => l.ContentId == id && l.UserId == me, ct);
+            bool liked;
+            if (existing is null)
+            {
+                db.ContentLikes.Add(new ContentLike
+                {
+                    Id = Guid.NewGuid(), ContentId = id, UserId = me, CreatedAt = DateTime.UtcNow,
+                });
+                liked = true;
+            }
+            else
+            {
+                db.ContentLikes.Remove(existing);
+                liked = false;
+            }
+            await db.SaveChangesAsync(ct);
+            var count = await db.ContentLikes.CountAsync(l => l.ContentId == id, ct);
+            return Results.Ok(new { liked, likeCount = count });
+        }).AddEndpointFilter(RequireInitialized);
+
         // 标签云：我的全部标签 + 各自内容计数（按计数降序，同数按名称）。
         app.MapGet("/me/tags", [Authorize] async (
             ClaimsPrincipal principal,
@@ -574,6 +614,15 @@ public static class ContentEndpoints
     private static async Task<List<string>> LoadTagsAsync(HZoneDbContext db, Guid contentId, CancellationToken ct) =>
         (await db.ContentTags.Where(t => t.ContentId == contentId).OrderBy(t => t.CreatedAt).Select(t => t.Tag).ToListAsync(ct));
 
+    /// <summary>单条点赞态：总数 + 指定用户是否已赞。</summary>
+    private static async Task<(int Count, bool Liked)> LoadLikeStateAsync(
+        HZoneDbContext db, Guid contentId, Guid userId, CancellationToken ct)
+    {
+        var count = await db.ContentLikes.CountAsync(l => l.ContentId == contentId, ct);
+        var liked = await db.ContentLikes.AnyAsync(l => l.ContentId == contentId && l.UserId == userId, ct);
+        return (count, liked);
+    }
+
     /// <summary>
     /// 农历三字段装配：旧内容（农历列空）由 CreatedAt 惰性推导，不回写库。
     /// </summary>
@@ -625,13 +674,13 @@ public static class ContentEndpoints
         IContentQuery contentQuery, HZoneDbContext db, ContentQuerySpec spec, CancellationToken ct)
     {
         var (items, total) = await contentQuery.QueryAsync(spec, ct);
-        var responses = await ToResponsesAsync(db, items, ct);
+        var responses = await ToResponsesAsync(db, spec.ViewerId, items, ct);
         return Results.Ok(new ContentListResponse(responses, total, spec.Offset, spec.Limit));
     }
 
     /// <summary>批量装配列表条目 DTO（与详情同形）。</summary>
     private static async Task<List<ContentResponse>> ToResponsesAsync(
-        HZoneDbContext db, List<Content> items, CancellationToken ct)
+        HZoneDbContext db, Guid viewerId, List<Content> items, CancellationToken ct)
     {
         if (items.Count == 0)
         {
@@ -678,6 +727,19 @@ public static class ContentEndpoints
                 g => g.Key,
                 g => g.OrderBy(t => t.CreatedAt).Select(t => t.Tag).ToList());
 
+        // 点赞：计数 + 观察者本人是否已赞（各一次批查询）
+        var likeCounts = await db.ContentLikes
+            .Where(l => ids.Contains(l.ContentId))
+            .GroupBy(l => l.ContentId)
+            .Select(g => new { ContentId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var likeByContent = likeCounts.ToDictionary(x => x.ContentId, x => x.Count);
+        var myLikes = (await db.ContentLikes
+                .Where(l => l.UserId == viewerId && ids.Contains(l.ContentId))
+                .Select(l => l.ContentId)
+                .ToListAsync(ct))
+            .ToHashSet();
+
         return items.Select(c => new ContentResponse(
             c.Id,
             c is Say ? "say" : "journal",
@@ -693,7 +755,9 @@ public static class ContentEndpoints
             mediaByContent.GetValueOrDefault(c.Id) ?? new(),
             WeatherOf(c),
             LunarOf(c),
-            tagsByContent.GetValueOrDefault(c.Id) ?? new())).ToList();
+            tagsByContent.GetValueOrDefault(c.Id) ?? new(),
+            likeByContent.GetValueOrDefault(c.Id),
+            myLikes.Contains(c.Id))).ToList();
     }
 
     /// <summary>kind 查询参数校验：say/journal/null 之外 → 错误消息。</summary>

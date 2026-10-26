@@ -65,6 +65,9 @@ export interface ContentItem {
   weather?: WeatherInfo | null
   /** 标签（作者打的分类标记，整体替换语义）。 */
   tags?: string[] | null
+  /** 点赞数与「我是否已赞」（观察者视角）。 */
+  likeCount?: number
+  likedByMe?: boolean
 }
 
 export interface ContentPage {
@@ -135,6 +138,14 @@ export function updateContent(
 
 export function deleteContent(id: string) {
   return request<void>(`/api/contents/${id}`, { method: 'DELETE' })
+}
+
+/** 点赞切换（再点撤销）。返回最新 { liked, likeCount }。 */
+export function toggleLike(id: string) {
+  return request<{ liked: boolean; likeCount: number }>(`/api/contents/${id}/like`, {
+    method: 'POST',
+    data: {}
+  })
 }
 
 function listContents(

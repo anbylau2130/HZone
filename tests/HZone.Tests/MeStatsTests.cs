@@ -13,6 +13,17 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
 {
     private readonly HZoneApiFactory _factory;
 
+    /// <summary>
+    /// 中国区「今天」（与后端 MeStatsEndpoints.ChinaZone 同口径）。测试宿主时区不限，
+    /// 种子日期与断言必须用北京日界——否则北京 00:00–08:00 窗口（UTC 与北京跨日）内
+    /// UTC 参考系全部错位（实测踩中：本机 GMT 时区下午挂、上午过）。
+    /// </summary>
+    private static readonly TimeZoneInfo ChinaZone =
+        TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+
+    private static DateTime CnToday() =>
+        TimeZoneInfo.ConvertTime(DateTimeOffset.Now, ChinaZone).Date;
+
     public MeStatsTests(HZoneApiFactory factory) => _factory = factory;
 
     public async Task InitializeAsync() => await _factory.SeedSetupAsync();
@@ -93,9 +104,9 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         // 首格 = 89 天前（窗口最旧一天），末格 = 今天；今天计数 2，200 天前不计入。
         var first = heatmap[0];
         var last = heatmap[89];
-        Assert.Equal(DateTime.UtcNow.AddDays(-89).Date.ToString("yyyy-MM-dd"), first.GetProperty("date").GetString());
+        Assert.Equal(CnToday().AddDays(-89).ToString("yyyy-MM-dd"), first.GetProperty("date").GetString());
         Assert.Equal(1, first.GetProperty("count").GetInt32());
-        Assert.Equal(DateTime.UtcNow.Date.ToString("yyyy-MM-dd"), last.GetProperty("date").GetString());
+        Assert.Equal(CnToday().ToString("yyyy-MM-dd"), last.GetProperty("date").GetString());
         Assert.Equal(2, last.GetProperty("count").GetInt32());
 
         // 窗口内计数总和 = 3（窗口外的 200 天前内容不计入）。
@@ -131,7 +142,7 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         Assert.Equal("杭州", fp[2].GetProperty("city").GetString());
 
         // firstAt = 每城市段首次出现时刻（今天/5 天前/7 天前，种子固定 04:00 UTC）。
-        var today = DateTime.UtcNow.Date;
+        var today = CnToday();
         Assert.Equal(today.ToString("yyyy-MM-dd"), fp[0].GetProperty("firstAt").GetString()![..10]);
         Assert.Equal(today.AddDays(-5).ToString("yyyy-MM-dd"), fp[1].GetProperty("firstAt").GetString()![..10]);
         Assert.Equal(today.AddDays(-7).ToString("yyyy-MM-dd"), fp[2].GetProperty("firstAt").GetString()![..10]);
@@ -153,7 +164,7 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         Assert.Equal(2, allBody.GetProperty("total").GetInt32());
 
         // date=今天 → 只剩今天的 1 条；date 格式非法 → 400。
-        var today = await client.GetAsync($"/me/contents?date={DateTime.UtcNow.Date:yyyy-MM-dd}");
+        var today = await client.GetAsync($"/me/contents?date={CnToday():yyyy-MM-dd}");
         Assert.Equal(HttpStatusCode.OK, today.StatusCode);
         var todayBody = await ReadJson(today);
         Assert.Equal(1, todayBody.GetProperty("total").GetInt32());
@@ -259,7 +270,7 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
     /// <summary>去年今天/往日的随记（on-this-day 专用，年月日按目标年份固定 04:00 UTC）。</summary>
     private async Task SeedOnThisDaySayAsync(Guid authorId, int yearsAgo, string text, int dayOffset = 0)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = CnToday();
         var day = today.AddYears(-yearsAgo).AddDays(dayOffset);
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
@@ -276,7 +287,7 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
 
     private async Task SeedOnThisDayJournalAsync(Guid authorId, int yearsAgo, string title)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = CnToday();
         var day = today.AddYears(-yearsAgo);
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
@@ -294,7 +305,7 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
 
     private async Task SeedOldYearSayAsync(Guid authorId, string? weatherCity = null)
     {
-        var day = DateTime.UtcNow.AddYears(-1).Date;
+        var day = CnToday().AddYears(-1);
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
         db.Contents.Add(new Say
@@ -364,13 +375,14 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
 
     private static DateTime DateTimeUtcDaysAgo(int daysAgo)
     {
-        var d = DateTime.UtcNow.AddDays(-daysAgo).Date;
+        var d = CnToday().AddDays(-daysAgo);
         return new DateTime(d.Year, d.Month, d.Day, 4, 0, 0, DateTimeKind.Utc);
     }
 
     private async Task SeedJournalAsync(Guid authorId, int daysAgo)
     {
-        var created = DateTime.UtcNow.AddDays(-daysAgo);
+        // 与 SeedSayAsync 同口径：中国区日界 + 04:00 UTC（北京当日 12:00，跨日安全）
+        var created = DateTimeUtcDaysAgo(daysAgo);
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HZoneDbContext>();
         db.Contents.Add(new Journal
@@ -379,7 +391,7 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
             AuthorId = authorId,
             Title = "streak journal",
             MarkdownBody = "body",
-            CreatedAt = new DateTime(created.Year, created.Month, created.Day, 4, 0, 0, DateTimeKind.Utc),
+            CreatedAt = created,
             UpdatedAt = created,
         });
         await db.SaveChangesAsync();
