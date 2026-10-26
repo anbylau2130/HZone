@@ -43,6 +43,9 @@ builder.Services.AddSingleton<IFFmpegCompressor, FFmpegCompressor>();
 // 自动备份：BackupRunner 纯逻辑（可单测）+ HostedService 调度（每 24h，保留 7 份）
 builder.Services.AddSingleton<BackupRunner>();
 builder.Services.AddHostedService<AutoBackupService>();
+// 每周邮件周报（默认停用，HZone:Digest:Enabled=true 开启；周一北京 08:00）
+builder.Services.AddSingleton<WeeklyDigestRunner>();
+builder.Services.AddHostedService<WeeklyDigestService>();
 
 builder.Services
     .AddAuthentication(options => options.DefaultScheme = "HZone.Auth")
