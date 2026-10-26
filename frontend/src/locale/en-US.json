@@ -334,6 +334,10 @@
     "linkUrl": "Audio URL (https://…)",
     "library": "Audio library",
     "upload": "Upload",
+    "importFolder": "Import folder",
+    "importing": "Importing {x}/{n}",
+    "importDone": "Imported {ok}, skipped {skip}",
+    "importNoAudio": "No audio files in the folder",
     "libraryEmpty": "No audio uploaded yet",
     "playlistEmpty": "Playlist is empty",
     "loadFailed": "Failed to load audio"

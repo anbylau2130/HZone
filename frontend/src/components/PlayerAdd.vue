@@ -21,9 +21,15 @@
     <view v-if="libOpen" class="pa-lib">
       <view class="pa-lib-head">
         <text class="pa-lib-title">{{ $t('player.library') }}</text>
-        <!-- #ifdef H5 -->
-        <view class="pa-upload" @click="pickAudio"><text class="pa-upload-text">＋ {{ uploading ? $t('common.loading') : $t('player.upload') }}</text></view>
-        <!-- #endif -->
+        <view class="pa-lib-actions">
+          <!-- #ifdef H5 -->
+          <!-- 文件夹批量导入：webkitdirectory 选整个目录，过滤音频逐个上传+入列 -->
+          <view class="pa-upload" @click="pickFolder">
+            <text class="pa-upload-text">📁 {{ importing ? $t('player.importing', { x: importing.done, n: importing.total }) : $t('player.importFolder') }}</text>
+          </view>
+          <view class="pa-upload" @click="pickAudio"><text class="pa-upload-text">＋ {{ uploading ? $t('common.loading') : $t('player.upload') }}</text></view>
+          <!-- #endif -->
+        </view>
       </view>
       <scroll-view scroll-y class="pa-lib-list">
         <view v-if="!libItems.length" class="pa-empty">
@@ -43,6 +49,7 @@ import { ref } from 'vue'
 import { usePlayerStore } from '../stores/player'
 import { listMyAudioAssets, type AudioAssetInfo } from '../api/endpoints'
 import { uploadFile } from '../api/client'
+import { i18n } from '../locale'
 
 const player = usePlayerStore()
 const emit = defineEmits<{ (e: 'added'): void }>()
@@ -53,6 +60,15 @@ const libItems = ref<AudioAssetInfo[]>([])
 const urlTitle = ref('')
 const urlAddr = ref('')
 const uploading = ref(false)
+/** 文件夹导入进度（null = 空闲）；done/total 用于按钮文案实时反馈。 */
+const importing = ref<{ done: number; total: number } | null>(null)
+
+/** 目录选择器放行的音频：type 前缀（部分浏览器给得出）+ 扩展名兜底（目录选择时常见空 type）。 */
+const AUDIO_EXT = /\.(mp3|m4a|aac|wav|flac|ogg|oga|opus)$/i
+
+function isAudioFile(f: File): boolean {
+  return f.type.startsWith('audio/') || AUDIO_EXT.test(f.name)
+}
 
 async function openLib() {
   libOpen.value = true
@@ -120,6 +136,54 @@ async function uploadAndAdd(file: File) {
   } finally {
     uploading.value = false
   }
+}
+
+// 文件夹导入：webkitdirectory 整目录选择 → 过滤音频 → 逐个上传+入列；
+// 单文件失败不中断批次（超限/格式等按跳过计），列表打满（409）提前收工
+function pickFolder() {
+  if (importing.value || uploading.value) return
+  const input = document.createElement('input')
+  input.type = 'file'
+  ;(input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true
+  input.onchange = () => {
+    const files = [...(input.files ?? [])]
+    if (files.length) void importFolder(files)
+  }
+  input.click()
+}
+
+async function importFolder(files: File[]) {
+  const audio = files.filter(isAudioFile)
+  const skipped = files.length - audio.length
+  if (!audio.length) {
+    uni.showToast({ title: i18n.global.t('player.importNoAudio'), icon: 'none' })
+    return
+  }
+  importing.value = { done: 0, total: audio.length }
+  let ok = 0
+  let fail = 0
+  for (const f of audio) {
+    try {
+      const asset = await uploadFile<{ id: string }>('/api/media', f)
+      await player.addMedia(asset.id)
+      ok++
+    } catch (err) {
+      fail++
+      if ((err as { status?: number }).status === 409) break // 播放列表打满：余下不再尝试
+    }
+    importing.value = { done: importing.value.done + 1, total: audio.length }
+  }
+  importing.value = null
+  try {
+    libItems.value = (await listMyAudioAssets()).items
+  } catch {
+    // 库刷新失败不影响导入结果反馈
+  }
+  emit('added')
+  uni.showToast({
+    title: i18n.global.t('player.importDone', { ok, skip: skipped + fail }),
+    icon: 'none'
+  })
 }
 </script>
 
@@ -189,6 +253,13 @@ async function uploadAndAdd(file: File) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
+}
+.pa-lib-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .pa-lib-title {
   font-size: var(--hz-font-size-sm);
