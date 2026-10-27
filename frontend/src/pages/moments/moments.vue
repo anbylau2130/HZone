@@ -72,7 +72,7 @@
             <view class="entry-head">
               <text class="time">{{ formatRelativeTime(c.createdAt) }}</text>
               <view class="head-spacer" />
-              <CardOwnerActions v-if="isMine(c)" @edit="goEdit(c)" @delete="remove(c)" />
+              <CardOwnerActions v-if="isMine(c)" @edit="goEdit(c)" @delete="remove(c)" @share="openShare(c)" />
             </view>
 
             <!-- 原地编辑：✎ 后该条变成编辑器（不跳 publish 页） -->
@@ -117,6 +117,7 @@
     <MiniPlayer />
     <AppTabBar current="moments" />
     <view class="fab" @click="focusComposer">＋</view>
+    <ShareSheet v-model:visible="shareVisible" :content-id="shareId" />
   </view>
 </template>
 
@@ -132,6 +133,7 @@ import ToolDock from '../../components/ToolDock.vue'
 import MiniPlayer from '../../components/MiniPlayer.vue'
 import ProfileHeader from '../../components/ProfileHeader.vue'
 import CardOwnerActions from '../../components/CardOwnerActions.vue'
+import ShareSheet from '../../components/ShareSheet.vue'
 import CardComments from '../../components/CardComments.vue'
 import SayComposer from '../../components/SayComposer.vue'
 import { usePagination } from '../../composables/usePagination'
@@ -217,6 +219,15 @@ function onCommentCount(c: ContentItem, n: number) {
 
 // ✎ 原地编辑当前条（不跳 publish）；日志类仍去 publish（cherry 编辑器）
 const editingId = ref('')
+
+// 分享外链（ShareSheet 共享组件，与 ContentCard 同款）
+const shareVisible = ref(false)
+const shareId = ref('')
+
+function openShare(c: ContentItem) {
+  shareId.value = c.id
+  shareVisible.value = true
+}
 
 function goEdit(c: ContentItem) {
   editingId.value = c.id

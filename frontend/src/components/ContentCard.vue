@@ -98,23 +98,11 @@
       </view>
       <view class="foot-spacer" />
       <!-- 编辑/删除贴评论行最右（用户要求，原在右上角）；分享 🔗 同组 -->
-      <CardOwnerActions v-if="isAuthor" @edit="goEdit" @delete="remove" @share="shareContent" />
+      <CardOwnerActions v-if="isAuthor" @edit="goEdit" @delete="remove" @share="shareOpen = true" />
     </view>
 
-    <!-- 分享弹层：创建外链（7 天默认）→ 链接可复制；已创建过则展示最新一条 -->
-    <view v-if="shareOpen" class="share-overlay" @click="shareOpen = false">
-      <view class="share-sheet" @click.stop>
-        <view class="share-head">
-          <text class="share-title">{{ $t('share.create') }}</text>
-          <text class="share-close" @click="shareOpen = false">{{ $t('common.cancel') }}</text>
-        </view>
-        <view v-if="shareLinkUrl" class="share-body">
-          <text class="share-url">{{ shareLinkUrl }}</text>
-          <button class="share-copy" @click="copyShareLink">{{ $t('share.copyLink') }}</button>
-        </view>
-        <text v-else class="share-hint">{{ $t('common.loading') }}</text>
-      </view>
-    </view>
+    <!-- 分享弹层（共享组件 ShareSheet） -->
+    <ShareSheet v-model:visible="shareOpen" :content-id="content.id" />
   </view>
 </template>
 
@@ -124,12 +112,13 @@ import { useI18n } from 'vue-i18n'
 import MediaGrid from './MediaGrid.vue'
 import RecipientsBar from './RecipientsBar.vue'
 import CardOwnerActions from './CardOwnerActions.vue'
+import ShareSheet from './ShareSheet.vue'
 import AvatarCircle from './AvatarCircle.vue'
 import CardComments from './CardComments.vue'
 import SayComposer from './SayComposer.vue'
 import { formatDateTime } from '../utils/format'
 import { CONDITION_ICONS, type WeatherCondition } from '../utils/weather'
-import { deleteContent, updateContent, toggleLike, createShareLink } from '../api/endpoints'
+import { deleteContent, updateContent, toggleLike } from '../api/endpoints'
 import type { ContentItem } from '../api/endpoints'
 import { useAuthStore } from '../stores/auth'
 
@@ -246,28 +235,8 @@ function goTag(tag: string) {
   uni.redirectTo({ url: '/pages/journals/journals' })
 }
 
-// ---------- 只读分享外链：创建即得链接（7 天），复制给家人 ----------
+// ---------- 只读分享外链：弹层抽为共享组件 ShareSheet（随记页卡片同款） ----------
 const shareOpen = ref(false)
-const shareLinkUrl = ref('')
-
-async function shareContent() {
-  shareLinkUrl.value = ''
-  shareOpen.value = true
-  try {
-    const link = await createShareLink(props.content.id, 7)
-    shareLinkUrl.value = `${location.origin}${link.url}`
-  } catch {
-    shareOpen.value = false
-  }
-}
-
-function copyShareLink() {
-  if (!shareLinkUrl.value) return
-  uni.setClipboardData({
-    data: shareLinkUrl.value,
-    success: () => uni.showToast({ title: t('share.copiedTip'), icon: 'success' }),
-  })
-}
 
 function cancelEdit() {
   editing.value = false
@@ -450,71 +419,6 @@ title: t('common.delete'),
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-interactive);
   cursor: pointer;
-}
-/* 分享弹层 */
-.share-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 999;
-}
-.share-sheet {
-  width: 100%;
-  max-width: 520px;
-  background: var(--hz-color-surface);
-  border-radius: var(--hz-radius-lg) var(--hz-radius-lg) 0 0;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.share-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.share-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--hz-color-text);
-}
-.share-close {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-}
-.share-body {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.share-url {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-interactive);
-  word-break: break-all;
-  background: var(--hz-color-bg);
-  border-radius: var(--hz-radius-md);
-  padding: 8px 10px;
-}
-.share-copy {
-  flex-shrink: 0;
-  height: 32px;
-  line-height: 32px;
-  padding: 0 16px;
-  font-size: var(--hz-font-size-sm);
-  background: var(--hz-color-primary);
-  color: #fff;
-  border-radius: 999px;
-}
-.share-hint {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-  text-align: center;
-  padding: 8px 0;
 }
 .foot-spacer {
   flex: 1;
