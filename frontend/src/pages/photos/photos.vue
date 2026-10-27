@@ -9,10 +9,15 @@
       <text class="hint-text">{{ $t('photos.empty') }}</text>
     </view>
 
-    <!-- 3 列网格：缩略图（授权 blob）铺满，点格全屏预览（可滑动翻看全部） -->
-    <view class="grid">
+    <!-- 瀑布流（CSS columns）：图片按原始比例展示，大图大格小图小格 -->
+    <view class="masonry">
       <view v-for="(p, i) in items" :key="p.id" class="cell" @click="preview(i)">
-        <image class="img" :src="p.thumbUrl" mode="aspectFill" />
+        <image
+          class="img"
+          :class="{ loading: !p.thumbUrl }"
+          :src="p.thumbUrl"
+          mode="widthFix"
+        />
       </view>
     </view>
 
@@ -26,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
@@ -61,7 +66,9 @@ async function loadPage(offset: number) {
     total.value = res.total
     const fresh: PhotoItem[] = []
     for (const it of res.items) {
-      const item: PhotoItem = { id: it.id, thumbUrl: '' }
+      // reactive 包装：blob 异步回填必须走代理才触发重渲染
+      //（此前普通对象改属性不重渲染，实测 30 格 0 图）
+      const item = reactive<PhotoItem>({ id: it.id, thumbUrl: '' })
       fresh.push(item)
       loadMediaUrl(`/media/${it.thumbStoredName}`)
         .then((u) => {
@@ -111,22 +118,28 @@ useInfiniteScroll(() => {
   color: var(--hz-color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+/* 瀑布流：CSS columns 三列，图片自然比例（widthFix 高度自适应），
+   大图大格小图小格——比等大方格更协调（用户要求） */
+.masonry {
+  column-count: 3;
+  column-gap: 4px;
 }
 .cell {
-  aspect-ratio: 1;
+  break-inside: avoid;
+  margin-bottom: 4px;
   border-radius: var(--hz-radius-sm);
   overflow: hidden;
   background: var(--hz-color-surface);
   cursor: pointer;
+  display: block;
 }
 .img {
   width: 100%;
-  height: 100%;
   display: block;
+}
+/* blob 未就位时的占位（防瀑布高度跳变） */
+.img.loading {
+  min-height: 120px;
 }
 .hint {
   padding: 32px 0;
