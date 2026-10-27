@@ -72,8 +72,8 @@
           <text class="rec-ico">😊</text>
         </view>
         <!-- 语音随记：点击开始录音（≤60s 自动停），再点提前停；上传后随记附语音 -->
-        <view class="rec-btn" :class="{ on: voiceRecording }" @click="toggleVoiceRecord">
-          <text v-if="voiceRecording" class="rec-label">{{ voiceSeconds }}s</text>
+        <view class="rec-btn" :class="{ on: voice.recording.value }" @click="voice.toggle(mediaItems.length === 0)">
+          <text v-if="voice.recording.value" class="rec-label">{{ voice.seconds.value }}s</text>
           <text v-else class="rec-ico">🎤</text>
         </view>
         <button class="pick" @click="pickImage">{{ $t('publish.addImages') }}</button>
@@ -246,6 +246,7 @@ import {
   type WeatherSnapshotInput
 } from '../../api/endpoints'
 import { uploadFile, getToken } from '../../api/client'
+import { useVoiceRecorder } from '../../composables/useVoiceRecorder'
 import { loadMediaUrl } from '../../api/media'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
@@ -585,130 +586,13 @@ function removeTag(i: number) {
 
 const MAX_IMAGES = 9
 
-// ---------- 语音随记：点击开始录音（≤60s 自停），再点提前停 ----------
-// uni-app H5 无 getRecorderManager（实测 method not supported）——H5 自封装
-// MediaRecorder（opus-in-webm），App 端用 uni 原生 RecorderManager（mp3）。
-const voiceRecording = ref(false)
-const voiceSeconds = ref(0)
-let voiceTimer: ReturnType<typeof setInterval> | null = null
-const VOICE_MAX_SECONDS = 60
-
-function startVoiceTimer() {
-  stopVoiceTimer()
-  voiceSeconds.value = 0
-  voiceTimer = setInterval(() => {
-    voiceSeconds.value += 1
-    if (voiceSeconds.value >= VOICE_MAX_SECONDS) stopVoice()
-  }, 1000)
-}
-
-function stopVoiceTimer() {
-  if (voiceTimer) {
-    clearInterval(voiceTimer)
-    voiceTimer = null
-  }
-}
-
-// #ifdef H5
-let h5Recorder: MediaRecorder | null = null
-let h5Chunks: Blob[] = []
-
-async function startVoiceH5() {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-    ? 'audio/webm;codecs=opus'
-    : 'audio/webm'
-  h5Chunks = []
-  h5Recorder = new MediaRecorder(stream, { mimeType: mime })
-  h5Recorder.ondataavailable = (e) => {
-    if (e.data.size > 0) h5Chunks.push(e.data)
-  }
-  h5Recorder.onstop = () => {
-    stream.getTracks().forEach((t) => t.stop())
-    const type = h5Recorder?.mimeType?.split(';')[0] || 'audio/webm'
-    const blob = new Blob(h5Chunks, { type })
-    const ext = type.includes('webm') ? 'webm' : 'm4a'
-    const file = new File([blob], `voice-${Date.now()}.${ext}`, { type })
-    mediaItems.value.push({ localPath: URL.createObjectURL(blob), file, kind: 'audio' })
-    h5Recorder = null
-  }
-  h5Recorder.start()
-}
-
-function stopVoiceH5() {
-  h5Recorder?.stop()
-}
-// #endif
-
-// #ifndef H5
-let voiceRecorder: UniApp.RecorderManager | null = null
-
-function ensureVoiceRecorder(): UniApp.RecorderManager {
-  if (voiceRecorder) return voiceRecorder
-  voiceRecorder = uni.getRecorderManager()
-  voiceRecorder.onStop((res) => {
-    stopVoiceTimer()
-    voiceRecording.value = false
-    if (res.tempFilePath) {
-      mediaItems.value.push({ localPath: res.tempFilePath, kind: 'audio' })
-    }
-  })
-  voiceRecorder.onError(() => {
-    stopVoiceTimer()
-    voiceRecording.value = false
-    uni.showToast({ title: t('publish.recordPermissionDenied'), icon: 'none' })
-  })
-  return voiceRecorder
-}
-// #endif
-
-async function toggleVoiceRecord() {
-  if (voiceRecording.value) {
-    stopVoice()
-    return
-  }
-  // 随记媒体规则：语音独占（单个非图；后端同规则校验）
-  if (mediaItems.value.length > 0) {
-    uni.showToast({ title: t('publish.voiceWithMediaOnly'), icon: 'none' })
-    return
-  }
-  voiceRecording.value = true
-  // #ifdef H5
-  try {
-    await startVoiceH5()
-  } catch {
-    voiceRecording.value = false
-    uni.showToast({ title: t('publish.recordPermissionDenied'), icon: 'none' })
-    return
-  }
-  // #endif
-  // #ifndef H5
-  ensureVoiceRecorder().start({
-    format: 'mp3',
-    duration: VOICE_MAX_SECONDS * 1000,
-    sampleRate: 16000,
-    encodeBitRate: 48000,
-  })
-  // #endif
-  startVoiceTimer()
-}
-
-function stopVoice() {
-  stopVoiceTimer()
-  voiceRecording.value = false
-  // #ifdef H5
-  stopVoiceH5()
-  // #endif
-  // #ifndef H5
-  ensureVoiceRecorder().stop()
-  // #endif
-}
+// ---------- 语音随记：共享 composable（与随记页 SayComposer 同款实现） ----------
+const voice = useVoiceRecorder((r) => {
+  mediaItems.value.push({ localPath: r.previewUrl, file: r.file, kind: 'audio' })
+})
 
 onUnmounted(() => {
-  stopVoiceTimer()
-  // #ifdef H5
-  if (voiceRecording.value) stopVoiceH5()
-  // #endif
+  if (voice.recording.value) voice.stop()
 })
 
 // ---------- H5 媒体选择修复 ----------

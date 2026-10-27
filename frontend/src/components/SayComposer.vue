@@ -22,7 +22,12 @@
     <EmojiPicker v-if="emojiOpen" @select="onEmoji" />
     <view v-if="mediaItems.length" class="c-media">
       <view v-for="m in mediaItems" :key="m.preview" class="c-cell">
-        <image class="c-img" :src="m.preview" mode="aspectFill" />
+        <!-- 语音：麦占位格（发布后卡片内点「播放语音」收听） -->
+        <view v-if="m.kind === 'audio'" class="c-audio">
+          <text class="c-audio-ico">🎤</text>
+          <text class="c-audio-label">{{ $t('publish.voiceClip') }}</text>
+        </view>
+        <image v-else class="c-img" :src="m.preview" mode="aspectFill" />
         <text class="c-remove" @click="removeMedia(m.preview)">×</text>
       </view>
     </view>
@@ -32,6 +37,11 @@
       </view>
       <view class="c-ico" @click="pickImage">
         <text class="c-ico-txt">📷</text>
+      </view>
+      <!-- 语音随记（与发布页同款）：点击开始录音（≤60s 自停），再点提前停 -->
+      <view class="c-ico" :class="{ on: voice.recording.value }" @click="voice.toggle(mediaItems.length === 0)">
+        <text v-if="voice.recording.value" class="c-rec-sec">{{ voice.seconds.value }}s</text>
+        <text v-else class="c-ico-txt">🎤</text>
       </view>
       <view class="c-spacer" />
       <button v-if="isEdit" class="c-cancel" :disabled="busy" @click="emit('cancel')">
@@ -50,6 +60,7 @@ import EmojiPicker from './EmojiPicker.vue'
 import { createSay, updateContent, type ContentItem } from '../api/endpoints'
 import { uploadFile } from '../api/client'
 import { loadMediaUrl } from '../api/media'
+import { useVoiceRecorder } from '../composables/useVoiceRecorder'
 import { useI18n } from 'vue-i18n'
 
 // 编辑模式：传入已有随记则回填（随记页原地编辑，不跳 publish）；
@@ -70,9 +81,15 @@ interface PickedMedia {
   preview: string
   mediaId?: string
   file?: Blob
+  kind: 'image' | 'video' | 'audio'
 }
 
 const mediaItems = ref<PickedMedia[]>([])
+
+// 语音随记（共享 composable，与发布页同款）：录音结果直接入媒体格（语音独占）
+const voice = useVoiceRecorder((r) => {
+  mediaItems.value.push({ preview: r.previewUrl, file: r.file, kind: 'audio' })
+})
 const canSend = computed(() => text.value.trim().length > 0 || mediaItems.value.length > 0)
 const isEdit = computed(() => !!props.edit)
 
@@ -84,8 +101,13 @@ watch(
     text.value = c.text ?? ''
     mediaItems.value = []
     for (const m of c.media ?? []) {
-      if (m.kind !== 'image' && m.kind !== 'video') continue
-      mediaItems.value.push({ preview: m.url, mediaId: m.id })
+      // 语音随记：audio 也回填（占格不可预览，发送重绑保留）
+      mediaItems.value.push({
+        preview: m.url,
+        mediaId: m.id,
+        kind: m.kind === 'video' ? 'video' : m.kind === 'audio' ? 'audio' : 'image'
+      })
+      if (m.kind === 'audio') continue
       loadMediaUrl(m.url)
         .then((u) => {
           const target = mediaItems.value.find((x) => x.mediaId === m.id)
@@ -150,7 +172,7 @@ function pickImage() {
     input.remove()
     for (const f of files) {
       const preview = URL.createObjectURL(f)
-      mediaItems.value.push({ preview, file: f })
+      mediaItems.value.push({ preview, file: f, kind: f.type.startsWith('video/') ? 'video' : 'image' })
     }
   }
   input.addEventListener('cancel', () => input.remove())
@@ -160,7 +182,7 @@ function pickImage() {
   uni.chooseImage({
     count: remaining,
     success: (res) => {
-      for (const p of res.tempFilePaths) mediaItems.value.push({ preview: p })
+      for (const p of res.tempFilePaths) mediaItems.value.push({ preview: p, kind: 'image' })
     }
   })
   // #endif
@@ -268,6 +290,29 @@ defineExpose({
   background: rgba(0, 0, 0, 0.55);
   border-radius: 0 0 0 8px;
   cursor: pointer;
+}
+/* 语音占位格（与发布页同款） */
+.c-audio {
+  width: 100%;
+  height: 100%;
+  background: var(--hz-color-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.c-audio-ico {
+  font-size: 22px;
+}
+.c-audio-label {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.c-rec-sec {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--hz-color-primary);
 }
 .c-bar {
   display: flex;
