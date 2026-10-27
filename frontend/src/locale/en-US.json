@@ -333,7 +333,12 @@
     "presetDefault": "Honey Sun",
     "presetWarm": "Warm Orange",
     "presetGreen": "Eye-care Green",
-    "presetSpace": "Deep Space Purple"
+    "presetSpace": "Deep Space Purple",
+    "presetGithubLight": "GitHub Light",
+    "presetGithubDark": "GitHub Dark",
+    "presetDarcula": "JetBrains Darcula",
+    "presetVscodeDark": "VS Code Dark",
+    "presetVscodeLight": "VS Code Light"
   },
   "share": {
     "title": "Shared",

@@ -6,15 +6,16 @@ import {
   type ColorTokens,
   type ThemeMode
 } from '../theme/tokens'
-import { getPreset } from '../theme/presets'
+import { getPreset, presets } from '../theme/presets'
 import { applyTheme } from '../theme/applyTheme'
 import { isValidHex } from '../utils/contrast'
 import { schedulePreferencesSync } from '../utils/prefSync'
 
 const STORAGE_KEY = 'hz_theme'
 
-// 与 theme/presets.ts 的预置主题列表一致（账号偏好下发值合法性检查用）
-const PRESET_IDS = ['default', 'warm', 'green', 'space']
+// 从 presets 动态派生（账号偏好下发值合法性检查用）——静态清单会在新增
+// 预置后把新 id 全部 sanitize 成 default（实测踩中：开发者主题切完即被打回）
+const PRESET_IDS = presets.map((p) => p.id)
 
 /** 任意来源（本地存储 / 账号偏好下发）的主题值 → 合法 PersistedTheme（PRD 6.9）。 */
 function sanitizeTheme(input: unknown): PersistedTheme {

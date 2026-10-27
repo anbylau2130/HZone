@@ -333,7 +333,12 @@
     "presetDefault": "蜜杏暖阳",
     "presetWarm": "暖橙",
     "presetGreen": "护眼绿",
-    "presetSpace": "深空紫"
+    "presetSpace": "深空紫",
+    "presetGithubLight": "GitHub 浅色",
+    "presetGithubDark": "GitHub 深色",
+    "presetDarcula": "JetBrains Darcula",
+    "presetVscodeDark": "VS Code 深色",
+    "presetVscodeLight": "VS Code 浅色"
   },
   "share": {
     "title": "分享",

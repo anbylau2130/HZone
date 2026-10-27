@@ -71,6 +71,88 @@ export const presets: ThemePreset[] = [
       textSecondary: '#a49cc4',
       border: '#322d4a'
     }
+  },
+  // ---------- 开发者系列（用户要求）：配色取自各家官方 palette，
+  // 对比度按项目门槛校准（primary 上白字 ≥3:1，正文/链接 ≥4.5:1） ----------
+  {
+    // GitHub Light Primer：#f6f8fa 画布、绿主按钮、链接蓝
+    id: 'github-light',
+    nameKey: 'theme.presetGithubLight',
+    mode: 'light',
+    tokens: {
+      primary: '#1f883d',
+      accent: '#8250df',
+      interactive: '#0969da',
+      bg: '#f6f8fa',
+      surface: '#ffffff',
+      text: '#1f2328',
+      textSecondary: '#656d76',
+      border: '#d0d7de'
+    }
+  },
+  {
+    // GitHub Dark Primer：#0d1117 画布、按钮绿加深、链接亮蓝
+    id: 'github-dark',
+    nameKey: 'theme.presetGithubDark',
+    mode: 'dark',
+    tokens: {
+      primary: '#238636',
+      accent: '#bc8cff',
+      interactive: '#58a6ff',
+      bg: '#0d1117',
+      surface: '#161b22',
+      text: '#e6edf3',
+      textSecondary: '#8b949e',
+      border: '#30363d'
+    }
+  },
+  {
+    // JetBrains Darcula：#2b2b2b 编辑器底、品牌橙主按钮、链接蓝
+    id: 'darcula',
+    nameKey: 'theme.presetDarcula',
+    mode: 'dark',
+    tokens: {
+      primary: '#f74c00',
+      accent: '#ffc66d',
+      interactive: '#589df6',
+      bg: '#2b2b2b',
+      surface: '#3c3f41',
+      text: '#a9b7c6',
+      textSecondary: '#8a8a8a',
+      border: '#515355'
+    }
+  },
+  {
+    // VS Code Dark+：#1e1e1e 编辑器底、按钮蓝、链接亮蓝、关键字紫点缀
+    id: 'vscode-dark',
+    nameKey: 'theme.presetVscodeDark',
+    mode: 'dark',
+    tokens: {
+      primary: '#0e639c',
+      accent: '#c586c0',
+      interactive: '#3794ff',
+      bg: '#1e1e1e',
+      surface: '#252526',
+      text: '#d4d4d4',
+      textSecondary: '#858585',
+      border: '#3c3c3c'
+    }
+  },
+  {
+    // VS Code Light+：白画布、现代蓝按钮/链接
+    id: 'vscode-light',
+    nameKey: 'theme.presetVscodeLight',
+    mode: 'light',
+    tokens: {
+      primary: '#005fb8',
+      accent: '#af00db',
+      interactive: '#005fb8',
+      bg: '#ffffff',
+      surface: '#f3f3f3',
+      text: '#333333',
+      textSecondary: '#767676',
+      border: '#e0e0e0'
+    }
   }
 ]
 
