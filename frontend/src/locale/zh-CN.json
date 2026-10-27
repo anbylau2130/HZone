@@ -330,7 +330,6 @@
     "contrastFailToast": "对比度不达标，已禁止保存",
     "resetDefault": "恢复默认",
     "language": "界面语言",
-    "presetDefault": "蜜杏暖阳",
     "presetWarm": "暖橙",
     "presetGreen": "护眼绿",
     "presetSpace": "深空紫",
@@ -338,7 +337,13 @@
     "presetGithubDark": "GitHub 深色",
     "presetDarcula": "JetBrains Darcula",
     "presetVscodeDark": "VS Code 深色",
-    "presetVscodeLight": "VS Code 浅色"
+    "presetVscodeLight": "VS Code 浅色",
+    "presetNord": "Nord 极地",
+    "presetDracula": "Dracula",
+    "presetOneDark": "One Dark",
+    "presetRosePine": "Rosé Pine",
+    "presetMonokai": "Monokai",
+    "presetSolarized": "Solarized 米黄"
   },
   "share": {
     "title": "分享",

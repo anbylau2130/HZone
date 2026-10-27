@@ -13,21 +13,6 @@ export interface ThemePreset {
 
 export const presets: ThemePreset[] = [
   {
-    id: 'default',
-    nameKey: 'theme.presetDefault',
-    mode: 'light',
-    tokens: {
-      primary: '#b8791f',
-      accent: '#c2543f',
-      interactive: '#3e87b5',
-      bg: '#fbf3e9',
-      surface: '#fffdf9',
-      text: '#3b3128',
-      textSecondary: '#8a7a66',
-      border: '#efe2ce'
-    }
-  },
-  {
     id: 'warm',
     nameKey: 'theme.presetWarm',
     mode: 'light',
@@ -152,6 +137,105 @@ export const presets: ThemePreset[] = [
       text: '#333333',
       textSecondary: '#767676',
       border: '#e0e0e0'
+    }
+  },
+  // ---------- 经典编辑器/终端系列（官方 palette + 项目对比度门槛校准：
+  // primary 上白字 ≥3:1、链接 on bg ≥4.5:1；官方亮色（Nord 冰蓝/Dracula 紫/
+  // Monokai 绿等）作按钮底不达白字门槛，取其加深档，点缀/链接保留原亮色） ----------
+  {
+    // Nord 极地：北欧蓝灰，冷冽低饱和
+    id: 'nord',
+    nameKey: 'theme.presetNord',
+    mode: 'dark',
+    tokens: {
+      primary: '#5e81ac',
+      accent: '#b48ead',
+      interactive: '#88c0d0',
+      bg: '#2e3440',
+      surface: '#3b4252',
+      text: '#d8dee9',
+      textSecondary: '#8f99ae',
+      border: '#4c566a'
+    }
+  },
+  {
+    // Dracula：紫粉青经典暗色
+    id: 'dracula',
+    nameKey: 'theme.presetDracula',
+    mode: 'dark',
+    tokens: {
+      primary: '#6272a4',
+      accent: '#ff79c6',
+      interactive: '#8be9fd',
+      bg: '#282a36',
+      surface: '#343949',
+      text: '#f8f8f2',
+      textSecondary: '#a6acce',
+      border: '#44475a'
+    }
+  },
+  {
+    // Atom One Dark：均衡灰蓝
+    id: 'one-dark',
+    nameKey: 'theme.presetOneDark',
+    mode: 'dark',
+    tokens: {
+      primary: '#3e72af',
+      accent: '#c678dd',
+      interactive: '#61afef',
+      bg: '#282c34',
+      surface: '#2c313a',
+      text: '#abb2bf',
+      textSecondary: '#7f8794',
+      border: '#3e4451'
+    }
+  },
+  {
+    // Rosé Pine：玫瑰金文艺暗色
+    id: 'rose-pine',
+    nameKey: 'theme.presetRosePine',
+    mode: 'dark',
+    tokens: {
+      primary: '#b4637a',
+      accent: '#c4a7e7',
+      interactive: '#9ccfd8',
+      bg: '#191724',
+      surface: '#1f1d2e',
+      text: '#e0def4',
+      textSecondary: '#908caa',
+      border: '#26233a'
+    }
+  },
+  {
+    // Monokai：Sublime 经典荧光绿粉
+    id: 'monokai',
+    nameKey: 'theme.presetMonokai',
+    mode: 'dark',
+    tokens: {
+      primary: '#5e9418',
+      accent: '#f92672',
+      interactive: '#66d9ef',
+      bg: '#272822',
+      surface: '#30322c',
+      text: '#f8f8f2',
+      textSecondary: '#a0a298',
+      border: '#3e3d32'
+    }
+  },
+  {
+    // Solarized Light：护眼米黄纸感
+    id: 'solarized-light',
+    nameKey: 'theme.presetSolarized',
+    mode: 'light',
+    tokens: {
+      primary: '#cb4b16',
+      accent: '#d33682',
+      interactive: '#1a7db0',
+      bg: '#f7f0dd',
+      surface: '#fdf6e3',
+      text: '#073642',
+      textSecondary: '#657b83',
+      border: '#e6ddc0'
     }
   }
 ]

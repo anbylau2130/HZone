@@ -14,15 +14,17 @@ import { schedulePreferencesSync } from '../utils/prefSync'
 const STORAGE_KEY = 'hz_theme'
 
 // 从 presets 动态派生（账号偏好下发值合法性检查用）——静态清单会在新增
-// 预置后把新 id 全部 sanitize 成 default（实测踩中：开发者主题切完即被打回）
+// 预置后把新 id 全部 sanitize 成回退值（实测踩中：开发者主题切完即被打回）。
+// 回退 'warm'：蜜杏暖阳预置已删（与暖橙过近），老偏好回落到视觉最近的暖橙
 const PRESET_IDS = presets.map((p) => p.id)
+const FALLBACK_PRESET = 'warm'
 
 /** 任意来源（本地存储 / 账号偏好下发）的主题值 → 合法 PersistedTheme（PRD 6.9）。 */
 function sanitizeTheme(input: unknown): PersistedTheme {
   const parsed = (input ?? {}) as Partial<PersistedTheme>
   return {
     mode: parsed.mode === 'dark' ? 'dark' : 'light',
-    presetId: PRESET_IDS.includes(parsed.presetId ?? '') ? (parsed.presetId as string) : 'default',
+    presetId: PRESET_IDS.includes(parsed.presetId ?? '') ? (parsed.presetId as string) : FALLBACK_PRESET,
     overrides: sanitizeOverrides(parsed.overrides)
   }
 }
@@ -36,10 +38,10 @@ export interface PersistedTheme {
 function readStoredTheme(): PersistedTheme {
   try {
     const raw = uni.getStorageSync(STORAGE_KEY) as string | ''
-    if (!raw) return { mode: 'light', presetId: 'default', overrides: {} }
+    if (!raw) return { mode: 'light', presetId: FALLBACK_PRESET, overrides: {} }
     return sanitizeTheme(JSON.parse(raw))
   } catch {
-    return { mode: 'light', presetId: 'default', overrides: {} }
+    return { mode: 'light', presetId: FALLBACK_PRESET, overrides: {} }
   }
 }
 
@@ -132,7 +134,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   function reset() {
     mode.value = 'light'
-    presetId.value = 'default'
+    presetId.value = FALLBACK_PRESET
     overrides.value = {}
     apply()
     persist()

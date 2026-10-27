@@ -330,7 +330,6 @@
     "contrastFailToast": "Contrast check failed, save blocked",
     "resetDefault": "Reset to default",
     "language": "Language",
-    "presetDefault": "Honey Sun",
     "presetWarm": "Warm Orange",
     "presetGreen": "Eye-care Green",
     "presetSpace": "Deep Space Purple",
@@ -338,7 +337,13 @@
     "presetGithubDark": "GitHub Dark",
     "presetDarcula": "JetBrains Darcula",
     "presetVscodeDark": "VS Code Dark",
-    "presetVscodeLight": "VS Code Light"
+    "presetVscodeLight": "VS Code Light",
+    "presetNord": "Nord",
+    "presetDracula": "Dracula",
+    "presetOneDark": "One Dark",
+    "presetRosePine": "Rosé Pine",
+    "presetMonokai": "Monokai",
+    "presetSolarized": "Solarized Light"
   },
   "share": {
     "title": "Shared",
