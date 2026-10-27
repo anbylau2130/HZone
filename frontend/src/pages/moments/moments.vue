@@ -67,42 +67,15 @@
           <text class="date-label">{{ g.label }}</text>
         </view>
         <view class="items-col">
-          <!-- 正文与整条点击均不跳转（朋友圈式就地阅读）；评论走底部入口展开 -->
-          <view v-for="c in g.items" :key="c.id" class="entry">
-            <view class="entry-head">
-              <text class="time">{{ formatRelativeTime(c.createdAt) }}</text>
-              <view class="head-spacer" />
-              <CardOwnerActions v-if="isMine(c)" @edit="goEdit(c)" @delete="remove(c)" @share="openShare(c)" />
-            </view>
-
-            <!-- 原地编辑：✎ 后该条变成编辑器（不跳 publish 页） -->
-            <view v-if="editingId === c.id" class="entry-edit" @click.stop>
-              <SayComposer :edit="c" @updated="onSayUpdated" @cancel="editingId = ''" />
-            </view>
-
-            <template v-else>
-              <text class="text">{{ c.text }}</text>
-              <MediaGrid v-if="(c.media ?? []).length" :media="c.media" />
-              <RecipientsBar :recipients="c.recipients" />
-              <view class="entry-foot">
-                <!-- 详情页已移除：点击切换内联评论区（同 ContentCard ①A） -->
-                <text class="foot-btn" @click.stop="expandedId = expandedId === c.id ? '' : c.id">
-                  💬 {{ $t('detail.commentCount', { n: c.commentCount }) }}
-                </text>
-                <view class="head-spacer" />
-                <view v-if="weatherChip(c)" class="weather-chip">
-                  <text class="weather-chip-text">{{ weatherChip(c) }}</text>
-                </view>
-              </view>
-              <!-- 内联评论区：展开才挂载，收起即卸载；评论数变化直接回写该条 -->
-              <CardComments
-                v-if="expandedId === c.id"
-                class="entry-comments"
-                :content-id="c.id"
-                @count-change="(n) => onCommentCount(c, n)"
-              />
-            </template>
-          </view>
+          <!-- 卡片与首页时间线同款（ContentCard）：头像/作者头 + 右上角日期天气
+               + 正文 + 标签 + 点赞/评论/编辑/删除/分享 全套一致；保留日期分组头 -->
+          <ContentCard
+            v-for="c in g.items"
+            :key="c.id"
+            :content="c"
+            @updated="onCardUpdated"
+            @deleted="onCardDeleted"
+          />
         </view>
       </view>
 
@@ -117,7 +90,6 @@
     <MiniPlayer />
     <AppTabBar current="moments" />
     <view class="fab" @click="focusComposer">＋</view>
-    <ShareSheet v-model:visible="shareVisible" :content-id="shareId" />
   </view>
 </template>
 
@@ -125,28 +97,22 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
-import MediaGrid from '../../components/MediaGrid.vue'
-import RecipientsBar from '../../components/RecipientsBar.vue'
+import ContentCard from '../../components/ContentCard.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
 import MiniPlayer from '../../components/MiniPlayer.vue'
 import ProfileHeader from '../../components/ProfileHeader.vue'
-import CardOwnerActions from '../../components/CardOwnerActions.vue'
-import ShareSheet from '../../components/ShareSheet.vue'
-import CardComments from '../../components/CardComments.vue'
 import SayComposer from '../../components/SayComposer.vue'
 import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import {
   listMyContents,
   searchContents,
-  deleteContent,
   uploadCover,
   type ContentItem
 } from '../../api/endpoints'
-import { formatRelativeTime, groupByCnDate } from '../../utils/format'
-import { weatherChipText } from '../../utils/weather'
+import { groupByCnDate } from '../../utils/format'
 import { useAuthStore } from '../../stores/auth'
 import { useI18n } from 'vue-i18n'
 
@@ -200,62 +166,14 @@ watch(keyword, () => {
 const groups = computed(() => groupByCnDate(items.value))
 
 // 作者本人内容才有编辑/删除；此处恒真（listMyContents 只返回自己的）
-function isMine(c: ContentItem) {
-  return c.author.id === auth.user?.id
-}
-
-// 天气 chip 文案（现象 i18n 回退原文 + 温度 + 城市）
-function weatherChip(c: ContentItem) {
-  return weatherChipText(c.weather ?? null)
-}
-
-// 内联评论区展开态：同一时刻至多展开一条（存内容 id，收起置空）
-const expandedId = ref('')
-
-// 发送评论成功：把最新评论数回写该条（卡片「💬 n」同步）
-function onCommentCount(c: ContentItem, n: number) {
-  c.commentCount = n
-}
-
-// ✎ 原地编辑当前条（不跳 publish）；日志类仍去 publish（cherry 编辑器）
-const editingId = ref('')
-
-// 分享外链（ShareSheet 共享组件，与 ContentCard 同款）
-const shareVisible = ref(false)
-const shareId = ref('')
-
-function openShare(c: ContentItem) {
-  shareId.value = c.id
-  shareVisible.value = true
-}
-
-function goEdit(c: ContentItem) {
-  editingId.value = c.id
-}
-
-// 原地保存成功：本地替换该条内容
-function onSayUpdated(updated: ContentItem) {
+// 卡片与首页时间线同款（ContentCard）：编辑/删除/评论/点赞/分享全部组件内置，
+// 页面只回写列表（更新替换、删除移除）
+function onCardUpdated(updated: ContentItem) {
   items.value = items.value.map((x) => (x.id === updated.id ? updated : x))
-  editingId.value = ''
 }
 
-function remove(c: ContentItem) {
-  uni.showModal({
-    confirmText: t('common.confirm'),
-    cancelText: t('common.cancel'),
-title: t('common.delete'),
-    content: t('detail.deleteConfirm'),
-    success: async (res) => {
-      if (!res.confirm) return
-      try {
-        await deleteContent(c.id)
-        uni.showToast({ title: t('detail.deleted'), icon: 'success' })
-        items.value = items.value.filter((x) => x.id !== c.id)
-      } catch {
-        // 错误提示由请求层统一 toast
-      }
-    }
-  })
+function onCardDeleted(id: string) {
+  items.value = items.value.filter((x) => x.id !== id)
 }
 
 // onShow 而非 onLoad：H5 端直接 hash 进入时 onLoad 不触发（timeline 同款坑），onShow 稳定
@@ -449,65 +367,6 @@ async function uploadCoverFile(path: string | Blob) {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-.entry {
-  border-bottom: 1px solid var(--hz-color-border);
-  padding-bottom: 12px;
-}
-.entry:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-.entry-edit {
-  margin-top: 6px;
-}
-/* 内联评论区与正文留一档间距 */
-.entry-comments {
-  margin-top: 8px;
-}
-.entry-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.head-spacer {
-  flex: 1;
-}
-.time {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-}
-.text {
-  margin-top: 4px;
-  /* 随记正文 16px（比基准大一档）；可选中复制（悬停显示文本光标而非手型） */
-  font-size: 16px;
-  color: var(--hz-color-text);
-  white-space: pre-wrap;
-  word-break: break-word;
-  cursor: auto;
-  user-select: text;
-  -webkit-user-select: text;
-}
-.entry-foot {
-  margin-top: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.foot-btn {
-  cursor: pointer;
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-interactive);
-}
-.weather-chip {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--hz-color-bg);
-  border: 1px solid var(--hz-color-border);
-}
-.weather-chip-text {
-  font-size: 12px;
-  color: var(--hz-color-text-secondary);
 }
 .more {
   display: flex;
