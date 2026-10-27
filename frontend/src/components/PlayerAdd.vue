@@ -35,8 +35,9 @@
         <view v-if="!libItems.length" class="pa-empty">
           <text class="pa-empty-text">{{ $t('player.libraryEmpty') }}</text>
         </view>
-        <view v-for="a in libItems" :key="a.id" class="pa-lib-row" @click="addFromLibrary(a)">
-          <text class="pa-lib-name">{{ a.originalName }}</text>
+        <view v-for="a in libItems" :key="a.id" class="pa-lib-row">
+          <text class="pa-lib-name" @click="addFromLibrary(a)">{{ a.originalName }}</text>
+          <text class="pa-lib-rename" :title="$t('common.rename')" @click.stop="renameAsset(a)">✎</text>
           <text class="pa-lib-size">{{ fmtSize(a.sizeBytes) }}</text>
         </view>
       </scroll-view>
@@ -46,10 +47,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
-import { listMyAudioAssets, type AudioAssetInfo } from '../api/endpoints'
+import { listMyAudioAssets, renameMediaAsset, type AudioAssetInfo } from '../api/endpoints'
 import { uploadFile } from '../api/client'
 import { i18n } from '../locale'
+
+const { t } = useI18n()
 
 const player = usePlayerStore()
 const emit = defineEmits<{ (e: 'added'): void }>()
@@ -95,6 +99,28 @@ async function addFromLibrary(a: AudioAssetInfo) {
   } catch {
     // 请求层已 toast
   }
+}
+
+/** 资产重命名：uni.showModal 可编辑弹窗（H5/App 同 API），改完刷新库列表。 */
+function renameAsset(a: AudioAssetInfo) {
+  uni.showModal({
+    title: t('common.rename'),
+    editable: true,
+    placeholderText: a.originalName,
+    content: a.originalName,
+    confirmText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+    success: async (res) => {
+      const name = (res.content ?? '').trim()
+      if (!res.confirm || !name || name === a.originalName) return
+      try {
+        await renameMediaAsset(a.id, name)
+        a.originalName = name
+      } catch {
+        // 请求层已 toast（校验错误）
+      }
+    }
+  })
 }
 
 async function submitUrl() {
@@ -308,6 +334,17 @@ async function importFolder(files: File[]) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+.pa-lib-rename {
+  flex-shrink: 0;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  padding: 0 4px;
+  cursor: pointer;
+}
+.pa-lib-rename:hover {
+  color: var(--hz-color-interactive);
 }
 .pa-lib-size {
   font-size: var(--hz-font-size-sm);

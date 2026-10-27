@@ -533,6 +533,22 @@ export function listMyAudioAssets() {
   return request<{ items: AudioAssetInfo[]; total: number }>('/api/me/media')
 }
 
+/** 资产重命名（仅本人；改显示名，后续新加列表项取新名）。 */
+export function renameMediaAsset(id: string, name: string) {
+  return request<{ id: string; originalName: string }>(`/api/me/media/${id}/name`, {
+    method: 'PUT',
+    data: { name }
+  })
+}
+
+/** 播放列表项重命名（歌名独立快照，与资产名解耦）。 */
+export function renamePlaylistItem(id: string, title: string) {
+  return request<{ id: string; title: string }>(`/api/me/playlist/${id}/title`, {
+    method: 'PUT',
+    data: { title }
+  })
+}
+
 // ---------- 服务器音乐库（admin 配置磁盘目录，全员默认曲库） ----------
 
 export interface ServerAudioFile {

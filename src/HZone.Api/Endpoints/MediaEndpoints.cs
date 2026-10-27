@@ -260,6 +260,34 @@ public static class MediaEndpoints
             return Results.Ok(new { items, total = items.Count });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
+        // 资产重命名（仅本人；只改显示名 OriginalName，不动物理 StoredName）：
+        // 播放器音频库/后续新加列表项取新名；附件下载名同步更新。
+        app.MapPut("/me/media/{id:guid}/name", [Authorize] async (
+            Guid id,
+            RenameMediaRequest request,
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var asset = await db.MediaAssets.FirstOrDefaultAsync(m => m.Id == id && m.OwnerUserId == userId, ct);
+            if (asset is null)
+            {
+                return Results.NotFound(new { error = "media not found" });
+            }
+            var name = request.Name?.Trim();
+            if (string.IsNullOrEmpty(name) || name.Length > 200)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["name"] = new[] { "name required (max 200 chars)" },
+                });
+            }
+            asset.OriginalName = name;
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { asset.Id, asset.OriginalName });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
         // 照片墙：本人图片资产分页（新→旧，带缩略图与所属内容），网格浏览用。
         app.MapGet("/me/media/photos", [Authorize] async (
             ClaimsPrincipal principal,
@@ -389,3 +417,5 @@ public static class MediaEndpoints
             : throw new InvalidOperationException("missing sub claim");
     }
 }
+
+public sealed record RenameMediaRequest(string? Name);

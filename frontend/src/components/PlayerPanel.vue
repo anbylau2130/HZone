@@ -46,6 +46,7 @@
         <text class="pp-row-ico">{{ i === player.currentIndex && player.playing ? '🔊' : it.sourceKind === 'url' ? '🔗' : it.sourceKind === 'server' ? '💿' : '🎵' }}</text>
         <text class="pp-row-title">{{ it.title }}</text>
         <view v-if="it.sourceKind !== 'server'" class="pp-row-ops" @click.stop>
+          <text class="pp-op" :title="$t('common.rename')" @click="renameRow(it)">✎</text>
           <text class="pp-op" :class="{ dim: userIndexOf(it.id) <= 0 }" @click="player.moveAndSync(it.id, -1)">↑</text>
           <text class="pp-op" :class="{ dim: userIndexOf(it.id) >= player.items.length - 1 }" @click="player.moveAndSync(it.id, 1)">↓</text>
           <text class="pp-op danger" @click="player.removeAndSync(it.id)">✕</text>
@@ -57,8 +58,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
+
+const { t } = useI18n()
 
 const player = usePlayerStore()
 
@@ -69,6 +73,28 @@ onMounted(() => {
 /** 用户项在其子序列中的下标（排序按钮边界判断用）。 */
 function userIndexOf(id: string): number {
   return player.items.findIndex((x) => x.id === id)
+}
+
+/** 列表项重命名（歌名独立快照，当前曲名即时跟随）。 */
+function renameRow(it: { id: string; title: string; sourceKind: string }) {
+  if (it.sourceKind === 'server') return
+  uni.showModal({
+    title: t('common.rename'),
+    editable: true,
+    placeholderText: it.title,
+    content: it.title,
+    confirmText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+    success: async (res) => {
+      const title = (res.content ?? '').trim()
+      if (!res.confirm || !title || title === it.title) return
+      try {
+        await player.renameItem(it.id, title)
+      } catch {
+        // 请求层已 toast
+      }
+    }
+  })
 }
 
 const barPercent = computed(() =>

@@ -17,6 +17,7 @@ import {
   addPlaylistItem,
   reorderPlaylist,
   removePlaylistItem,
+  renamePlaylistItem,
   getServerMusicLibrary,
   type PlaylistItem
 } from '../api/endpoints'
@@ -273,6 +274,13 @@ async function addMedia(mediaAssetId: string, title?: string) {
   return item
 }
 
+/** 列表项重命名（歌名独立快照；当前曲名即时跟随）。 */
+async function renameItem(id: string, title: string) {
+  await renamePlaylistItem(id, title)
+  const target = items.value.find((x) => x.id === id)
+  if (target) target.title = title
+}
+
 /** pinia 薄壳：uni H5 每页独立 pinia 实例，但 setup 闭包到的都是上面的模块态。 */
 export const usePlayerStore = defineStore('player', () => ({
   items,
@@ -296,6 +304,7 @@ export const usePlayerStore = defineStore('player', () => ({
   toggleLoopMode,
   removeAndSync,
   moveAndSync,
+  renameItem,
   addUrl,
   addMedia
 }))

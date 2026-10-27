@@ -263,6 +263,34 @@ public static class PlaylistEndpoints
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
+        // 重命名：仅本人条目（歌名显示与资产名解耦——添加后即为独立快照）。
+        app.MapPut("/me/playlist/{id:guid}/title", [Authorize] async (
+            Guid id,
+            RenamePlaylistItemRequest request,
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var item = await db.PlaylistItems
+                .FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId, ct);
+            if (item is null)
+            {
+                return Results.NotFound(new { error = "playlist item not found" });
+            }
+            var title = request.Title?.Trim();
+            if (string.IsNullOrEmpty(title) || title.Length > 200)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["title"] = new[] { "title required (max 200 chars)" },
+                });
+            }
+            item.Title = title;
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { item.Id, item.Title });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
         // 删除：仅本人条目，非本人/不存在统一 404。
         app.MapDelete("/me/playlist/{id:guid}", [Authorize] async (
             Guid id,
@@ -326,3 +354,5 @@ public sealed record AddPlaylistItemRequest(string SourceKind, string? Title, st
 public sealed record ReorderPlaylistRequest(List<Guid> Ids);
 
 public sealed record SetMusicDirRequest(string? MusicDir);
+
+public sealed record RenamePlaylistItemRequest(string? Title);

@@ -42,6 +42,11 @@
           >
             <text class="mp-row-ico">{{ it.sourceKind === 'server' ? '💿' : '' }}</text>
             <text class="mp-row-title">{{ it.title }}</text>
+            <text
+              v-if="it.sourceKind !== 'server'"
+              class="mp-row-rename"
+              @click.stop="renameRow(it)"
+            >✎</text>
             <text v-if="it.sourceKind !== 'server'" class="mp-row-del" @click.stop="player.removeAndSync(it.id)">✕</text>
           </view>
         </scroll-view>
@@ -52,10 +57,34 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
+const { t } = useI18n()
 const player = usePlayerStore()
 const drawerOpen = ref(false)
+
+/** 列表项重命名（与面板同款弹窗）。 */
+function renameRow(it: { id: string; title: string; sourceKind: string }) {
+  if (it.sourceKind === 'server') return
+  uni.showModal({
+    title: t('common.rename'),
+    editable: true,
+    placeholderText: it.title,
+    content: it.title,
+    confirmText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+    success: async (res) => {
+      const title = (res.content ?? '').trim()
+      if (!res.confirm || !title || title === it.title) return
+      try {
+        await player.renameItem(it.id, title)
+      } catch {
+        // 请求层已 toast
+      }
+    }
+  })
+}
 
 const percent = computed(() =>
   player.duration > 0 ? Math.min(100, (player.position / player.duration) * 100) : 0
@@ -206,6 +235,11 @@ onMounted(() => {
 .mp-row.on .mp-row-title {
   color: var(--hz-color-primary);
   font-weight: 600;
+}
+.mp-row-rename {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  padding: 0 4px;
 }
 .mp-row-del {
   font-size: var(--hz-font-size-sm);
