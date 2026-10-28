@@ -391,6 +391,9 @@ namespace HZone.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Lyrics")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("MediaAssetId")
                         .HasColumnType("TEXT");
 

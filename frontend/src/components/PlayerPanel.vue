@@ -31,6 +31,25 @@
       <view class="pp-btn" @click="player.next()"><PlayerIcon name="next" :size="16" /></view>
     </view>
 
+    <!-- 歌词：随播放进度滚动高亮（有歌词的曲目才显示） -->
+    <scroll-view
+      v-if="player.currentLyricLines.length"
+      scroll-y
+      class="pp-lyrics"
+      :scroll-into-view="lyricAnchor"
+      scroll-with-animation
+    >
+      <view
+        v-for="(line, i) in player.currentLyricLines"
+        :id="'ply-' + i"
+        :key="i"
+        class="pp-lyr"
+        :class="{ on: i === player.currentLyricIndex }"
+      >
+        <text class="pp-lyr-text">{{ line.text }}</text>
+      </view>
+    </scroll-view>
+
     <!-- 添加块（与移动端抽屉共享）：音频库+上传 / 外链 -->
     <PlayerAdd />
 
@@ -56,26 +75,49 @@
         </view>
         <view v-if="it.sourceKind !== 'server'" class="pp-row-ops" @click.stop>
           <text class="pp-op" :title="$t('common.rename')" @click="renameRow(it)">✎</text>
+          <text class="pp-op" :title="$t('player.lyricsTitle')" @click="openLyrics(it)">♪</text>
           <text class="pp-op" :class="{ dim: userIndexOf(it.id) <= 0 }" @click="player.moveAndSync(it.id, -1)">↑</text>
           <text class="pp-op" :class="{ dim: userIndexOf(it.id) >= player.items.length - 1 }" @click="player.moveAndSync(it.id, 1)">↓</text>
           <text class="pp-op danger" @click="player.removeAndSync(it.id)">✕</text>
         </view>
       </view>
     </scroll-view>
+
+    <!-- 歌词录入弹层（与抽屉共用） -->
+    <LyricsEditor
+      v-model:visible="lyricsOpen"
+      :track-id="lyricsTarget?.id ?? ''"
+      :track-title="lyricsTarget?.title ?? ''"
+      :initial="lyricsTarget?.lyrics ?? null"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
 import PlayerIcon from './PlayerIcon.vue'
+import LyricsEditor from './LyricsEditor.vue'
 import { metaLine } from '../utils/audioMeta'
 
 const { t } = useI18n()
 
 const player = usePlayerStore()
+
+// 歌词录入：目标行 → 弹层
+const lyricsOpen = ref(false)
+const lyricsTarget = ref<{ id: string; title: string; lyrics: string | null } | null>(null)
+function openLyrics(it: { id: string; title: string; lyrics: string | null }) {
+  lyricsTarget.value = it
+  lyricsOpen.value = true
+}
+
+/** 歌词滚动锚点：当前行居中（scroll-into-view）。 */
+const lyricAnchor = computed(() =>
+  player.currentLyricIndex >= 0 ? `ply-${player.currentLyricIndex}` : ''
+)
 
 onMounted(() => {
   void player.load()
@@ -239,6 +281,27 @@ function onSeek(e: MouseEvent) {
 .pp-list {
   flex: 1;
   min-height: 80px;
+}
+/* 歌词滚动区：当前行主色加粗，其余弱化 */
+.pp-lyrics {
+  max-height: 132px;
+  min-height: 66px;
+  border-radius: var(--hz-radius-md);
+  background: var(--hz-color-surface);
+  padding: 6px 10px;
+  box-sizing: border-box;
+}
+.pp-lyr {
+  padding: 5px 0;
+}
+.pp-lyr-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  line-height: 1.5;
+}
+.pp-lyr.on .pp-lyr-text {
+  color: var(--hz-color-primary);
+  font-weight: 600;
 }
 .pp-group {
   padding: 4px 6px 2px;

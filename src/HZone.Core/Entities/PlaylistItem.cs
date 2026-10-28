@@ -20,6 +20,9 @@ public class PlaylistItem
     /// <summary>url 项的音频直链（http/https）；media 项为 null。</summary>
     public string? Url { get; set; }
 
+    /// <summary>歌词原文（lrc 格式，用户录入/上传）；服务器目录虚拟项无此列不适用。</summary>
+    public string? Lyrics { get; set; }
+
     /// <summary>media 项引用的音频资产；url 项为 null。</summary>
     public Guid? MediaAssetId { get; set; }
 

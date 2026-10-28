@@ -385,6 +385,8 @@
     "libraryEmpty": "还没有上传过音频",
     "playlistEmpty": "播放列表为空",
     "serverGroup": "服务器音乐",
-    "loadFailed": "音频加载失败"
+    "loadFailed": "音频加载失败",
+    "lyricsTitle": "歌词",
+    "lyricsPlaceholder": "粘贴 lrc 歌词原文，如 [00:12.50]第一句 [00:18.20]第二句"
   }
 }

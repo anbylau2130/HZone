@@ -386,6 +386,8 @@
     "libraryEmpty": "No audio uploaded yet",
     "playlistEmpty": "Playlist is empty",
     "serverGroup": "Server music",
-    "loadFailed": "Failed to load audio"
+    "loadFailed": "Failed to load audio",
+    "lyricsTitle": "Lyrics",
+    "lyricsPlaceholder": "Paste lrc lyrics, e.g. [00:12.50]first line [00:18.20]second line"
   }
 }

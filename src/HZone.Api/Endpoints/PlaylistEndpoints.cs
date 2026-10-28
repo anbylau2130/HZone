@@ -125,6 +125,8 @@ public static class PlaylistEndpoints
                     BitrateKbps = p.MediaAsset != null ? p.MediaAsset.BitrateKbps : null,
                     SizeBytes = p.MediaAsset != null ? (long?)p.MediaAsset.SizeBytes : null,
                     OriginalFileName = p.MediaAsset != null ? p.MediaAsset.OriginalName : null,
+                    // 歌词原文（lrc；无则 null）：播放器前端解析滚动
+                    Lyrics = p.Lyrics,
                     p.SortOrder,
                     p.CreatedAt,
                 })
@@ -304,6 +306,35 @@ public static class PlaylistEndpoints
             return Results.Ok(new { item.Id, item.Title });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
+        // 歌词录入：lrc 原文整体存取（空串 = 清除）；仅本人条目。上限防滥用。
+        app.MapPut("/me/playlist/{id:guid}/lyrics", [Authorize] async (
+            Guid id,
+            SetLyricsRequest request,
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var item = await db.PlaylistItems
+                .FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId, ct);
+            if (item is null)
+            {
+                return Results.NotFound(new { error = "playlist item not found" });
+            }
+            var lyrics = request.Lyrics?.Trim();
+            if (lyrics?.Length == 0) lyrics = null;
+            if (lyrics is not null && lyrics.Length > 100_000)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["lyrics"] = new[] { "lyrics too long (max 100000 chars)" },
+                });
+            }
+            item.Lyrics = lyrics;
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { item.Id, hasLyrics = lyrics is not null });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
         // 删除：仅本人条目，非本人/不存在统一 404。
         app.MapDelete("/me/playlist/{id:guid}", [Authorize] async (
             Guid id,
@@ -369,3 +400,5 @@ public sealed record ReorderPlaylistRequest(List<Guid> Ids);
 public sealed record SetMusicDirRequest(string? MusicDir);
 
 public sealed record RenamePlaylistItemRequest(string? Title);
+
+public sealed record SetLyricsRequest(string? Lyrics);

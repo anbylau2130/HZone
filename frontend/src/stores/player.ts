@@ -18,11 +18,13 @@ import {
   reorderPlaylist,
   removePlaylistItem,
   renamePlaylistItem,
+  setPlaylistItemLyrics,
   getServerMusicLibrary,
   type PlaylistItem
 } from '../api/endpoints'
 import { loadMediaUrl } from '../api/media'
 import { getToken } from '../api/client'
+import { parseLrc, lrcIndexAt } from '../utils/lrc'
 import { i18n } from '../locale'
 
 /** 播放器统一曲目：用户项（PlaylistItem）+ 服务器音乐虚拟项的并集形状。 */
@@ -41,6 +43,8 @@ export interface PlayerTrack {
   sizeBytes: number | null
   /** 来源（文件位置）：media=上传原文件名 / server=目录文件名 / url=链接本身。 */
   sourceLabel: string | null
+  /** 歌词原文（lrc；无则 null）。 */
+  lyrics: string | null
   sortOrder: number
   createdAt: string
 }
@@ -82,6 +86,7 @@ const tracks = computed<PlayerTrack[]>(() => [
       bitrateKbps: null,
       sizeBytes: f.sizeBytes,
       sourceLabel: f.name,
+      lyrics: null,
       sortOrder: 0,
       createdAt: ''
     })
@@ -98,6 +103,10 @@ const tracks = computed<PlayerTrack[]>(() => [
 const current = computed(() =>
   currentIndex.value >= 0 ? tracks.value[currentIndex.value] ?? null : null
 )
+
+// ---------- 歌词（lrc）：解析当前曲 + 按播放进度算当前行 ----------
+const currentLyricLines = computed(() => parseLrc(current.value?.lyrics))
+const currentLyricIndex = computed(() => lrcIndexAt(currentLyricLines.value, position.value))
 
 // 单例音频上下文：H5 底层即 audio 元素，App 端为原生播放器；挂模块层不随页面卸载
 let ctx: UniApp.InnerAudioContext | null = null
@@ -307,6 +316,13 @@ async function renameItem(id: string, title: string) {
   if (target) target.title = title
 }
 
+/** 歌词录入（空串清除）：落库 + 本地 item 即时跟随。 */
+async function setLyrics(id: string, lyrics: string) {
+  await setPlaylistItemLyrics(id, lyrics)
+  const target = items.value.find((x) => x.id === id)
+  if (target) target.lyrics = lyrics.trim() ? lyrics : null
+}
+
 /** pinia 薄壳：uni H5 每页独立 pinia 实例，但 setup 闭包到的都是上面的模块态。 */
 export const usePlayerStore = defineStore('player', () => ({
   items,
@@ -320,6 +336,8 @@ export const usePlayerStore = defineStore('player', () => ({
   loopMode,
   tracks,
   current,
+  currentLyricLines,
+  currentLyricIndex,
   hidden,
   setHidden,
   load,
@@ -333,6 +351,7 @@ export const usePlayerStore = defineStore('player', () => ({
   removeAndSync,
   moveAndSync,
   renameItem,
+  setLyrics,
   addUrl,
   addMedia
 }))

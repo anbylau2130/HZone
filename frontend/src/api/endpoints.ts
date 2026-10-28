@@ -535,6 +535,8 @@ export interface PlaylistItem {
   sizeBytes: number | null
   /** 来源文件名（"文件位置"：上传原文件 / 外链为 null）。 */
   originalFileName: string | null
+  /** 歌词原文（lrc；无则 null）：播放器解析滚动。 */
+  lyrics: string | null
   sortOrder: number
   createdAt: string
 }
@@ -590,6 +592,14 @@ export function renamePlaylistItem(id: string, title: string) {
   return request<{ id: string; title: string }>(`/api/me/playlist/${id}/title`, {
     method: 'PUT',
     data: { title }
+  })
+}
+
+/** 歌词录入/覆盖（空串=清除），lrc 原文整体存取。 */
+export function setPlaylistItemLyrics(id: string, lyrics: string) {
+  return request<{ id: string; hasLyrics: boolean }>(`/api/me/playlist/${id}/lyrics`, {
+    method: 'PUT',
+    data: { lyrics }
   })
 }
 

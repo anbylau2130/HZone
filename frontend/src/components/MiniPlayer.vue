@@ -43,6 +43,8 @@
           <text class="mp-sheet-title">{{ $t('player.title') }}</text>
           <text class="mp-close" @click="drawerOpen = false">{{ $t('common.cancel') }}</text>
         </view>
+        <!-- 当前行歌词（有歌词的曲目才显示）：跟播放进度走 -->
+        <text v-if="currentLyricText" class="mp-lyr-now">{{ currentLyricText }}</text>
         <!-- 添加块（与桌面右栏面板共享）：移动端配置播放列表的唯一入口 -->
         <PlayerAdd />
         <scroll-view scroll-y class="mp-list">
@@ -66,11 +68,24 @@
               class="mp-row-rename"
               @click.stop="renameRow(it)"
             >✎</text>
+            <text
+              v-if="it.sourceKind !== 'server'"
+              class="mp-row-rename"
+              @click.stop="openLyrics(it)"
+            >♪</text>
             <text v-if="it.sourceKind !== 'server'" class="mp-row-del" @click.stop="player.removeAndSync(it.id)">✕</text>
           </view>
         </scroll-view>
       </view>
     </view>
+
+    <!-- 歌词录入弹层（与面板共用） -->
+    <LyricsEditor
+      v-model:visible="lyricsOpen"
+      :track-id="lyricsTarget?.id ?? ''"
+      :track-title="lyricsTarget?.title ?? ''"
+      :initial="lyricsTarget?.lyrics ?? null"
+    />
   </view>
 </template>
 
@@ -80,10 +95,25 @@ import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
 import PlayerIcon from './PlayerIcon.vue'
+import LyricsEditor from './LyricsEditor.vue'
 import { metaLine } from '../utils/audioMeta'
 const { t } = useI18n()
 const player = usePlayerStore()
 const drawerOpen = ref(false)
+
+// 歌词录入：目标行 → 弹层（与面板同款）
+const lyricsOpen = ref(false)
+const lyricsTarget = ref<{ id: string; title: string; lyrics: string | null } | null>(null)
+function openLyrics(it: { id: string; title: string; lyrics: string | null }) {
+  lyricsTarget.value = it
+  lyricsOpen.value = true
+}
+
+/** 抽屉顶当前行歌词（有歌词且已起播才显示）。 */
+const currentLyricText = computed(() => {
+  const idx = player.currentLyricIndex
+  return idx >= 0 ? player.currentLyricLines[idx]?.text ?? '' : ''
+})
 
 /** 列表项重命名（与面板同款弹窗）。 */
 function renameRow(it: { id: string; title: string; sourceKind: string }) {
@@ -272,6 +302,17 @@ onMounted(() => {
 .mp-close {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
+}
+/* 抽屉顶当前行歌词 */
+.mp-lyr-now {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-primary);
+  font-weight: 600;
+  text-align: center;
+  padding: 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .mp-list {
   /* 弹性占位：吃掉 88vh 封顶后的剩余空间，自身内部滚动 */
