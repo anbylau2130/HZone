@@ -195,34 +195,13 @@
 
     <FriendPicker v-model:visible="pickerVisible" :selected="pickedFriends" @confirm="onFriendsConfirmed" />
 
-    <view v-if="weatherPickerOpen" class="overlay" @click="weatherPickerOpen = false">
-      <view class="sheet" @click.stop>
-        <view class="head">
-          <text class="sheet-title">{{ $t('weather.title') }}</text>
-          <text class="cancel" @click="weatherPickerOpen = false">{{ $t('common.cancel') }}</text>
-        </view>
-        <view class="cond-grid">
-          <view
-            v-for="c in WEATHER_CONDITIONS"
-            :key="c"
-            class="cond"
-            :class="{ on: wCondition === c }"
-            @click="wCondition = c"
-          >
-            <text class="cond-icon">{{ CONDITION_ICONS[c] }}</text>
-            <text class="cond-name">{{ $t('weather.conditions.' + c) }}</text>
-          </view>
-        </view>
-        <view class="w-fields">
-          <input v-model="wCity" class="field" :placeholder="$t('weather.city')" />
-          <input v-model="wTemp" class="field" type="digit" :placeholder="$t('weather.tempPlaceholder')" />
-        </view>
-        <view class="sheet-actions">
-          <button class="mini ghost" @click="clearWeather">{{ $t('weather.clear') }}</button>
-          <button class="mini" @click="confirmWeather">{{ $t('common.confirm') }}</button>
-        </view>
-      </view>
-    </view>
+    <!-- 天气选择弹层（与随记面板共用组件）：确认/清除回写 weather 快照 -->
+    <WeatherPicker
+      v-model:visible="weatherPickerOpen"
+      :weather="weather"
+      @confirm="(w) => (weather = w)"
+      @clear="clearWeather"
+    />
   </view>
 </template>
 
@@ -231,6 +210,7 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FriendPicker from '../../components/FriendPicker.vue'
 import EmojiPicker from '../../components/EmojiPicker.vue'
+import WeatherPicker from '../../components/WeatherPicker.vue'
 // #ifdef H5
 import CherryEditor from '../../components/CherryEditor.vue'
 // #endif
@@ -250,7 +230,7 @@ import { useVoiceRecorder } from '../../composables/useVoiceRecorder'
 import { loadMediaUrl } from '../../api/media'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
-import { CONDITION_ICONS, WEATHER_CONDITIONS, getWeather, type WeatherSnapshot } from '../../utils/weather'
+import { CONDITION_ICONS, getWeather, type WeatherSnapshot } from '../../utils/weather'
 import { formatLunar } from '../../utils/lunar'
 
 onShow(() => {
@@ -505,31 +485,13 @@ const lunarParts = computed(() => {
 // ---------- 天气（homepage-v2）：快照随发布提交，可改可清 ----------
 const weather = ref<WeatherSnapshot | null>(null)
 const weatherPickerOpen = ref(false)
-const wCondition = ref<WeatherSnapshot['condition']>('sunny')
-const wCity = ref('')
-const wTemp = ref('')
 
 function openWeatherPicker() {
-  const w = weather.value
-  wCondition.value = w?.condition ?? 'sunny'
-  wCity.value = w?.city ?? ''
-  wTemp.value = w ? String(Math.round(w.tempC)) : ''
   weatherPickerOpen.value = true
-}
-
-function confirmWeather() {
-  const temp = Number.parseFloat(wTemp.value)
-  weather.value = {
-    city: wCity.value.trim(),
-    condition: wCondition.value,
-    tempC: Number.isFinite(temp) ? temp : 0
-  }
-  weatherPickerOpen.value = false
 }
 
 function clearWeather() {
   weather.value = null
-  weatherPickerOpen.value = false
   weatherAutoStopped = true
 }
 
@@ -1028,15 +990,6 @@ async function submit() {
 .preview-toggle.on .pt-text {
   color: var(--hz-color-primary);
 }
-.field {
-  height: 44px;
-  border: 1px solid var(--hz-color-border);
-  border-radius: var(--hz-radius-md);
-  padding: 0 12px;
-  font-size: var(--hz-font-size-base);
-  color: var(--hz-color-text);
-  background: var(--hz-color-bg);
-}
 .media-grid {
   /* 与阅读侧九宫格同款：3 列限宽 300px（用户要求 3×3 布局） */
   display: grid;
@@ -1173,96 +1126,6 @@ async function submit() {
 }
 .btn-inline[disabled] {
   opacity: 0.6;
-}
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 999;
-}
-.sheet {
-  width: 100%;
-  max-width: 520px;
-  background: var(--hz-color-surface);
-  border-radius: var(--hz-radius-lg) var(--hz-radius-lg) 0 0;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.sheet-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--hz-color-text);
-}
-.cancel {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-}
-.cond-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.cond {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 0;
-  border: 1px solid var(--hz-color-border);
-  border-radius: var(--hz-radius-md);
-}
-.cond.on {
-  border-color: var(--hz-color-primary);
-  background: var(--hz-color-bg);
-}
-.cond-icon {
-  font-size: 22px;
-}
-.cond-name {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text);
-}
-.w-fields {
-  display: flex;
-  gap: 8px;
-}
-.field {
-  flex: 1;
-  height: 38px;
-  border: 1px solid var(--hz-color-border);
-  border-radius: var(--hz-radius-md);
-  padding: 0 12px;
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text);
-  background: var(--hz-color-bg);
-}
-.sheet-actions {
-  display: flex;
-  gap: 8px;
-}
-.mini {
-  flex: 1;
-  height: 38px;
-  line-height: 38px;
-  font-size: var(--hz-font-size-sm);
-  background: var(--hz-color-primary);
-  color: #fff;
-  border-radius: var(--hz-radius-md);
-}
-.mini.ghost {
-  background: var(--hz-color-surface);
-  color: var(--hz-color-text-secondary);
-  border: 1px solid var(--hz-color-border);
 }
 .recipients {
   background: var(--hz-color-surface);

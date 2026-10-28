@@ -7,9 +7,13 @@
         <text class="c-head-date">{{ dateLine }}</text>
         <text v-if="lunarLine" class="c-head-lunar">{{ lunarLine }}</text>
       </view>
-      <text v-if="weather" class="c-head-weather">
-        {{ CONDITION_ICONS[weather.condition] }} {{ weather.city }} {{ Math.round(weather.tempC) }}°C
-      </text>
+      <!-- 天气：点击改/手选（自动采集失败时可手动补） -->
+      <view class="c-head-weather" @click="weatherPickerOpen = true">
+        <text v-if="weather">
+          {{ CONDITION_ICONS[weather.condition] }} {{ weather.city }} {{ Math.round(weather.tempC) }}°C
+        </text>
+        <text v-else class="c-head-add">{{ $t('weather.add') }}</text>
+      </view>
     </view>
     <textarea
       v-if="isEdit"
@@ -29,6 +33,25 @@
       auto-height
     />
     <EmojiPicker v-if="emojiOpen" @select="onEmoji" />
+    <!-- 标签行（与发布页同款交互：# 前缀 chips + 非受控输入 :key 重建） -->
+    <view class="c-tags">
+      <text class="c-tags-label">#</text>
+      <view v-for="(tg, i) in tags" :key="tg" class="c-tag-chip">
+        <text class="c-tag-text">{{ tg }}</text>
+        <text class="c-tag-x" @click="removeTag(i)">×</text>
+      </view>
+      <input
+        v-if="tags.length < 10"
+        :key="tags.length"
+        class="c-tag-input"
+        :placeholder="tags.length ? '' : $t('publish.tagPlaceholder')"
+        confirm-type="done"
+        :maxlength="32"
+        @input="onTagInput"
+        @confirm="onTagConfirm"
+        @blur="onTagBlur"
+      />
+    </view>
     <view v-if="mediaItems.length" class="c-media">
       <view v-for="m in mediaItems" :key="m.preview" class="c-cell">
         <!-- 语音：麦占位格（发布后卡片内点「播放语音」收听） -->
@@ -60,12 +83,21 @@
         {{ busy ? $t('common.loading') : isEdit ? $t('common.save') : $t('publish.submit') }}
       </button>
     </view>
+
+    <!-- 天气选择弹层（与发布页共用组件） -->
+    <WeatherPicker
+      v-model:visible="weatherPickerOpen"
+      :weather="weather"
+      @confirm="(w) => (weather = w)"
+      @clear="weather = null"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from 'vue'
 import EmojiPicker from './EmojiPicker.vue'
+import WeatherPicker from './WeatherPicker.vue'
 import { createSay, updateContent, getMyStats, type ContentItem } from '../api/endpoints'
 import { uploadFile } from '../api/client'
 import { loadMediaUrl } from '../api/media'
@@ -91,7 +123,9 @@ const busy = ref(false)
 // ---------- 日记头（新建态）：日期/星期 + 农历 + 自动天气 ----------
 // 与发布页同源：天气走 getWeather 模块缓存（失败静默降级），农历来自 /me/stats
 const weather = ref<WeatherSnapshot | null>(null)
+const weatherPickerOpen = ref(false)
 const lunarLine = ref<string | null>(null)
+const instance = getCurrentInstance()
 
 const dateLine = computed(() => {
   const now = new Date()
@@ -107,6 +141,45 @@ onMounted(() => {
     .then((s) => (lunarLine.value = formatLunar(s.today)))
     .catch(() => {})
 })
+
+// ---------- 标签（与发布页同款：非受控 uni-input + :key 重建清框） ----------
+const tags = ref<string[]>([])
+let lastTagInput = ''
+
+function onTagInput(e: { detail: { value: string } }) {
+  lastTagInput = e.detail.value
+}
+
+function onTagConfirm() {
+  commitTag((lastTagInput || '').trim())
+  lastTagInput = ''
+  // :key 重建后回焦新框，连续输入不断流（定位本实例，页面可能并存新建+编辑两个）
+  nextTick(() => {
+    const root = (instance?.proxy?.$el ?? document) as HTMLElement
+    root.querySelector?.('.c-tag-input input')?.focus()
+  })
+}
+
+function onTagBlur() {
+  const raw = (lastTagInput || '').trim()
+  lastTagInput = ''
+  if (raw) commitTag(raw)
+}
+
+function commitTag(raw: string) {
+  if (!raw) return
+  if (tags.value.length >= 10) {
+    uni.showToast({ title: t('publish.tagLimit'), icon: 'none' })
+    return
+  }
+  if (!tags.value.some((x) => x.toLowerCase() === raw.toLowerCase())) {
+    tags.value = [...tags.value, raw]
+  }
+}
+
+function removeTag(i: number) {
+  tags.value = tags.value.filter((_, idx) => idx !== i)
+}
 
 interface PickedMedia {
   preview: string
@@ -124,12 +197,13 @@ const voice = useVoiceRecorder((r) => {
 const canSend = computed(() => text.value.trim().length > 0 || mediaItems.value.length > 0)
 const isEdit = computed(() => !!props.edit)
 
-// 编辑回填：文本 + 已有媒体（带 mediaId 重提交；预览换授权 blob）
+// 编辑回填：文本 + 标签 + 已有媒体（带 mediaId 重提交；预览换授权 blob）
 watch(
   () => props.edit,
   (c) => {
     if (!c) return
     text.value = c.text ?? ''
+    tags.value = [...(c.tags ?? [])]
     mediaItems.value = []
     for (const m of c.media ?? []) {
       // 语音随记：audio 也回填（占格不可预览，发送重绑保留）
@@ -240,24 +314,30 @@ async function send() {
     const mediaIds = mediaItems.value.map((m) => m.mediaId).filter((id): id is string => !!id)
 
     if (props.edit) {
-      // 原地保存：媒体整体重绑（移除格子=解绑）；recipientIds/weather 不传，后端保持原值
-      const updated = await updateContent(props.edit.id, { text: text.value, mediaIds })
+      // 原地保存：媒体整体重绑（移除格子=解绑）；标签跟随更新；recipientIds/weather 不传，后端保持原值
+      const updated = await updateContent(props.edit.id, {
+        text: text.value,
+        mediaIds,
+        tags: tags.value
+      })
       uni.showToast({ title: t('publish.saved'), icon: 'success' })
       emit('updated', updated)
       return
     }
 
-    // 新建随记附上自动采集的天气快照（采集失败不带，与发布页同口径）
+    // 新建随记附上自动采集的天气快照（采集失败不带，与发布页同口径）+ 标签
     const created = await createSay(
       text.value,
       [],
       mediaIds,
       weather.value
         ? { city: weather.value.city, condition: weather.value.condition, tempC: weather.value.tempC }
-        : undefined
+        : undefined,
+      tags.value
     )
     // 成功即清空，准备下一条
     text.value = ''
+    tags.value = []
     for (const m of mediaItems.value) {
       // #ifdef H5
       if (m.preview.startsWith('blob:')) URL.revokeObjectURL(m.preview)
@@ -323,6 +403,46 @@ defineExpose({
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text-secondary);
   white-space: nowrap;
+  cursor: pointer;
+}
+.c-head-add {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-primary);
+}
+/* 标签行（与发布页同款） */
+.c-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.c-tags-label {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+}
+.c-tag-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hz-color-primary) 12%, transparent);
+}
+.c-tag-text {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-primary);
+}
+.c-tag-x {
+  font-size: 12px;
+  color: var(--hz-color-text-secondary);
+  cursor: pointer;
+}
+.c-tag-input {
+  flex: 1;
+  min-width: 72px;
+  height: 26px;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text);
 }
 .c-area {
   width: 100%;
