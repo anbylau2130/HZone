@@ -135,7 +135,8 @@ async function submitUrl() {
   }
 }
 
-// H5 上传：原生 input（accept 音频），上传后自动加入播放列表并刷新库
+// H5 上传：原生 input（accept 音频）；选中后先弹命名框（预填去扩展名的
+// 原名，确认后以该名入库——不然上传后查找困难）；取消/留空按原名继续传
 function pickAudio() {
   // #ifdef H5
   if (uploading.value) return
@@ -144,10 +145,30 @@ function pickAudio() {
   input.accept = 'audio/*'
   input.onchange = () => {
     const file = input.files?.[0]
-    if (file) void uploadAndAdd(file)
+    if (file) void nameThenUpload(file)
   }
   input.click()
   // #endif
+}
+
+/** 命名后上传：预填原名去扩展名；确认→改名上传；取消/空→原名直传（不阻断）。 */
+async function nameThenUpload(file: File) {
+  const baseName = file.name.replace(/\.[^.]+$/, '')
+  const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
+  const named = await new Promise<string | null>((resolve) => {
+    uni.showModal({
+      title: t('player.nameAudio'),
+      editable: true,
+      placeholderText: baseName,
+      content: baseName,
+      confirmText: t('common.confirm'),
+      cancelText: t('player.uploadAsIs'),
+      success: (res) => resolve(res.confirm && res.content?.trim() ? res.content.trim() : null),
+      fail: () => resolve(null)
+    })
+  })
+  const finalFile = named ? new File([file], named + ext, { type: file.type }) : file
+  await uploadAndAdd(finalFile)
 }
 
 async function uploadAndAdd(file: File) {

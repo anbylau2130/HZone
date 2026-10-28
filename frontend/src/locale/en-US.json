@@ -371,6 +371,8 @@
     "linkUrl": "Audio URL (https://…)",
     "library": "Audio library",
     "upload": "Upload",
+    "nameAudio": "Name this track",
+    "uploadAsIs": "Keep original",
     "importFolder": "Import folder",
     "importing": "Importing {x}/{n}",
     "importDone": "Imported {ok}, skipped {skip}",
