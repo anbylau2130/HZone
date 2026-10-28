@@ -108,6 +108,15 @@ onMounted(() => {
   bottom: calc(70px + env(safe-area-inset-bottom) + 8px);
   z-index: 90;
 }
+/* ≥768 平板：底部 TabBar 退场改左侧栏（220px），桥避开侧栏、贴底悬浮；
+   桥高约 48px + 12px 贴底 < 页面自带 70px 底留白，滚到底不再压内容（FAB 在 86px 起，纵向错开） */
+@media (min-width: 768px) {
+  .mp {
+    left: calc(220px + 12px);
+    right: 16px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
 /* ≥1200px：ToolDock 右栏已有完整面板，全局桥退场 */
 @media (min-width: 1200px) {
   .mp {
