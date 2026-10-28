@@ -259,9 +259,9 @@ onShow(() => {
   // 编辑模式：日记头日期/农历/天气由 loadForEdit 回填原内容快照，不拉今日统计
   if (editingId.value) return
   refreshDiaryHead()
-  // 进入时自动获取天气（模块级缓存，一次会话只探一次）；失败静默降级为手动选择
-  if (!weatherAutoDone) {
-    weatherAutoDone = true
+  // 自动天气：成功一次模块级缓存即止；失败不缓存——每次 onShow 重试，
+  // 直到拿到或用户手动改过（境外 API 偶发被断时不再一次失败永久放弃）
+  if (!weatherAutoStopped) {
     getWeather()
       .then((w) => {
         if (!weather.value) weather.value = w
@@ -270,8 +270,8 @@ onShow(() => {
   }
 })
 
-// 页面实例内只自动获取一次（用户清除后不再回填）
-let weatherAutoDone = false
+// 用户手动清除后不再自动回填（手动改过视为定稿）
+let weatherAutoStopped = false
 
 // 支持 ?kind=say / ?kind=journal 预选发布类型（随记/日志分页入口跳入）；
 // ?id= 进入编辑模式——编辑复用创建页全套编辑器（story：编辑与创建同一页面）
@@ -530,6 +530,7 @@ function confirmWeather() {
 function clearWeather() {
   weather.value = null
   weatherPickerOpen.value = false
+  weatherAutoStopped = true
 }
 
 function formatTemp(tempC: number): string {
