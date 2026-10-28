@@ -97,14 +97,14 @@ function pick(date: string) {
   flex-direction: column;
   gap: 10px;
 }
+/* 占满整卡但格子保持小尺寸：列间 space-between 拉伸吸收余量 */
 .grid {
   display: flex;
+  justify-content: space-between;
   gap: 3px;
   width: 100%;
 }
 .col {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -113,9 +113,9 @@ function pick(date: string) {
   background: color-mix(in srgb, var(--hz-color-primary) 10%, transparent);
   border-radius: 4px;
 }
-/* 格子随列宽伸缩（占满卡片），aspect-ratio 保正方形 */
 .cell {
-  aspect-ratio: 1;
+  width: 15px;
+  height: 15px;
   border-radius: 2px;
 }
 .cell.blank {
@@ -143,10 +143,10 @@ function pick(date: string) {
   align-items: center;
   gap: 4px;
 }
-/* 图例小格不随列宽伸缩，保持固定小方块 */
+/* 图例小格与网格格同尺寸 */
 .legend .cell {
-  width: 11px;
-  height: 11px;
+  width: 15px;
+  height: 15px;
   flex: none;
 }
 .legend-text {
