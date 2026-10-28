@@ -2,7 +2,9 @@
   <!-- 全局 mini 桥：<1200px 常驻（≥1200 由 ToolDock 右栏 PlayerPanel 接管，CSS 隐藏本条）。
        音频本体在 player store 模块单例里，本条只是遥控器——页面切换不中断。 -->
   <view v-if="player.tracks.length && !player.hidden" class="mp">
-    <view class="mp-bar">
+    <!-- 抽屉打开时隐藏桥：面板（居中 max-520）盖不住整条桥，两侧按钮会半截
+         悬在遮罩上与列表叠影；关闭抽屉桥即回来 -->
+    <view v-if="!drawerOpen" class="mp-bar">
       <view class="mp-btn" @click="player.toggle()">
         <PlayerIcon :name="player.playing ? 'pause' : 'play'" :size="14" />
       </view>
@@ -194,6 +196,9 @@ onMounted(() => {
 .mp-sheet {
   width: 100%;
   max-width: 520px;
+  /* 88vh 封顶：PlayerAdd 展开 + 长列表也只内部滚动，标题行不会被推出屏 */
+  max-height: calc(88vh - env(safe-area-inset-bottom));
+  margin-bottom: env(safe-area-inset-bottom);
   background: var(--hz-color-surface);
   border-radius: var(--hz-radius-lg) var(--hz-radius-lg) 0 0;
   padding: 16px;
@@ -216,6 +221,9 @@ onMounted(() => {
   color: var(--hz-color-text-secondary);
 }
 .mp-list {
+  /* 弹性占位：吃掉 88vh 封顶后的剩余空间，自身内部滚动 */
+  flex: 1;
+  min-height: 0;
   max-height: 50vh;
 }
 .mp-empty {

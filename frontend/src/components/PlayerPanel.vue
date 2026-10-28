@@ -131,6 +131,9 @@ function onSeek(e: MouseEvent) {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* dock 是固定整高列：面板吃剩余空间并可收缩，列表随之弹性，不被挤出视口 */
+  flex: 1;
+  min-height: 0;
 }
 .pp-head {
   display: flex;
@@ -230,7 +233,8 @@ function onSeek(e: MouseEvent) {
   color: #fff;
 }
 .pp-list {
-  max-height: 280px;
+  flex: 1;
+  min-height: 80px;
 }
 .pp-group {
   padding: 4px 6px 2px;
