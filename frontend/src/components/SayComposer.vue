@@ -1,7 +1,16 @@
 <template>
-  <!-- 随记页内快速写说说（不跳 publish 页）：轻编辑器 = 文本 + 表情 + 图片。
-       传入 edit 即为原地编辑某条随记（保存走 PUT，取消还原） -->
+  <!-- 随记页内快速写说说（不跳 publish 页）：轻编辑器 = 日期/农历/天气头 + 文本 + 表情 + 图片/语音。
+       传入 edit 即为原地编辑某条随记（保存走 PUT，取消还原；编辑态不显示头/不重捕天气） -->
   <view class="composer" :class="{ editing: isEdit }">
+    <view v-if="!isEdit" class="c-head">
+      <view class="c-head-left">
+        <text class="c-head-date">{{ dateLine }}</text>
+        <text v-if="lunarLine" class="c-head-lunar">{{ lunarLine }}</text>
+      </view>
+      <text v-if="weather" class="c-head-weather">
+        {{ CONDITION_ICONS[weather.condition] }} {{ weather.city }} {{ Math.round(weather.tempC) }}°C
+      </text>
+    </view>
     <textarea
       v-if="isEdit"
       v-model="text"
@@ -11,7 +20,7 @@
       auto-height
     />
     <textarea
-      v-else
+      v-if="!isEdit"
       v-model="text"
       ref="areaRef"
       class="c-area"
@@ -55,12 +64,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import EmojiPicker from './EmojiPicker.vue'
-import { createSay, updateContent, type ContentItem } from '../api/endpoints'
+import { createSay, updateContent, getMyStats, type ContentItem } from '../api/endpoints'
 import { uploadFile } from '../api/client'
 import { loadMediaUrl } from '../api/media'
 import { useVoiceRecorder } from '../composables/useVoiceRecorder'
+import { getWeather, CONDITION_ICONS, type WeatherSnapshot } from '../utils/weather'
+import { formatLunar } from '../utils/lunar'
 import { useI18n } from 'vue-i18n'
 
 // 编辑模式：传入已有随记则回填（随记页原地编辑，不跳 publish）；
@@ -76,6 +87,26 @@ const { t } = useI18n()
 const text = ref('')
 const emojiOpen = ref(false)
 const busy = ref(false)
+
+// ---------- 日记头（新建态）：日期/星期 + 农历 + 自动天气 ----------
+// 与发布页同源：天气走 getWeather 模块缓存（失败静默降级），农历来自 /me/stats
+const weather = ref<WeatherSnapshot | null>(null)
+const lunarLine = ref<string | null>(null)
+
+const dateLine = computed(() => {
+  const now = new Date()
+  const date = t('home.monthDay', { m: now.getMonth() + 1, d: now.getDate() })
+  return `${date} ${t(`home.weekday${now.getDay()}`)}`
+})
+
+onMounted(() => {
+  getWeather()
+    .then((w) => (weather.value = w))
+    .catch(() => {})
+  getMyStats()
+    .then((s) => (lunarLine.value = formatLunar(s.today)))
+    .catch(() => {})
+})
 
 interface PickedMedia {
   preview: string
@@ -216,7 +247,15 @@ async function send() {
       return
     }
 
-    const created = await createSay(text.value, [], mediaIds)
+    // 新建随记附上自动采集的天气快照（采集失败不带，与发布页同口径）
+    const created = await createSay(
+      text.value,
+      [],
+      mediaIds,
+      weather.value
+        ? { city: weather.value.city, condition: weather.value.condition, tempC: weather.value.tempC }
+        : undefined
+    )
     // 成功即清空，准备下一条
     text.value = ''
     for (const m of mediaItems.value) {
@@ -252,6 +291,38 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+/* 日记头：左=日期+农历，右=天气快照（采集到才显示） */
+.c-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.c-head-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.c-head-date {
+  font-size: var(--hz-font-size-sm);
+  font-weight: 600;
+  color: var(--hz-color-text);
+  white-space: nowrap;
+}
+.c-head-lunar {
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c-head-weather {
+  flex-shrink: 0;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-text-secondary);
+  white-space: nowrap;
 }
 .c-area {
   width: 100%;
