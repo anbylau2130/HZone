@@ -276,6 +276,9 @@ export interface HeatmapCell {
 export interface Footprint {
   city: string
   firstAt: string
+  /** 打卡那一刻的天气快照（老数据/无天气为 null）：足迹卡展示用。 */
+  condition: string | null
+  tempC: number | null
 }
 
 export interface MeStats {

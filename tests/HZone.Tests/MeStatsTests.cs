@@ -122,13 +122,13 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
 
         // 时间正序：杭州(7d) → 杭州(6d) → 上海(5d) → 无天气(3d) → 上海(1d) → 杭州(today)。
         // 有城市序列 = 杭州,杭州,上海,上海,杭州 → 同城连续去重后 3 条：杭州→上海→杭州，
-        // 倒序返回（最近在上），firstAt 取每段首次出现的时刻。
-        await SeedSayAsync(author.Id, daysAgo: 7, weatherCity: "杭州");
+        // 倒序返回（最近在上），firstAt 取每段首次出现的时刻；天气快照随打卡条透传。
+        await SeedSayAsync(author.Id, daysAgo: 7, weatherCity: "杭州", weatherCondition: "cloudy", weatherTempC: 12.4);
         await SeedSayAsync(author.Id, daysAgo: 6, weatherCity: "杭州");
-        await SeedSayAsync(author.Id, daysAgo: 5, weatherCity: "上海");
+        await SeedSayAsync(author.Id, daysAgo: 5, weatherCity: "上海", weatherCondition: "rain", weatherTempC: 8);
         await SeedSayAsync(author.Id, daysAgo: 3);
         await SeedSayAsync(author.Id, daysAgo: 1, weatherCity: "上海");
-        await SeedSayAsync(author.Id, daysAgo: 0, weatherCity: "杭州");
+        await SeedSayAsync(author.Id, daysAgo: 0, weatherCity: "杭州", weatherCondition: "sunny", weatherTempC: 21);
 
         var res = await client.GetAsync("/me/stats");
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
@@ -146,6 +146,14 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         Assert.Equal(today.ToString("yyyy-MM-dd"), fp[0].GetProperty("firstAt").GetString()![..10]);
         Assert.Equal(today.AddDays(-5).ToString("yyyy-MM-dd"), fp[1].GetProperty("firstAt").GetString()![..10]);
         Assert.Equal(today.AddDays(-7).ToString("yyyy-MM-dd"), fp[2].GetProperty("firstAt").GetString()![..10]);
+
+        // 打卡那一刻的天气快照（现象+温度）随条目透传；老数据无天气为 null
+        Assert.Equal("sunny", fp[0].GetProperty("condition").GetString());
+        Assert.Equal(21, fp[0].GetProperty("tempC").GetDouble());
+        Assert.Equal("rain", fp[1].GetProperty("condition").GetString());
+        Assert.Equal(8, fp[1].GetProperty("tempC").GetDouble());
+        Assert.Equal("cloudy", fp[2].GetProperty("condition").GetString());
+        Assert.Equal(12.4, fp[2].GetProperty("tempC").GetDouble());
     }
 
     [Fact]
@@ -353,7 +361,7 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
-    private async Task<Guid> SeedSayAsync(Guid authorId, int daysAgo, string? weatherCity = null, string? weatherCondition = null)
+    private async Task<Guid> SeedSayAsync(Guid authorId, int daysAgo, string? weatherCity = null, string? weatherCondition = null, double? weatherTempC = null)
     {
         var created = DateTimeUtcDaysAgo(daysAgo);
         var sayId = Guid.NewGuid();
@@ -368,6 +376,7 @@ public class MeStatsTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
             UpdatedAt = created,
             WeatherCity = weatherCity,
             WeatherCondition = weatherCondition,
+            WeatherTempC = weatherTempC,
         });
         await db.SaveChangesAsync();
         return sayId;

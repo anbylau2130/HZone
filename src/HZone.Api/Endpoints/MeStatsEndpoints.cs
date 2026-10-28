@@ -32,7 +32,8 @@ public static class MeStatsEndpoints
                     c.CreatedAt,
                     EF.Property<string>(c, "Discriminator"),
                     c.WeatherCity,
-                    c.WeatherCondition))
+                    c.WeatherCondition,
+                    c.WeatherTempC))
                 .ToListAsync(ct);
             return Results.Ok(new MeStatsResponse(
                 new MeTotalsResponse(says, journals, friends),
@@ -172,7 +173,8 @@ public static class MeStatsEndpoints
         foreach (var s in stampers.OrderBy(s => s.CreatedAt))
         {
             if (string.IsNullOrEmpty(s.WeatherCity) || s.WeatherCity == previous) continue;
-            footprints.Add(new FootprintResponse(s.WeatherCity, s.CreatedAt));
+            // 携带打卡那一刻的天气快照（现象+温度）：首页足迹卡展示用
+            footprints.Add(new FootprintResponse(s.WeatherCity, s.CreatedAt, s.WeatherCondition, s.WeatherTempC));
             previous = s.WeatherCity;
         }
 
@@ -241,7 +243,7 @@ public static class MeStatsEndpoints
 /// <summary>
 /// 用户内容的轻量投影：streak/热力格/足迹去重/月度回顾共用的数据源（Kind = EF 鉴别器）。
 /// </summary>
-public sealed record CreatedAtCity(DateTime CreatedAt, string Kind, string? WeatherCity, string? WeatherCondition);
+public sealed record CreatedAtCity(DateTime CreatedAt, string Kind, string? WeatherCity, string? WeatherCondition, double? WeatherTempC);
 
 /// <summary>那年今天的查询投影：say 取文本、journal 取标题。</summary>
 public sealed record OnThisDaySource(Guid Id, string Kind, string? Title, string? Text, DateTime CreatedAt);
@@ -266,7 +268,7 @@ public record MeStatsResponse(
 public record HeatmapCellResponse(string Date, int Count);
 
 /// <summary>足迹条目：城市 + 该城市首次出现的时刻（同城连续去重后）。</summary>
-public record FootprintResponse(string City, DateTime FirstAt);
+public record FootprintResponse(string City, DateTime FirstAt, string? Condition, double? TempC);
 
 public record MeTotalsResponse(int Says, int Journals, int Friends);
 
