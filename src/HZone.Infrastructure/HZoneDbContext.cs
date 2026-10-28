@@ -25,6 +25,9 @@ public class HZoneDbContext : DbContext
     public DbSet<PersonalAccessToken> PersonalAccessTokens => Set<PersonalAccessToken>();
     public DbSet<PlaylistItem> PlaylistItems => Set<PlaylistItem>();
     public DbSet<Playlist> Playlists => Set<Playlist>();
+    public DbSet<Ledger> Ledgers => Set<Ledger>();
+    public DbSet<LedgerMember> LedgerMembers => Set<LedgerMember>();
+    public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
     public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
     public DbSet<EmailToken> EmailTokens => Set<EmailToken>();
 
@@ -176,6 +179,42 @@ public class HZoneDbContext : DbContext
         {
             e.Property(p => p.Name).HasMaxLength(50);
             e.HasIndex(p => new { p.UserId, p.CreatedAt });
+        });
+
+        modelBuilder.Entity<Ledger>(e =>
+        {
+            e.Property(l => l.Name).HasMaxLength(50);
+            e.HasIndex(l => l.OwnerUserId);
+        });
+
+        modelBuilder.Entity<LedgerMember>(e =>
+        {
+            // 成员唯一（同人不重复入本）；账本删成员随删
+            e.HasIndex(m => new { m.LedgerId, m.UserId }).IsUnique();
+            e.HasOne(m => m.Ledger)
+                .WithMany(l => l.Members)
+                .HasForeignKey(m => m.LedgerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(m => m.User)
+                .WithMany()
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LedgerEntry>(e =>
+        {
+            // 月度查询口径：(账本, 日期) 索引
+            e.HasIndex(x => new { x.LedgerId, x.EntryDate });
+            e.HasOne(x => x.Ledger)
+                .WithMany(l => l.Entries)
+                .HasForeignKey(x => x.LedgerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Recorder)
+                .WithMany()
+                .HasForeignKey(x => x.RecorderUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Category).HasMaxLength(32);
+            e.Property(x => x.Note).HasMaxLength(200);
         });
     }
 }

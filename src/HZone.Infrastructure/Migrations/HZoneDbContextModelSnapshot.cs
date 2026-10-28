@@ -292,6 +292,100 @@ namespace HZone.Infrastructure.Migrations
                     b.ToTable("InviteCodes");
                 });
 
+            modelBuilder.Entity("HZone.Core.Entities.Ledger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.ToTable("Ledgers");
+                });
+
+            modelBuilder.Entity("HZone.Core.Entities.LedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("AmountCents")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("EntryDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("LedgerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RecorderUserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecorderUserId");
+
+                    b.HasIndex("LedgerId", "EntryDate");
+
+                    b.ToTable("LedgerEntries");
+                });
+
+            modelBuilder.Entity("HZone.Core.Entities.LedgerMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("LedgerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("LedgerId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("LedgerMembers");
+                });
+
             modelBuilder.Entity("HZone.Core.Entities.MediaAsset", b =>
                 {
                     b.Property<Guid>("Id")
@@ -670,6 +764,44 @@ namespace HZone.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("HZone.Core.Entities.LedgerEntry", b =>
+                {
+                    b.HasOne("HZone.Core.Entities.Ledger", "Ledger")
+                        .WithMany("Entries")
+                        .HasForeignKey("LedgerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HZone.Core.Entities.User", "Recorder")
+                        .WithMany()
+                        .HasForeignKey("RecorderUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ledger");
+
+                    b.Navigation("Recorder");
+                });
+
+            modelBuilder.Entity("HZone.Core.Entities.LedgerMember", b =>
+                {
+                    b.HasOne("HZone.Core.Entities.Ledger", "Ledger")
+                        .WithMany("Members")
+                        .HasForeignKey("LedgerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HZone.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ledger");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("HZone.Core.Entities.MediaAsset", b =>
                 {
                     b.HasOne("HZone.Core.Entities.Content", "Content")
@@ -724,6 +856,13 @@ namespace HZone.Infrastructure.Migrations
                     b.Navigation("Recipients");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("HZone.Core.Entities.Ledger", b =>
+                {
+                    b.Navigation("Entries");
+
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("HZone.Core.Entities.Playlist", b =>

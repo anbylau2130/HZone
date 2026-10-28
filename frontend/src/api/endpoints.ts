@@ -588,6 +588,112 @@ export function deletePlaylist(id: string) {
   return request<{ ok: boolean }>(`/api/me/playlists/${id}`, { method: 'DELETE' })
 }
 
+// ---------- 记账（个人账本惰性 + 共同账本） ----------
+
+export interface LedgerMemberInfo {
+  userId: string
+  nickname: string
+}
+
+export interface LedgerInfo {
+  id: string
+  name: string
+  isShared: boolean
+  ownerUserId: string
+  createdAt: string
+  members: LedgerMemberInfo[]
+}
+
+export interface LedgerEntryItem {
+  id: string
+  amountCents: number
+  kind: 'expense' | 'income'
+  category: string
+  note: string | null
+  entryDate: string
+  recorder: { userId: string; nickname: string }
+  createdAt: string
+}
+
+export interface LedgerMonth {
+  ledgerId: string
+  ledgerName: string
+  from: string
+  entries: LedgerEntryItem[]
+  summary: {
+    expenseCents: number
+    incomeCents: number
+    byCategory: { category: string; cents: number }[]
+  }
+}
+
+export function listLedgers() {
+  return request<{ items: LedgerInfo[] }>('/api/me/ledgers')
+}
+
+export function createLedger(name: string) {
+  return request<LedgerInfo>('/api/me/ledgers', { method: 'POST', data: { name } })
+}
+
+export function renameLedger(id: string, name: string) {
+  return request<{ id: string; name: string }>(`/api/me/ledgers/${id}`, {
+    method: 'PUT',
+    data: { name }
+  })
+}
+
+export function deleteLedger(id: string) {
+  return request<{ ok: boolean }>(`/api/me/ledgers/${id}`, { method: 'DELETE' })
+}
+
+export function inviteLedgerMember(id: string, userId: string) {
+  return request<{ ok: boolean }>(`/api/me/ledgers/${id}/members`, {
+    method: 'POST',
+    data: { userId }
+  })
+}
+
+export function removeLedgerMember(id: string, userId: string) {
+  return request<{ ok: boolean }>(`/api/me/ledgers/${id}/members/${userId}`, { method: 'DELETE' })
+}
+
+export function listLedgerEntries(id: string, month?: string) {
+  return request<LedgerMonth>(`/api/me/ledgers/${id}/entries${qs({ month })}`)
+}
+
+export function createLedgerEntry(
+  ledgerId: string,
+  payload: {
+    amountCents: number
+    kind: 'expense' | 'income'
+    category: string
+    note?: string
+    entryDate: string
+  }
+) {
+  return request<LedgerEntryItem>(`/api/me/ledgers/${ledgerId}/entries`, {
+    method: 'POST',
+    data: payload
+  })
+}
+
+export function updateLedgerEntry(
+  id: string,
+  payload: {
+    amountCents: number
+    kind: 'expense' | 'income'
+    category: string
+    note?: string
+    entryDate: string
+  }
+) {
+  return request<{ id: string }>(`/api/ledger/entries/${id}`, { method: 'PUT', data: payload })
+}
+
+export function deleteLedgerEntry(id: string) {
+  return request<{ ok: boolean }>(`/api/ledger/entries/${id}`, { method: 'DELETE' })
+}
+
 export function addPlaylistItem(payload: {
   sourceKind: 'media' | 'url'
   title?: string

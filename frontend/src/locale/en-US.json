@@ -394,5 +394,37 @@
     "deleteList": "Delete playlist",
     "deleteListConfirm": "Songs in this playlist will be removed too. Delete?",
     "playlistNamePlaceholder": "Playlist name"
+  },
+  "ledger": {
+    "title": "Ledger",
+    "add": "Add entry",
+    "expense": "Expense",
+    "income": "Income",
+    "balance": "Balance",
+    "amount": "Amount (¥)",
+    "notePlaceholder": "Note (optional)",
+    "deleteEntryConfirm": "Delete this entry?",
+    "newShared": "New shared ledger",
+    "sharedNamePlaceholder": "Ledger name",
+    "renameLedger": "Rename ledger",
+    "invite": "Invite friend",
+    "leaveLedger": "Leave ledger",
+    "deleteLedger": "Delete ledger",
+    "deleteLedgerConfirm": "The ledger and all entries will be deleted. Sure?",
+    "personalProtected": "Personal ledger cannot be deleted",
+    "cat": {
+      "food": "Food",
+      "transport": "Transport",
+      "shopping": "Shopping",
+      "daily": "Daily",
+      "fun": "Fun",
+      "medical": "Medical",
+      "home": "Home",
+      "otherExpense": "Other",
+      "salary": "Salary",
+      "invest": "Invest",
+      "bonus": "Bonus",
+      "otherIncome": "Other"
+    }
   }
 }

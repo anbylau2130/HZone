@@ -393,5 +393,37 @@
     "deleteList": "删除歌单",
     "deleteListConfirm": "歌单内的曲目将一并删除，确定删除？",
     "playlistNamePlaceholder": "歌单名称"
+  },
+  "ledger": {
+    "title": "记账",
+    "add": "记一笔",
+    "expense": "支出",
+    "income": "收入",
+    "balance": "结余",
+    "amount": "金额（元）",
+    "notePlaceholder": "备注（可选）",
+    "deleteEntryConfirm": "删除这笔记录？",
+    "newShared": "新建共同账本",
+    "sharedNamePlaceholder": "账本名称",
+    "renameLedger": "改名账本",
+    "invite": "邀请好友",
+    "leaveLedger": "退出账本",
+    "deleteLedger": "删除账本",
+    "deleteLedgerConfirm": "账本与全部记录将一并删除，确定？",
+    "personalProtected": "个人账本不可删除",
+    "cat": {
+      "food": "餐饮",
+      "transport": "交通",
+      "shopping": "购物",
+      "daily": "日用",
+      "fun": "娱乐",
+      "medical": "医疗",
+      "home": "居住",
+      "otherExpense": "其他",
+      "salary": "工资",
+      "invest": "理财",
+      "bonus": "红包",
+      "otherIncome": "其他"
+    }
   }
 }
