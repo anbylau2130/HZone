@@ -105,7 +105,7 @@
         </view>
       </view>
 
-      <view v-if="pagination.loading.value && !items.length" class="hint">
+      <view v-if="loading && !items.length" class="hint">
         <text class="hint-text">{{ $t('common.loading') }}</text>
       </view>
       <view v-else-if="!items.length" class="hint">
@@ -140,6 +140,7 @@ import {
   listMyContents,
   searchContents,
   type ContentItem,
+  type FeedCursor,
   type KindFilter,
   type MeStats,
   type OnThisDayItem,
@@ -153,7 +154,6 @@ import ContentCard from '../../components/ContentCard.vue'
 import SegmentedFilter from '../../components/SegmentedFilter.vue'
 import Heatmap from '../../components/Heatmap.vue'
 import Footprints from '../../components/Footprints.vue'
-import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import { getWeather, CONDITION_ICONS, type WeatherSnapshot } from '../../utils/weather'
 import { formatLunar } from '../../utils/lunar'
@@ -260,11 +260,73 @@ const kind = ref<KindFilter>('')
 const searchOpen = ref(false)
 const keyword = ref('')
 
-const pagination = usePagination<ContentItem>((offset, limit) => {
+// ---------- 时间线：首屏=最近一周，滚动按 (时间,Id) 键集游标续拉更早 ----------
+const WEEK_MS = 7 * 24 * 3600 * 1000
+const items = ref<ContentItem[]>([])
+const loading = ref(false)
+const finished = ref(false)
+
+function fetchPage(offset: number, limit: number, cursor?: FeedCursor) {
   const kw = keyword.value.trim()
-  return kw ? searchContents(kw, kind.value, offset, limit) : listMyContents(kind.value, offset, limit)
-})
-const { items, finished, loadMore } = pagination
+  return kw
+    ? searchContents(kw, kind.value, offset, limit, undefined, cursor)
+    : listMyContents(kind.value, offset, limit, undefined, undefined, cursor)
+}
+
+/** 刷新：拉满"最近一周"（50/页，通常一页；内容极多时最多 5 页防御）。 */
+let feedStarted = false
+async function refreshFeed() {
+  feedStarted = true
+  loading.value = true
+  finished.value = false
+  try {
+    const since = new Date(Date.now() - WEEK_MS).toISOString()
+    let all: ContentItem[] = []
+    let offset = 0
+    for (let i = 0; i < 5; i++) {
+      const page = await fetchPage(offset, 50, { since })
+      all = all.concat(page.items)
+      if (page.items.length < 50) break
+      offset += 50
+    }
+    items.value = all
+  } catch {
+    items.value = []
+    finished.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+/** 滚动续拉：以当前最旧一条为游标取更早的 20 条；周内为空时从窗口下界起拉。
+    feedStarted 门闩：首屏刷新未开始前滚动观察器抢跑不触发（避免无游标的兜底请求竞态）。 */
+async function loadMore() {
+  if (!feedStarted || loading.value || finished.value) return
+  loading.value = true
+  try {
+    const oldest = items.value[items.value.length - 1]
+    const cursor: FeedCursor = oldest
+      ? { before: oldest.createdAt, beforeId: oldest.id }
+      : { before: new Date(Date.now() - WEEK_MS).toISOString() }
+    const page = await fetchPage(0, 20, cursor)
+    if (!page.items.length) {
+      finished.value = true
+    } else {
+      const known = new Set(items.value.map((i) => i.id))
+      items.value = items.value.concat(page.items.filter((i) => !known.has(i.id)))
+      if (page.items.length < 20) finished.value = true
+    }
+  } catch {
+    // 静默：下次滚动近底部重试
+  } finally {
+    loading.value = false
+  }
+}
+
+/** 供 onCardUpdated/搜索确认等外部触发首屏重建。 */
+function refreshNow() {
+  void refreshFeed()
+}
 
 function toggleSearch() {
   searchOpen.value = true
@@ -277,24 +339,20 @@ function closeSearch() {
   searchOpen.value = false
   if (keyword.value) {
     keyword.value = ''
-    pagination.refresh()
+    void refreshFeed()
   }
-}
-
-function refreshNow() {
-  pagination.refresh()
 }
 
 // 输入防抖 400ms 即时筛选；清空恢复全部
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 watch(keyword, () => {
   if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => pagination.refresh(), 400)
+  searchTimer = setTimeout(() => void refreshFeed(), 400)
 })
 
-// 滚动近底部自动加载；回调防重入由 usePagination 短路（loading/finished 已判断）
+// 滚动近底部自动加载；防重入由 loadMore 自身 loading/finished 判断短路
 useInfiniteScroll(() => {
-  if (!finished.value && !pagination.loading.value) loadMore()
+  if (!finished.value && !loading.value) loadMore()
 })
 
 onShow(async () => {
@@ -321,7 +379,7 @@ onShow(async () => {
   getWeather()
     .then((w) => (weather.value = w))
     .catch(() => {})
-  pagination.refresh()
+  void refreshFeed()
 })
 
 onHide(() => {
@@ -358,7 +416,7 @@ function setKind(k: string) {
   const next = k as KindFilter
   if (kind.value === next) return
   kind.value = next
-  pagination.refresh()
+  void refreshFeed()
 }
 
 // 连续 0 天：卡片整体可点，跳发布页开始第一天

@@ -82,6 +82,13 @@ public class ContentQuery : IContentQuery
             query = query.Where(c => c.CreatedAt < to);
         }
 
+        // 键集游标：与下方 CreatedAt+Id 双键倒序配套，(CreatedAt, Id) 严格小于游标。
+        if (spec.CursorCreatedAt is { } cursorAt && spec.CursorId is { } cursorId)
+        {
+            query = query.Where(c => c.CreatedAt < cursorAt
+                || (c.CreatedAt == cursorAt && c.Id.CompareTo(cursorId) < 0));
+        }
+
         var total = await query.CountAsync(ct);
         // 加 Id 作唯一次序键：同 CreatedAt（如 /import 批量导入全是同一 UtcNow）时
         // Skip/Take 不再因排序不稳定而重复/漏项。

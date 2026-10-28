@@ -369,6 +369,9 @@ public static class ContentEndpoints
             string? kind,
             string? date,
             string? tag,
+            string? since,
+            string? before,
+            string? beforeId,
             int? offset,
             int? limit,
             CancellationToken ct) =>
@@ -396,14 +399,18 @@ public static class ContentEndpoints
                 dayTo = dayFrom.Value.AddDays(1);
             }
 
+            // 首页时间线窗口/游标：since=首屏"最近一周"下界；before+beforeId=键集游标
+            //（与 CreatedAt+Id 双键倒序配套，并列时间翻页不丢项）。与 date 不混用。
             var (skip, take) = NormalizePage(offset, limit);
             return await RunListQueryAsync(contentQuery, db, new ContentQuerySpec
             {
                 ViewerId = me,
                 AuthorId = me,
                 Kind = kind,
-                CreatedFrom = dayFrom,
+                CreatedFrom = dayFrom ?? ParseIsoUtc(since),
                 CreatedTo = dayTo,
+                CursorCreatedAt = ParseIsoUtc(before),
+                CursorId = Guid.TryParse(beforeId, out var cid) ? cid : null,
                 Tag = string.IsNullOrWhiteSpace(tag) ? null : tag.Trim(),
                 Offset = skip,
                 Limit = take,
@@ -476,6 +483,9 @@ public static class ContentEndpoints
             string q,
             string? kind,
             string? tag,
+            string? since,
+            string? before,
+            string? beforeId,
             int? offset,
             int? limit,
             CancellationToken ct) =>
@@ -495,6 +505,10 @@ public static class ContentEndpoints
                 SearchText = q,
                 Kind = kind,
                 Tag = string.IsNullOrWhiteSpace(tag) ? null : tag.Trim(),
+                // 与 /me/contents 同款窗口/游标（首页检索态与时间线同一套翻页语义）
+                CreatedFrom = ParseIsoUtc(since),
+                CursorCreatedAt = ParseIsoUtc(before),
+                CursorId = Guid.TryParse(beforeId, out var cid) ? cid : null,
                 Offset = skip,
                 Limit = take,
             }, contentQuery: contentQuery, db: db, ct: ct);
@@ -767,6 +781,13 @@ public static class ContentEndpoints
     /// <summary>分页参数归一：offset 下限 0；limit 默认 20，上限 100。</summary>
     private static (int Offset, int Limit) NormalizePage(int? offset, int? limit) =>
         (Math.Max(0, offset ?? 0), limit is null or <= 0 ? 20 : Math.Min(limit.Value, 100));
+
+    /// <summary>ISO-UTC 时间解析（时间线窗口/游标用）：空或非法返回 null（尽力而为，不报错）。</summary>
+    private static DateTime? ParseIsoUtc(string? s) =>
+        !string.IsNullOrEmpty(s)
+        && DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt)
+            ? DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+            : null;
 
     private static async Task<List<RecipientResponse>> LoadRecipientsAsync(
         HZoneDbContext db, Guid contentId, CancellationToken ct)

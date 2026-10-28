@@ -175,6 +175,13 @@ export function revokeShareLink(id: string) {
   return request<{ ok: boolean }>(`/api/share-links/${id}`, { method: 'DELETE' })
 }
 
+/** 时间线窗口/游标：since=首屏"最近一周"下界；before+beforeId=键集游标（并列时间翻页不丢项）。 */
+export interface FeedCursor {
+  since?: string
+  before?: string
+  beforeId?: string
+}
+
 function listContents(
   path: string,
   kind: KindFilter,
@@ -182,22 +189,34 @@ function listContents(
   limit: number,
   date?: string,
   q?: string,
-  tag?: string
+  tag?: string,
+  cursor?: FeedCursor
 ) {
   return request<ContentPage>(
-    `${path}${qs({ kind, offset, limit, date, q: q || undefined, tag: tag || undefined })}`
+    `${path}${qs({
+      kind,
+      offset,
+      limit,
+      date,
+      q: q || undefined,
+      tag: tag || undefined,
+      since: cursor?.since,
+      before: cursor?.before,
+      beforeId: cursor?.beforeId
+    })}`
   )
 }
 
-/** date=yyyy-MM-dd：热力格点格下钻按天过滤；tag=标签筛选。 */
+/** date=yyyy-MM-dd：热力格点格下钻按天过滤；tag=标签筛选；cursor=时间线窗口/游标。 */
 export function listMyContents(
   kind: KindFilter,
   offset: number,
   limit: number,
   date?: string,
-  tag?: string
+  tag?: string,
+  cursor?: FeedCursor
 ) {
-  return listContents('/api/me/contents', kind, offset, limit, date, undefined, tag)
+  return listContents('/api/me/contents', kind, offset, limit, date, undefined, tag, cursor)
 }
 
 export function listReceived(kind: KindFilter, offset: number, limit: number, q?: string) {
@@ -218,9 +237,21 @@ export function searchContents(
   kind: KindFilter,
   offset: number,
   limit: number,
-  tag?: string
+  tag?: string,
+  cursor?: FeedCursor
 ) {
-  return request<ContentPage>(`/api/search${qs({ q, kind, offset, limit, tag: tag || undefined })}`)
+  return request<ContentPage>(
+    `/api/search${qs({
+      q,
+      kind,
+      offset,
+      limit,
+      tag: tag || undefined,
+      since: cursor?.since,
+      before: cursor?.before,
+      beforeId: cursor?.beforeId
+    })}`
+  )
 }
 
 // ---------- 标签（跨时间主题检索） ----------

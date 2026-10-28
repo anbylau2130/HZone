@@ -28,11 +28,21 @@ public sealed record ContentQuerySpec
     /// <summary>按标签过滤（ContentTags 含该标签的内容，可与关键词叠加）。</summary>
     public string? Tag { get; init; }
 
-    /// <summary>CreatedAt UTC 下界（含）——热力格点格下钻按中国区本地日取 UTC 区间。</summary>
+    /// <summary>CreatedAt UTC 下界（含）——热力格点格下钻按中国区本地日取 UTC 区间；
+    /// 首页时间线也用它做"最近一周"首屏窗口。</summary>
     public DateTime? CreatedFrom { get; init; }
 
     /// <summary>CreatedAt UTC 上界（不含）。</summary>
     public DateTime? CreatedTo { get; init; }
+
+    /// <summary>
+    /// 键集游标（与 CreatedAt 倒序 + Id 倒序的稳定排序配套）：返回
+    /// (CreatedAt, Id) 字典序严格小于游标的内容——同秒/同毫秒连发的时间线
+    /// 翻页不丢条目（朴素时间 before 会永久漏掉并列时间的项）。
+    /// </summary>
+    public DateTime? CursorCreatedAt { get; init; }
+
+    public Guid? CursorId { get; init; }
 
     public int Offset { get; init; }
 
