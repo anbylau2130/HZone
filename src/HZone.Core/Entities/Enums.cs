@@ -10,7 +10,8 @@ public enum InboxMessageType
 {
     Mentioned = 0,
     Commented = 1,
-    FriendRequest = 2
+    FriendRequest = 2,
+    Liked = 3
 }
 
 public enum MediaKind

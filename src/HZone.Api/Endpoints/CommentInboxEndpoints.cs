@@ -175,6 +175,7 @@ public static class InboxEndpoints
                         {
                             InboxMessageType.Mentioned => "mentioned",
                             InboxMessageType.Commented => "commented",
+                            InboxMessageType.Liked => "liked",
                             _ => "friendRequest",
                         },
                         contentId,

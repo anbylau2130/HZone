@@ -539,6 +539,27 @@ public static class ContentEndpoints
                     Id = Guid.NewGuid(), ContentId = id, UserId = me, CreatedAt = DateTime.UtcNow,
                 });
                 liked = true;
+
+                // 站内信通知作者（自己赞自己不产生）；同一人对同一内容只提醒一次
+                //（取消再赞不重复刷屏），按 (作者, 内容, 触发人) 去重。
+                if (content.AuthorId != me)
+                {
+                    var alreadyNotified = await db.InboxMessages.AnyAsync(m =>
+                        m.UserId == content.AuthorId && m.ContentId == id
+                        && m.Type == InboxMessageType.Liked && m.ActorUserId == me, ct);
+                    if (!alreadyNotified)
+                    {
+                        db.InboxMessages.Add(new InboxMessage
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = content.AuthorId,
+                            Type = InboxMessageType.Liked,
+                            ContentId = id,
+                            ActorUserId = me,
+                            CreatedAt = DateTime.UtcNow,
+                        });
+                    }
+                }
             }
             else
             {

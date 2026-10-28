@@ -257,7 +257,8 @@
     "unreadCount": "{n} 条未读",
     "mentioned": "内容中 {'@'} 了你",
     "commented": "评论了你的内容",
-    "friendRequest": "请求加你为好友"
+    "friendRequest": "请求加你为好友",
+    "liked": "赞了你的内容"
   },
   "search": {
     "placeholder": "搜索我的内容",

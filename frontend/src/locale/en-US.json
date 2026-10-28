@@ -257,7 +257,8 @@
     "unreadCount": "{n} unread",
     "mentioned": "mentioned you",
     "commented": "commented on your content",
-    "friendRequest": "sent you a friend request"
+    "friendRequest": "sent you a friend request",
+    "liked": "liked your content"
   },
   "search": {
     "placeholder": "Search my contents",

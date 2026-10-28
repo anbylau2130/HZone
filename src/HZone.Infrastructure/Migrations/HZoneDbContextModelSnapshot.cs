@@ -232,6 +232,9 @@ namespace HZone.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("ContentId")
                         .HasColumnType("TEXT");
 
