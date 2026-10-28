@@ -73,12 +73,14 @@ async function open(m: InboxItem) {
     }
   }
   if (m.contentId) {
-    // 详情页已移除（②C）：按消息内容类型跳对应列表页——日志→日志页、说说→随记页；
-    // contentKind 缺失时兜底跳随记页（与 ②C 设计一致，并注释说明）
-    if (m.contentKind === 'journal') {
-      uni.navigateTo({ url: '/pages/journals/journals' })
+    // 跳到内容所在列表并定位（?focus=滚到该卡高亮）：
+    // 被@ 的是别人的内容 → 收到页；被评论/被赞的是自己的 → 笔记进笔记页、随记进随记页
+    if (m.type === 'mentioned') {
+      uni.navigateTo({ url: `/pages/received/received?focus=${m.contentId}` })
+    } else if (m.contentKind === 'journal') {
+      uni.navigateTo({ url: `/pages/journals/journals?focus=${m.contentId}` })
     } else {
-      uni.navigateTo({ url: '/pages/moments/moments' })
+      uni.navigateTo({ url: `/pages/moments/moments?focus=${m.contentId}` })
     }
   } else if (m.type === 'friendRequest') {
     uni.navigateTo({ url: '/pages/friends/friends' })

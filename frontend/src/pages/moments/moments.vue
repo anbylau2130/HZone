@@ -71,6 +71,7 @@
                + 正文 + 标签 + 点赞/评论/编辑/删除/分享 全套一致；保留日期分组头 -->
           <ContentCard
             v-for="c in g.items"
+            :id="'c-' + c.id"
             :key="c.id"
             :content="c"
             @updated="onCardUpdated"
@@ -97,6 +98,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
+import { focusContentCard } from '../../utils/focusContent'
 import ContentCard from '../../components/ContentCard.vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -183,6 +185,24 @@ onShow(() => {
   // 封面/签名可能在设置页改过，回页同步最新资料
   auth.fetchMe()
 })
+
+// 站内信跳转定位：?focus=内容id → 滚到该卡高亮闪两下（列表异步加载，watch 到即滚）。
+// onShow + 页面 options 读取（H5 直接 hash 进入/刷新时 onLoad 不触发，onShow 稳定）；只消费一次
+let focusHandled = false
+function handleFocusQuery() {
+  if (focusHandled) return
+  const pages = getCurrentPages()
+  const focusId = (pages[pages.length - 1] as { options?: Record<string, string> })?.options?.focus
+  if (!focusId) return
+  focusHandled = true
+  const unwatch = watch(items, (list) => {
+    if (!list.length) return
+    unwatch()
+    focusContentCard(focusId)
+  })
+  setTimeout(() => focusContentCard(focusId), 800)
+}
+onShow(() => handleFocusQuery())
 
 // 写随记入口：滚到页内编辑器并聚焦（不再跳 publish 页）
 const composerRef = ref<InstanceType<typeof SayComposer> | null>(null)

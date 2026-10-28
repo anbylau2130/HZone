@@ -88,14 +88,14 @@ test('journey 2: say with mention, inbox red dot, inline comment loop', async ({
   await expect(receivedTab.locator('.dot')).toHaveText('2')
   await openEntry(pageB, '站内信')
 
-  // 站内信列表：mentioned 事件 → 跳对应列表页（②C：说说→随记页）
+  // 站内信列表：mentioned 事件 → 跳「收到」页并定位（被@ 的是别人的内容，
+  // 随记页只显自己的；?focus 滚到该卡高亮）
   const item = pageB.locator('.item', { hasText: '内容中 @ 了你' })
   await expect(item.first()).toBeVisible()
   await item.first().click()
-  await expect(pageB).toHaveURL(/pages\/moments\/moments/)
+  await expect(pageB).toHaveURL(/pages\/received\/received/)
 
-  // 随记页只显自己的随记：B 改到「收到」页，在原随记卡片上展开内联评论区回复（①A）
-  await pageB.goto('/#/pages/received/received')
+  // 通知已直达收到页并在原随记卡片上展开内联评论区回复（①A）
   const card = pageB.locator('.card', { hasText: SAY_TEXT }).first()
   await expect(card).toBeVisible({ timeout: 15_000 })
   await card.locator('.foot-item').first().click() // 「评论 n」展开评论区

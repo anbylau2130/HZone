@@ -303,6 +303,18 @@ title: t('common.delete'),
   flex-direction: column;
   gap: 8px;
 }
+/* 站内信跳转定位：focusContent.ts 加 .focus-flash 闪两下高亮 */
+.card.focus-flash {
+  animation: hz-focus-flash 1.1s ease-in-out 2;
+}
+@keyframes hz-focus-flash {
+  0%, 100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 0 3px var(--hz-color-primary);
+  }
+}
 .head {
   display: flex;
   align-items: center;

@@ -43,7 +43,7 @@
       <text class="hint-text">{{ $t('common.empty') }}</text>
     </view>
 
-    <ContentCard v-for="c in items" :key="c.id" :content="c" @deleted="onCardDeleted" />
+    <ContentCard v-for="c in items" :id="'c-' + c.id" :key="c.id" :content="c" @deleted="onCardDeleted" />
 
     <!-- 滚动近底部自动加载（useInfiniteScroll），结束后只留提示 -->
     <view v-if="items.length && finished" class="more">
@@ -59,7 +59,7 @@
 
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
 import ContentCard from '../../components/ContentCard.vue'
 import SegmentedFilter from '../../components/SegmentedFilter.vue'
@@ -71,6 +71,7 @@ import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import { listReceived, type ContentItem, type KindFilter } from '../../api/endpoints'
 import { useInboxStore } from '../../stores/inbox'
+import { focusContentCard } from '../../utils/focusContent'
 
 const inbox = useInboxStore()
 
@@ -135,6 +136,23 @@ onLoad((query) => {
   }
   pagination.refresh()
 })
+
+// 站内信跳转定位：?focus=内容id → 滚到该卡高亮闪两下（onShow 稳定读取，只消费一次）
+let focusHandled = false
+function handleFocusQuery() {
+  if (focusHandled) return
+  const pages = getCurrentPages()
+  const focusId = (pages[pages.length - 1] as { options?: Record<string, string> })?.options?.focus
+  if (!focusId) return
+  focusHandled = true
+  const unwatch = watch(items, (list) => {
+    if (!list.length) return
+    unwatch()
+    focusContentCard(focusId)
+  })
+  setTimeout(() => focusContentCard(focusId), 800)
+}
+onShow(() => handleFocusQuery())
 
 function setKind(k: string) {
   const next = k as KindFilter

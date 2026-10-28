@@ -101,7 +101,7 @@
 
       <view v-if="items.length && viewMode === 'card'" class="cards">
         <!-- 三段式卡：标题 / 日期+天气；整卡点击直达 publish 编辑页（用户要求，与表格视图「编辑」同目标） -->
-        <view v-for="c in items" :key="c.id" class="card" @click="editJournal(c)">
+        <view v-for="c in items" :id="'c-' + c.id" :key="c.id" class="card" @click="editJournal(c)">
           <text class="title">{{ c.title }}</text>
           <view class="meta">
             <text class="date">{{ formatDateTime(c.createdAt) }}</text>
@@ -177,6 +177,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { setNavTitle } from '../../locale'
+import { focusContentCard } from '../../utils/focusContent'
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
@@ -287,6 +288,25 @@ function setViewMode(mode: 'card' | 'table' | 'read') {
   // 切到表格视图拉第 1 页（表格走经典分页，独立状态，与滚动加载流互不干扰）
   if (mode === 'table') fetchTablePage(1)
 }
+
+// 站内信跳转定位：?focus=内容id → 切卡片视图（表格/阅读流不便锚定）滚到该卡高亮
+//（onShow 稳定读取页面 options，只消费一次）
+let focusHandled = false
+function handleFocusQuery() {
+  if (focusHandled) return
+  const pages = getCurrentPages()
+  const focusId = (pages[pages.length - 1] as { options?: Record<string, string> })?.options?.focus
+  if (!focusId) return
+  focusHandled = true
+  viewMode.value = 'card'
+  const unwatch = watch(items, (list) => {
+    if (!list.length) return
+    unwatch()
+    focusContentCard(focusId)
+  })
+  setTimeout(() => focusContentCard(focusId), 800)
+}
+onShow(() => handleFocusQuery())
 
 // ---------- 表格视图经典分页：独立 page/total/items 状态（复用 listMyContents
 // fetcher，offset=(page-1)*pageSize），与卡片/阅读的 usePagination 滚动加载流互不干扰 ----------
@@ -553,6 +573,18 @@ function formatWords(n: number): string {
   border-color: var(--hz-color-border);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
   transform: translateY(-1px);
+}
+/* 站内信跳转定位：focusContent.ts 加 .focus-flash 闪两下高亮 */
+.card.focus-flash {
+  animation: hz-focus-flash 1.1s ease-in-out 2;
+}
+@keyframes hz-focus-flash {
+  0%, 100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 0 3px var(--hz-color-primary);
+  }
 }
 .title {
   font-size: 17px;
