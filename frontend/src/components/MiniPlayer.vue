@@ -45,6 +45,8 @@
         </view>
         <!-- 当前行歌词（有歌词的曲目才显示）：跟播放进度走 -->
         <text v-if="currentLyricText" class="mp-lyr-now">{{ currentLyricText }}</text>
+        <!-- 多歌单切换行 -->
+        <PlaylistTabs />
         <!-- 添加块（与桌面右栏面板共享）：移动端配置播放列表的唯一入口 -->
         <PlayerAdd />
         <scroll-view scroll-y class="mp-list">
@@ -95,6 +97,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
 import PlayerIcon from './PlayerIcon.vue'
+import PlaylistTabs from './PlaylistTabs.vue'
 import LyricsEditor from './LyricsEditor.vue'
 import { metaLine } from '../utils/audioMeta'
 const { t } = useI18n()

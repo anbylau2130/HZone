@@ -382,6 +382,30 @@ namespace HZone.Infrastructure.Migrations
                     b.ToTable("PersonalAccessTokens");
                 });
 
+            modelBuilder.Entity("HZone.Core.Entities.Playlist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("Playlists");
+                });
+
             modelBuilder.Entity("HZone.Core.Entities.PlaylistItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -395,6 +419,9 @@ namespace HZone.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("MediaAssetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PlaylistId")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("SortOrder")
@@ -420,7 +447,7 @@ namespace HZone.Infrastructure.Migrations
 
                     b.HasIndex("MediaAssetId");
 
-                    b.HasIndex("UserId", "SortOrder");
+                    b.HasIndex("PlaylistId", "SortOrder");
 
                     b.ToTable("PlaylistItems");
                 });
@@ -671,7 +698,14 @@ namespace HZone.Infrastructure.Migrations
                         .HasForeignKey("MediaAssetId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("HZone.Core.Entities.Playlist", "Playlist")
+                        .WithMany("Items")
+                        .HasForeignKey("PlaylistId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.Navigation("MediaAsset");
+
+                    b.Navigation("Playlist");
                 });
 
             modelBuilder.Entity("HZone.Core.Entities.ShareLink", b =>
@@ -690,6 +724,11 @@ namespace HZone.Infrastructure.Migrations
                     b.Navigation("Recipients");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("HZone.Core.Entities.Playlist", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

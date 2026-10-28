@@ -537,7 +537,16 @@ export interface PlaylistItem {
   originalFileName: string | null
   /** 歌词原文（lrc；无则 null）：播放器解析滚动。 */
   lyrics: string | null
+  /** 归属歌单 id。 */
+  playlistId: string | null
   sortOrder: number
+  createdAt: string
+}
+
+export interface PlaylistInfo {
+  id: string
+  name: string
+  itemCount: number
   createdAt: string
 }
 
@@ -552,8 +561,31 @@ export interface AudioAssetInfo {
   createdAt: string
 }
 
-export function listPlaylist() {
-  return request<{ items: PlaylistItem[]; total: number }>('/api/me/playlist')
+export function listPlaylist(playlistId?: string) {
+  return request<{ playlistId: string; playlistName: string; items: PlaylistItem[]; total: number }>(
+    `/api/me/playlist${qs({ playlistId })}`
+  )
+}
+
+// ---------- 多歌单：列表 / 新建 / 改名 / 删除 ----------
+
+export function listPlaylists() {
+  return request<{ items: PlaylistInfo[] }>('/api/me/playlists')
+}
+
+export function createPlaylist(name: string) {
+  return request<PlaylistInfo>('/api/me/playlists', { method: 'POST', data: { name } })
+}
+
+export function renamePlaylist(id: string, name: string) {
+  return request<{ id: string; name: string }>(`/api/me/playlists/${id}`, {
+    method: 'PUT',
+    data: { name }
+  })
+}
+
+export function deletePlaylist(id: string) {
+  return request<{ ok: boolean }>(`/api/me/playlists/${id}`, { method: 'DELETE' })
 }
 
 export function addPlaylistItem(payload: {
@@ -561,6 +593,7 @@ export function addPlaylistItem(payload: {
   title?: string
   url?: string
   mediaAssetId?: string
+  playlistId?: string
 }) {
   return request<PlaylistItem>('/api/me/playlist', { method: 'POST', data: payload })
 }

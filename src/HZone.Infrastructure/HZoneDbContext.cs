@@ -24,6 +24,7 @@ public class HZoneDbContext : DbContext
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
     public DbSet<PersonalAccessToken> PersonalAccessTokens => Set<PersonalAccessToken>();
     public DbSet<PlaylistItem> PlaylistItems => Set<PlaylistItem>();
+    public DbSet<Playlist> Playlists => Set<Playlist>();
     public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
     public DbSet<EmailToken> EmailTokens => Set<EmailToken>();
 
@@ -155,15 +156,26 @@ public class HZoneDbContext : DbContext
 
         modelBuilder.Entity<PlaylistItem>(e =>
         {
-            // 每用户一张列表：按 (UserId, SortOrder) 索引取序；列表项引用的音频资产
-            // 不随内容删除联动（Restrict）——资产被内容解绑不废列表项。
-            e.HasIndex(p => new { p.UserId, p.SortOrder });
+            // 多歌单：条目按 (PlaylistId, SortOrder) 索引取序；引用的音频资产
+            // 不随内容删除联动（Restrict）——资产被内容解绑不废列表项；
+            // 归属歌单删除级联清掉条目（SQLite 迁移路径由端点手工级联兜底）。
+            e.HasIndex(p => new { p.PlaylistId, p.SortOrder });
             e.HasOne(p => p.MediaAsset)
                 .WithMany()
                 .HasForeignKey(p => p.MediaAssetId)
                 .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.Playlist)
+                .WithMany(l => l.Items)
+                .HasForeignKey(p => p.PlaylistId)
+                .OnDelete(DeleteBehavior.Cascade);
             e.Property(p => p.Title).HasMaxLength(200);
             e.Property(p => p.Url).HasMaxLength(2048);
+        });
+
+        modelBuilder.Entity<Playlist>(e =>
+        {
+            e.Property(p => p.Name).HasMaxLength(50);
+            e.HasIndex(p => new { p.UserId, p.CreatedAt });
         });
     }
 }

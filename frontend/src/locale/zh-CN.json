@@ -387,6 +387,11 @@
     "serverGroup": "服务器音乐",
     "loadFailed": "音频加载失败",
     "lyricsTitle": "歌词",
-    "lyricsPlaceholder": "粘贴 lrc 歌词原文，如 [00:12.50]第一句 [00:18.20]第二句"
+    "lyricsPlaceholder": "粘贴 lrc 歌词原文，如 [00:12.50]第一句 [00:18.20]第二句",
+    "newPlaylist": "新建歌单",
+    "renameList": "重命名歌单",
+    "deleteList": "删除歌单",
+    "deleteListConfirm": "歌单内的曲目将一并删除，确定删除？",
+    "playlistNamePlaceholder": "歌单名称"
   }
 }

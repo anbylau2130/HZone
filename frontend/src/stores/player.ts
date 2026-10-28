@@ -14,12 +14,17 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   listPlaylist,
+  listPlaylists,
+  createPlaylist,
+  renamePlaylist,
+  deletePlaylist,
   addPlaylistItem,
   reorderPlaylist,
   removePlaylistItem,
   renamePlaylistItem,
   setPlaylistItemLyrics,
   getServerMusicLibrary,
+  type PlaylistInfo,
   type PlaylistItem
 } from '../api/endpoints'
 import { loadMediaUrl } from '../api/media'
@@ -51,6 +56,10 @@ export interface PlayerTrack {
 
 // ---------- 模块级单例状态（跨页面应用共享的真正载体） ----------
 const items = ref<PlaylistItem[]>([])
+const playlists = ref<PlaylistInfo[]>([])
+// 多歌单：当前激活歌单（localStorage 记忆；失配回落第一张）
+const ACTIVE_KEY = 'hz-active-playlist'
+const activePlaylistId = ref<string | null>(localStorage.getItem(ACTIVE_KEY))
 const serverFiles = ref<{ name: string; sizeBytes: number }[]>([])
 const musicDir = ref<string | null>(null)
 const loaded = ref(false)
@@ -149,14 +158,21 @@ function ensureCtx(): UniApp.InnerAudioContext {
   return ctx
 }
 
-/** 拉取账号播放列表 + 服务器音乐库（幂等；已拉过不重复拉）。 */
+/** 拉取歌单集合 + 激活歌单内容 + 服务器音乐库（幂等；已拉过不重复拉）。 */
 async function load(force = false) {
   if (loaded.value && !force) return
   // 未登录不拉：请求层对 401 会清会话踢回登录页，guest 进设置页不该被播放器踢走
   if (!getToken()) return
   const wasId = currentId()
   try {
-    const [pl, lib] = await Promise.all([listPlaylist(), getServerMusicLibrary()])
+    const [pls, lib] = await Promise.all([listPlaylists(), getServerMusicLibrary()])
+    playlists.value = pls.items
+    // 记忆的激活歌单不存在（删除/换端）→ 回落第一张
+    if (!pls.items.some((p) => p.id === activePlaylistId.value)) {
+      activePlaylistId.value = pls.items[0]?.id ?? null
+      if (activePlaylistId.value) localStorage.setItem(ACTIVE_KEY, activePlaylistId.value)
+    }
+    const [pl] = await Promise.all([listPlaylist(activePlaylistId.value ?? undefined)])
     items.value = pl.items
     serverFiles.value = lib.files
     musicDir.value = lib.musicDir
@@ -164,6 +180,55 @@ async function load(force = false) {
     restoreIndexById(wasId)
   } catch {
     // 请求层已 toast；面板保持已有状态
+  }
+}
+
+/** 切换激活歌单：重拉该歌单曲目（服务器曲不受影响；正在播的曲目不断）。 */
+async function switchPlaylist(id: string) {
+  if (id === activePlaylistId.value) return
+  activePlaylistId.value = id
+  localStorage.setItem(ACTIVE_KEY, id)
+  currentIndex.value = -1
+  try {
+    const pl = await listPlaylist(id)
+    // 竞态守卫：返回时仍是该歌单才落
+    if (activePlaylistId.value === id) items.value = pl.items
+  } catch {
+    // 请求层已 toast
+  }
+}
+
+/** 新建歌单并切换过去。 */
+async function createAndSwitch(name: string) {
+  const created = await createPlaylist(name)
+  playlists.value = [...playlists.value, created]
+  await switchPlaylist(created.id)
+  return created
+}
+
+/** 改名（本地即时跟随）。 */
+async function renameList(id: string, name: string) {
+  await renamePlaylist(id, name)
+  const target = playlists.value.find((p) => p.id === id)
+  if (target) target.name = name
+}
+
+/** 删除歌单：条目随删；删的是激活歌单则切到剩余第一张（一张不剩由后端惰性重建默认）。 */
+async function removeList(id: string) {
+  await deletePlaylist(id)
+  playlists.value = playlists.value.filter((p) => p.id !== id)
+  if (activePlaylistId.value === id) {
+    activePlaylistId.value = null
+    if (playlists.value.length) {
+      await switchPlaylist(playlists.value[0].id)
+    } else {
+      items.value = []
+      currentIndex.value = -1
+      // 后端会在下次 GET 惰性建默认歌单；这里同步拉一次
+      const pls = await listPlaylists()
+      playlists.value = pls.items
+      if (pls.items[0]) await switchPlaylist(pls.items[0].id)
+    }
   }
 }
 
@@ -257,16 +322,25 @@ function toggleLoopMode() {
 /** 面板增删/重排后的本地同步（避免整表重拉）。 */
 function applyAdded(item: PlaylistItem) {
   items.value = [...items.value, item]
+  bumpListCount(item.playlistId, +1)
+}
+
+/** 歌单条目数本地跟随（chip 上的计数即时反馈，下次全量拉取兜底校正）。 */
+function bumpListCount(playlistId: string | null, delta: number) {
+  const target = playlists.value.find((p) => p.id === (playlistId ?? activePlaylistId.value))
+  if (target) target.itemCount = Math.max(0, target.itemCount + delta)
 }
 
 /** 删除用户列表项（服务器音乐为虚拟项，不可删——不响应）。 */
 async function removeAndSync(id: string) {
   if (id.startsWith('srv:')) return
+  const removed = items.value.find((x) => x.id === id)
   try {
     await removePlaylistItem(id)
   } catch {
     return // 请求层已 toast
   }
+  bumpListCount(removed?.playlistId ?? null, -1)
   const wasCurrent = currentId() === id
   items.value = items.value.filter((x) => x.id !== id)
   if (wasCurrent) {
@@ -298,13 +372,18 @@ async function moveAndSync(id: string, dir: -1 | 1) {
 }
 
 async function addUrl(title: string, url: string) {
-  const item = await addPlaylistItem({ sourceKind: 'url', title, url })
+  const item = await addPlaylistItem({ sourceKind: 'url', title, url, playlistId: activePlaylistId.value ?? undefined })
   applyAdded(item)
   return item
 }
 
 async function addMedia(mediaAssetId: string, title?: string) {
-  const item = await addPlaylistItem({ sourceKind: 'media', mediaAssetId, title })
+  const item = await addPlaylistItem({
+    sourceKind: 'media',
+    mediaAssetId,
+    title,
+    playlistId: activePlaylistId.value ?? undefined
+  })
   applyAdded(item)
   return item
 }
@@ -326,6 +405,8 @@ async function setLyrics(id: string, lyrics: string) {
 /** pinia 薄壳：uni H5 每页独立 pinia 实例，但 setup 闭包到的都是上面的模块态。 */
 export const usePlayerStore = defineStore('player', () => ({
   items,
+  playlists,
+  activePlaylistId,
   serverFiles,
   musicDir,
   loaded,
@@ -352,6 +433,10 @@ export const usePlayerStore = defineStore('player', () => ({
   moveAndSync,
   renameItem,
   setLyrics,
+  switchPlaylist,
+  createAndSwitch,
+  renameList,
+  removeList,
   addUrl,
   addMedia
 }))

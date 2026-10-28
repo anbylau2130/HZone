@@ -16,6 +16,7 @@ namespace HZone.Api.Endpoints;
 public static class PlaylistEndpoints
 {
     private const int MaxItemsPerUser = 100;
+    private const int MaxPlaylistsPerUser = 20;
     public const string MusicDirKey = "player.musicDir";
     private static readonly string[] ServerAudioExtensions =
         [".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".oga", ".opus"];
@@ -100,16 +101,124 @@ public static class PlaylistEndpoints
             return Results.File(fullPath, ContentTypeFor(name), enableRangeProcessing: true);
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
-        // ---------- 账号播放列表 ----------
-        // 列表：本人播放列表按 SortOrder 升序；media 项附带 storedName 供前端拼 /media 播放路径。
-        app.MapGet("/me/playlist", [Authorize] async (
+        // ---------- 歌单（多歌单）：列表/新建/改名/删除 ----------
+        // 列表：本人歌单按创建序（默认歌单 CreatedAt 压最小恒排前），含条目数；
+        // 一张都没有时惰性建「默认歌单」（新用户/删光后），并把游离孤儿条目挂上。
+        app.MapGet("/me/playlists", [Authorize] async (
             ClaimsPrincipal principal,
             HZoneDbContext db,
             CancellationToken ct) =>
         {
             var userId = CurrentUserId(principal);
-            var items = await db.PlaylistItems
+            await EnsureDefaultPlaylistAsync(db, userId, ct);
+            var playlists = await db.Playlists.AsNoTracking()
                 .Where(p => p.UserId == userId)
+                .OrderBy(p => p.CreatedAt).ThenBy(p => p.Name)
+                .Select(p => new { p.Id, p.Name, ItemCount = p.Items.Count, p.CreatedAt })
+                .ToListAsync(ct);
+            return Results.Ok(new { items = playlists });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // 新建：名称 1~50 字符；每人上限 20 张。
+        app.MapPost("/me/playlists", [Authorize] async (
+            CreatePlaylistRequest request,
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var name = request.Name?.Trim();
+            if (string.IsNullOrEmpty(name) || name.Length > 50)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["name"] = new[] { "name is required (max 50 chars)" },
+                });
+            }
+            if (await db.Playlists.CountAsync(p => p.UserId == userId, ct) >= MaxPlaylistsPerUser)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status409Conflict,
+                    title: "playlist limit reached");
+            }
+            var playlist = new Playlist
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Name = name,
+                CreatedAt = DateTime.UtcNow,
+            };
+            db.Playlists.Add(playlist);
+            await db.SaveChangesAsync(ct);
+            return Results.Created($"/me/playlists/{playlist.Id}",
+                new { playlist.Id, playlist.Name, ItemCount = 0, playlist.CreatedAt });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // 改名：仅本人；非本人/不存在统一 404。
+        app.MapPut("/me/playlists/{id:guid}", [Authorize] async (
+            Guid id,
+            CreatePlaylistRequest request,
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var playlist = await db.Playlists
+                .FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId, ct);
+            if (playlist is null)
+            {
+                return Results.NotFound(new { error = "playlist not found" });
+            }
+            var name = request.Name?.Trim();
+            if (string.IsNullOrEmpty(name) || name.Length > 50)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["name"] = new[] { "name is required (max 50 chars)" },
+                });
+            }
+            playlist.Name = name;
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { playlist.Id, playlist.Name });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // 删除：仅本人；条目随删（级联）；删光后下次 GET 惰性重建默认歌单。
+        app.MapDelete("/me/playlists/{id:guid}", [Authorize] async (
+            Guid id,
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var playlist = await db.Playlists
+                .FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId, ct);
+            if (playlist is null)
+            {
+                return Results.NotFound(new { error = "playlist not found" });
+            }
+            // 手工级联（存量 dev 库的迁移路径无 FK 约束，新库有约束也兼容）
+            await db.PlaylistItems.Where(p => p.PlaylistId == id).ExecuteDeleteAsync(ct);
+            db.Playlists.Remove(playlist);
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { ok = true });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // ---------- 账号播放列表（单张歌单内容） ----------
+        // 列表：按 SortOrder 升序；playlistId 缺省 = 第一张（默认歌单）；
+        // media 项附带 storedName 供前端拼 /media 播放路径。
+        app.MapGet("/me/playlist", [Authorize] async (
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            Guid? playlistId,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var playlist = await ResolvePlaylistAsync(db, userId, playlistId, ct);
+            if (playlist is null)
+            {
+                return Results.NotFound(new { error = "playlist not found" });
+            }
+            var items = await db.PlaylistItems
+                .Where(p => p.UserId == userId && p.PlaylistId == playlist.Id)
                 .OrderBy(p => p.SortOrder)
                 .Select(p => new
                 {
@@ -125,16 +234,18 @@ public static class PlaylistEndpoints
                     BitrateKbps = p.MediaAsset != null ? p.MediaAsset.BitrateKbps : null,
                     SizeBytes = p.MediaAsset != null ? (long?)p.MediaAsset.SizeBytes : null,
                     OriginalFileName = p.MediaAsset != null ? p.MediaAsset.OriginalName : null,
-                    // 歌词原文（lrc；无则 null）：播放器前端解析滚动
+                    // 歌词原文（lrc；无则 null）：播放器解析滚动
                     Lyrics = p.Lyrics,
+                    p.PlaylistId,
                     p.SortOrder,
                     p.CreatedAt,
                 })
                 .ToListAsync(ct);
-            return Results.Ok(new { items, total = items.Count });
+            return Results.Ok(new { playlistId = playlist.Id, playlistName = playlist.Name, items, total = items.Count });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
         // 添加：url 项必须有 http/https 直链与标题；media 项必须引用本人 audio 资产，标题缺省用资产原名。
+        // playlistId 缺省 = 第一张（默认歌单）；上限/去重均按目标歌单计。
         app.MapPost("/me/playlist", [Authorize] async (
             AddPlaylistItemRequest request,
             ClaimsPrincipal principal,
@@ -142,7 +253,13 @@ public static class PlaylistEndpoints
             CancellationToken ct) =>
         {
             var userId = CurrentUserId(principal);
-            if (await db.PlaylistItems.CountAsync(p => p.UserId == userId, ct) >= MaxItemsPerUser)
+            var playlist = await ResolvePlaylistAsync(db, userId, request.PlaylistId, ct);
+            if (playlist is null)
+            {
+                return Results.NotFound(new { error = "playlist not found" });
+            }
+            if (await db.PlaylistItems.CountAsync(
+                    p => p.UserId == userId && p.PlaylistId == playlist.Id, ct) >= MaxItemsPerUser)
             {
                 return Results.Problem(statusCode: StatusCodes.Status409Conflict,
                     title: "playlist limit reached");
@@ -189,9 +306,10 @@ public static class PlaylistEndpoints
                 {
                     return Results.NotFound(new { error = "audio asset not found" });
                 }
-                // 同一资产不重复入列（同一文件上传幂等后是同一资产，列表只留一条）
+                // 同一资产同歌单不重复入列（同一文件上传幂等后是同一资产；跨歌单允许同曲）
                 var dup = await db.PlaylistItems
-                    .AnyAsync(p => p.UserId == userId && p.MediaAssetId == assetId, ct);
+                    .AnyAsync(p => p.UserId == userId && p.PlaylistId == playlist.Id
+                        && p.MediaAssetId == assetId, ct);
                 if (dup)
                 {
                     return Results.Conflict(new { error = "already in playlist" });
@@ -215,12 +333,13 @@ public static class PlaylistEndpoints
             }
 
             var maxOrder = await db.PlaylistItems
-                .Where(p => p.UserId == userId)
+                .Where(p => p.UserId == userId && p.PlaylistId == playlist.Id)
                 .MaxAsync(p => (int?)p.SortOrder, ct);
             var item = new PlaylistItem
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
+                PlaylistId = playlist.Id,
                 SourceKind = request.SourceKind,
                 Title = title,
                 Url = url,
@@ -363,6 +482,41 @@ public static class PlaylistEndpoints
             : throw new InvalidOperationException("missing sub claim");
     }
 
+    /// <summary>惰性兜底：一张歌单都没有（新用户/删光）时建「默认歌单」。</summary>
+    private static async Task EnsureDefaultPlaylistAsync(HZoneDbContext db, Guid userId, CancellationToken ct)
+    {
+        if (await db.Playlists.AnyAsync(p => p.UserId == userId, ct))
+        {
+            return;
+        }
+        db.Playlists.Add(new Playlist
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Name = "默认歌单",
+            CreatedAt = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// 解析目标歌单：显式 id 必须是本人的（否则 null，端点回 404 防越权探测）；
+    /// 缺省 = 第一张（无歌单则惰性建默认）。
+    /// </summary>
+    private static async Task<Playlist?> ResolvePlaylistAsync(
+        HZoneDbContext db, Guid userId, Guid? playlistId, CancellationToken ct)
+    {
+        if (playlistId is { } id)
+        {
+            return await db.Playlists.FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId, ct);
+        }
+        await EnsureDefaultPlaylistAsync(db, userId, ct);
+        return await db.Playlists
+            .Where(p => p.UserId == userId)
+            .OrderBy(p => p.CreatedAt).ThenBy(p => p.Name)
+            .FirstAsync(ct);
+    }
+
     /// <summary>目录音频清单（顶层、按文件名排序）；null = 未配置目录（库停用）。</summary>
     private static (string Dir, IEnumerable<ServerAudioFile> Files)? ListServerAudio(string? dir)
     {
@@ -393,7 +547,14 @@ public static class PlaylistEndpoints
     public sealed record ServerAudioFile(string Name, long SizeBytes);
 }
 
-public sealed record AddPlaylistItemRequest(string SourceKind, string? Title, string? Url, Guid? MediaAssetId);
+public sealed record AddPlaylistItemRequest(
+    string SourceKind,
+    string? Title,
+    string? Url,
+    Guid? MediaAssetId,
+    Guid? PlaylistId = null);
+
+public sealed record CreatePlaylistRequest(string? Name);
 
 public sealed record ReorderPlaylistRequest(List<Guid> Ids);
 

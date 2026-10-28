@@ -388,6 +388,11 @@
     "serverGroup": "Server music",
     "loadFailed": "Failed to load audio",
     "lyricsTitle": "Lyrics",
-    "lyricsPlaceholder": "Paste lrc lyrics, e.g. [00:12.50]first line [00:18.20]second line"
+    "lyricsPlaceholder": "Paste lrc lyrics, e.g. [00:12.50]first line [00:18.20]second line",
+    "newPlaylist": "New playlist",
+    "renameList": "Rename playlist",
+    "deleteList": "Delete playlist",
+    "deleteListConfirm": "Songs in this playlist will be removed too. Delete?",
+    "playlistNamePlaceholder": "Playlist name"
   }
 }

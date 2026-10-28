@@ -13,6 +13,9 @@
       </view>
     </view>
 
+    <!-- 多歌单切换行 -->
+    <PlaylistTabs />
+
     <!-- 正在播放：曲名 + 进度（点击 seek） -->
     <view class="pp-now">
       <text class="pp-now-title">{{ player.current ? player.current.title : $t('player.idle') }}</text>
@@ -99,6 +102,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
 import PlayerIcon from './PlayerIcon.vue'
+import PlaylistTabs from './PlaylistTabs.vue'
 import LyricsEditor from './LyricsEditor.vue'
 import { metaLine } from '../utils/audioMeta'
 
