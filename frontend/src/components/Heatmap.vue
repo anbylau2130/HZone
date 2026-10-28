@@ -100,8 +100,11 @@ function pick(date: string) {
 .grid {
   display: flex;
   gap: 3px;
+  width: 100%;
 }
 .col {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -110,9 +113,9 @@ function pick(date: string) {
   background: color-mix(in srgb, var(--hz-color-primary) 10%, transparent);
   border-radius: 4px;
 }
+/* 格子随列宽伸缩（占满卡片），aspect-ratio 保正方形 */
 .cell {
-  width: 11px;
-  height: 11px;
+  aspect-ratio: 1;
   border-radius: 2px;
 }
 .cell.blank {
@@ -139,6 +142,12 @@ function pick(date: string) {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+/* 图例小格不随列宽伸缩，保持固定小方块 */
+.legend .cell {
+  width: 11px;
+  height: 11px;
+  flex: none;
 }
 .legend-text {
   font-size: 11px;
