@@ -97,14 +97,17 @@ function pick(date: string) {
   flex-direction: column;
   gap: 10px;
 }
-/* 占满整卡但格子保持小尺寸：列间 space-between 拉伸吸收余量 */
+/* 紧凑自然排：格子统一 17px、列距固定 3px，整图在卡内居中
+ （手机上几乎占满；桌面居中不拉伸——space-between 大列距被反馈怪） */
 .grid {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   gap: 3px;
   width: 100%;
 }
 .col {
+  flex: 1 1 0;
+  max-width: 17px;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -114,8 +117,8 @@ function pick(date: string) {
   border-radius: 4px;
 }
 .cell {
-  width: 15px;
-  height: 15px;
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 2px;
 }
 .cell.blank {
