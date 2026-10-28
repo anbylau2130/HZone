@@ -8,12 +8,13 @@
     <path v-else-if="name === 'prev'" d="M6 6h2v12H6zm3.5 6L18 6v12z" />
     <path v-else-if="name === 'next'" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
     <path v-else-if="name === 'list'" d="M4 6h16v1.8H4zm0 5.1h16v1.8H4zm0 5.1h16V18H4z" />
+    <path v-else-if="name === 'note'" d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
     <path v-else-if="name === 'close'" d="M12 10.6 6.4 5 5 6.4l5.6 5.6L5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5z" />
   </svg>
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{ name: 'play' | 'pause' | 'prev' | 'next' | 'list' | 'close'; size?: number }>(), { size: 14 })
+withDefaults(defineProps<{ name: 'play' | 'pause' | 'prev' | 'next' | 'list' | 'note' | 'close'; size?: number }>(), { size: 14 })
 </script>
 
 <style scoped>

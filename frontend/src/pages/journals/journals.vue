@@ -518,7 +518,7 @@ function formatWords(n: number): string {
   /* 悬浮写日志：全端常驻（此前桌面隐藏，用户够不到入口） */
   position: fixed;
   right: 20px;
-  bottom: calc(70px + env(safe-area-inset-bottom) + 16px);
+  bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
   width: 56px;
   height: 56px;
   border-radius: 50%;

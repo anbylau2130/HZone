@@ -59,6 +59,9 @@ function go(t: TabItem) {
   bottom: 0;
   left: 0;
   right: 0;
+  /* 显式高度：mini 桥/FAB/页面底留白都按 56px+安全区锚定（吸附不留缝） */
+  height: calc(56px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
   background: var(--hz-color-surface);
   border-top: 1px solid var(--hz-color-border);
   display: flex;
@@ -68,7 +71,7 @@ function go(t: TabItem) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+  justify-content: center;
   gap: 2px;
 }
 .tab.on .tab-label,

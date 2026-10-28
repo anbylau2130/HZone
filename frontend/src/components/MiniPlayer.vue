@@ -1,10 +1,10 @@
 <template>
-  <!-- 全局 mini 桥：<1200px 常驻（≥1200 由 ToolDock 右栏 PlayerPanel 接管，CSS 隐藏本条）。
-       音频本体在 player store 模块单例里，本条只是遥控器——页面切换不中断。 -->
-  <view v-if="player.tracks.length && !player.hidden" class="mp">
-    <!-- 抽屉打开时隐藏桥：面板（居中 max-520）盖不住整条桥，两侧按钮会半截
-         悬在遮罩上与列表叠影；关闭抽屉桥即回来 -->
-    <view v-if="!drawerOpen" class="mp-bar">
+  <!-- 全局 mini 桥：<1200px 常驻（≥1200 由 ToolDock 右栏 PlayerPanel 接管）。
+       音频本体在 player store 模块单例里，本条只是遥控器——页面切换不中断。
+       隐藏态（✕ 收起）：右缘吸附钮 = 播放/暂停 + 展开恢复，免进设置页。 -->
+  <view v-if="player.tracks.length" class="mp">
+    <!-- 桥本体：抽屉打开期间隐藏（面板盖不住整条桥，避免叠影） -->
+    <view v-if="!player.hidden && !drawerOpen" class="mp-bar">
       <view class="mp-btn" @click="player.toggle()">
         <PlayerIcon :name="player.playing ? 'pause' : 'play'" :size="14" />
       </view>
@@ -20,9 +20,19 @@
       <view class="mp-btn" @click="drawerOpen = true">
         <PlayerIcon name="list" :size="14" />
       </view>
-      <!-- 收起播放器（设置页「播放器」开关恢复） -->
+      <!-- 收起播放器（右缘吸附钮随时恢复） -->
       <view class="mp-btn collapse" :title="$t('player.collapse')" @click="player.setHidden(true)">
         <PlayerIcon name="close" :size="11" />
+      </view>
+    </view>
+
+    <!-- 隐藏态：吸附屏幕右缘的快捷钮——上：播放/暂停（图标随状态）；下：展开恢复 -->
+    <view v-if="player.hidden" class="mp-tab">
+      <view class="mp-tab-btn" :title="$t('player.playPause')" @click="player.toggle()">
+        <PlayerIcon :name="player.playing ? 'pause' : 'play'" :size="15" />
+      </view>
+      <view class="mp-tab-btn aux" :title="$t('player.expand')" @click="player.setHidden(false)">
+        <PlayerIcon name="note" :size="15" />
       </view>
     </view>
 
@@ -103,30 +113,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 桥底位置与 TabBar 同拍（70px + 安全区），右留 16px 避开 FAB */
-.mp {
+/* 手机：桥吸附在 TabBar 正上方（与 TabBar 同高锚定，不留缝），右留 76px 避开 FAB */
+.mp-bar {
   position: fixed;
   left: 12px;
   right: 76px;
-  bottom: calc(70px + env(safe-area-inset-bottom) + 8px);
+  bottom: calc(56px + env(safe-area-inset-bottom));
   z-index: 90;
-}
-/* ≥768 平板：底部 TabBar 退场改左侧栏（220px），桥避开侧栏、贴底悬浮；
-   桥高约 48px + 12px 贴底 < 页面自带 70px 底留白，滚到底不再压内容（FAB 在 86px 起，纵向错开） */
-@media (min-width: 768px) {
-  .mp {
-    left: calc(220px + 12px);
-    right: 16px;
-    bottom: calc(12px + env(safe-area-inset-bottom));
-  }
-}
-/* ≥1200px：ToolDock 右栏已有完整面板，全局桥退场 */
-@media (min-width: 1200px) {
-  .mp {
-    display: none;
-  }
-}
-.mp-bar {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -135,6 +128,62 @@ onMounted(() => {
   border-radius: 999px;
   padding: 6px 10px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+/* ≥768 平板：TabBar 退场改左侧栏，桥从侧栏右侧贴到屏底右缘成停靠条
+   （高 48px < 页面自带 70px 底留白，滚到底不压内容；FAB 在 86px 起纵向错开） */
+@media (min-width: 768px) {
+  .mp-bar {
+    left: 220px;
+    right: 0;
+    bottom: 0;
+    border-radius: var(--hz-radius-lg) var(--hz-radius-lg) 0 0;
+    padding: 6px 12px 6px 16px;
+  }
+}
+/* ≥1200 桌面：ToolDock 右栏已有完整面板，桥退场（隐藏态吸附钮仍在场） */
+@media (min-width: 1200px) {
+  .mp-bar {
+    display: none;
+  }
+}
+/* 隐藏态：吸附屏幕右缘的快捷钮（半胶囊贴边），垂直居中避开 FAB/TabBar */
+.mp-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--hz-color-surface);
+  border: 1px solid var(--hz-color-border);
+  border-right: none;
+  border-radius: var(--hz-radius-lg) 0 0 var(--hz-radius-lg);
+  padding: 8px 5px;
+  box-shadow: -4px 4px 14px rgba(0, 0, 0, 0.12);
+}
+.mp-tab-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--hz-color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.mp-tab-btn.aux {
+  background: transparent;
+  color: var(--hz-color-text-secondary);
+  border: 1px solid var(--hz-color-border);
+}
+/* ≥1200 桌面：吸附到右栏 dock 左缘（dock 占 right 300px） */
+@media (min-width: 1200px) {
+  .mp-tab {
+    right: 300px;
+  }
 }
 .mp-btn {
   width: 32px;

@@ -6,7 +6,7 @@
         <view class="pp-loop" :class="{ on: player.loopMode === 'one' }" @click="player.toggleLoopMode()">
           <text class="pp-loop-text">{{ player.loopMode === 'one' ? $t('player.loopOne') : $t('player.loopList') }}</text>
         </view>
-        <!-- 收起面板（设置页「播放器」开关恢复） -->
+        <!-- 收起面板（右缘吸附钮随时恢复） -->
         <view class="pp-collapse" :title="$t('player.collapse')" @click="player.setHidden(true)">
           <PlayerIcon name="close" :size="10" />
         </view>

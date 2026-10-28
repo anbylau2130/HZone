@@ -333,7 +333,7 @@ async function uploadCoverFile(path: string | Blob) {
 .fab {
   position: fixed;
   right: 20px;
-  bottom: calc(70px + env(safe-area-inset-bottom) + 16px);
+  bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
   width: 56px;
   height: 56px;
   border-radius: 50%;
