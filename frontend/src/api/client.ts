@@ -126,11 +126,16 @@ export function request<T = unknown>(path: string, options: RequestOptions = {})
 /**
  * multipart 上传（POST，字段名固定 'file'），带 Bearer；响应按 JSON 解析。
  * 媒体上传（POST /media）与 zip 导入（POST /import）共用。
+ * fields 为随表单附带的额外字段（音频元数据 artist/durationSeconds/bitrateKbps）。
  * H5 下传 File/Blob 走 fetch 直传（不经 blob: URL 中转——uni.uploadFile 的
  * urlToFile 依赖 XHR 拉 blob:，部分浏览器/隐私环境不可靠）；传字符串路径
  * 或 App 端仍走 uni.uploadFile。
  */
-export function uploadFile<T = unknown>(path: string, file: string | Blob): Promise<T> {
+export function uploadFile<T = unknown>(
+  path: string,
+  file: string | Blob,
+  fields?: Record<string, string>
+): Promise<T> {
   const token = getToken()
   // #ifdef H5
   if (typeof file !== 'string') {
@@ -140,6 +145,11 @@ export function uploadFile<T = unknown>(path: string, file: string | Blob): Prom
       body: (() => {
         const form = new FormData()
         form.append('file', file, file instanceof File ? file.name : 'file')
+        if (fields) {
+          for (const [k, v] of Object.entries(fields)) {
+            if (v !== '' && v != null) form.append(k, v)
+          }
+        }
         return form
       })()
     }).then(async (res) => {
@@ -168,6 +178,7 @@ export function uploadFile<T = unknown>(path: string, file: string | Blob): Prom
       filePath: file as string,
       name: 'file',
       header: token ? { Authorization: `Bearer ${token}` } : {},
+      formData: fields,
       success: (res) => {
         const status = res.statusCode
         if (status >= 200 && status < 300) {

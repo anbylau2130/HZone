@@ -119,6 +119,12 @@ public static class PlaylistEndpoints
                     p.Url,
                     p.MediaAssetId,
                     MediaStoredName = p.MediaAsset != null ? p.MediaAsset.StoredName : null,
+                    // 音频元数据（media 项来自资产；url 项为 null）：列表行展示用
+                    Artist = p.MediaAsset != null ? p.MediaAsset.Artist : null,
+                    DurationSeconds = p.MediaAsset != null ? p.MediaAsset.DurationSeconds : null,
+                    BitrateKbps = p.MediaAsset != null ? p.MediaAsset.BitrateKbps : null,
+                    SizeBytes = p.MediaAsset != null ? (long?)p.MediaAsset.SizeBytes : null,
+                    OriginalFileName = p.MediaAsset != null ? p.MediaAsset.OriginalName : null,
                     p.SortOrder,
                     p.CreatedAt,
                 })

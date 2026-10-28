@@ -50,7 +50,10 @@
         @click="player.playIndex(i)"
       >
         <text class="pp-row-ico">{{ i === player.currentIndex && player.playing ? '🔊' : it.sourceKind === 'url' ? '🔗' : it.sourceKind === 'server' ? '💿' : '🎵' }}</text>
-        <text class="pp-row-title">{{ it.title }}</text>
+        <view class="pp-row-mid">
+          <text class="pp-row-title">{{ it.title }}</text>
+          <text v-if="metaLine(it)" class="pp-row-meta" :title="metaLine(it)">{{ metaLine(it) }}</text>
+        </view>
         <view v-if="it.sourceKind !== 'server'" class="pp-row-ops" @click.stop>
           <text class="pp-op" :title="$t('common.rename')" @click="renameRow(it)">✎</text>
           <text class="pp-op" :class="{ dim: userIndexOf(it.id) <= 0 }" @click="player.moveAndSync(it.id, -1)">↑</text>
@@ -68,6 +71,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
 import PlayerIcon from './PlayerIcon.vue'
+import { metaLine } from '../utils/audioMeta'
 
 const { t } = useI18n()
 
@@ -274,11 +278,23 @@ function onSeek(e: MouseEvent) {
   font-size: 14px;
   line-height: 1;
 }
-.pp-row-title {
+.pp-row-mid {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pp-row-title {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp-row-meta {
+  font-size: 11px;
+  color: var(--hz-color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

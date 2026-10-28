@@ -57,7 +57,10 @@
             @click="player.playIndex(i)"
           >
             <text class="mp-row-ico">{{ it.sourceKind === 'server' ? '💿' : '' }}</text>
-            <text class="mp-row-title">{{ it.title }}</text>
+            <view class="mp-row-mid">
+              <text class="mp-row-title">{{ it.title }}</text>
+              <text v-if="metaLine(it)" class="mp-row-meta">{{ metaLine(it) }}</text>
+            </view>
             <text
               v-if="it.sourceKind !== 'server'"
               class="mp-row-rename"
@@ -77,6 +80,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
 import PlayerIcon from './PlayerIcon.vue'
+import { metaLine } from '../utils/audioMeta'
 const { t } = useI18n()
 const player = usePlayerStore()
 const drawerOpen = ref(false)
@@ -296,11 +300,23 @@ onMounted(() => {
 .mp-row:last-child {
   border-bottom: none;
 }
-.mp-row-title {
+.mp-row-mid {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mp-row-title {
   font-size: var(--hz-font-size-base);
   color: var(--hz-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mp-row-meta {
+  font-size: 11px;
+  color: var(--hz-color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

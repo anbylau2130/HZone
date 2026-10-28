@@ -36,9 +36,11 @@
           <text class="pa-empty-text">{{ $t('player.libraryEmpty') }}</text>
         </view>
         <view v-for="a in libItems" :key="a.id" class="pa-lib-row">
-          <text class="pa-lib-name" @click="addFromLibrary(a)">{{ a.originalName }}</text>
+          <view class="pa-lib-main" @click="addFromLibrary(a)">
+            <text class="pa-lib-name">{{ a.originalName }}</text>
+            <text v-if="libMeta(a)" class="pa-lib-meta">{{ libMeta(a) }}</text>
+          </view>
           <text class="pa-lib-rename" :title="$t('common.rename')" @click.stop="renameAsset(a)">✎</text>
-          <text class="pa-lib-size">{{ fmtSize(a.sizeBytes) }}</text>
         </view>
       </scroll-view>
     </view>
@@ -51,6 +53,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import { listMyAudioAssets, renameMediaAsset, type AudioAssetInfo } from '../api/endpoints'
 import { uploadFile } from '../api/client'
+import { probeAudio, fmtSize, fmtDuration } from '../utils/audioMeta'
 import { i18n } from '../locale'
 
 const { t } = useI18n()
@@ -88,8 +91,23 @@ function toggleLib() {
   else void openLib()
 }
 
-function fmtSize(n: number): string {
-  return n >= 1048576 ? `${(n / 1048576).toFixed(1)}M` : `${Math.max(1, Math.round(n / 1024))}K`
+/** 库行元信息：艺术家 · 时长 · 大小（探测到的才显示）。 */
+function libMeta(a: AudioAssetInfo): string {
+  return [a.artist, fmtDuration(a.durationSeconds), fmtSize(a.sizeBytes)].filter(Boolean).join(' · ')
+}
+
+/** 上传附加字段：探测到的音频元数据（空值不上送，服务端存 null）。 */
+async function metaFields(file: File): Promise<Record<string, string>> {
+  try {
+    const meta = await probeAudio(file)
+    const fields: Record<string, string> = {}
+    if (meta.artist) fields.artist = meta.artist
+    if (meta.durationSeconds) fields.durationSeconds = String(Math.round(meta.durationSeconds * 10) / 10)
+    if (meta.bitrateKbps) fields.bitrateKbps = String(meta.bitrateKbps)
+    return fields
+  } catch {
+    return {} // 探测失败不阻断上传
+  }
 }
 
 async function addFromLibrary(a: AudioAssetInfo) {
@@ -174,7 +192,8 @@ async function nameThenUpload(file: File) {
 async function uploadAndAdd(file: File) {
   uploading.value = true
   try {
-    const asset = await uploadFile<{ id: string }>('/api/media', file)
+    const fields = await metaFields(file)
+    const asset = await uploadFile<{ id: string }>('/api/media', file, fields)
     await player.addMedia(asset.id)
     libItems.value = (await listMyAudioAssets()).items
     emit('added')
@@ -211,7 +230,8 @@ async function importFolder(files: File[]) {
   let fail = 0
   for (const f of audio) {
     try {
-      const asset = await uploadFile<{ id: string }>('/api/media', f)
+      const fields = await metaFields(f)
+      const asset = await uploadFile<{ id: string }>('/api/media', f, fields)
       await player.addMedia(asset.id)
       ok++
     } catch (err) {
@@ -347,15 +367,27 @@ async function importFolder(files: File[]) {
 .pa-lib-row:hover {
   background: var(--hz-color-bg);
 }
-.pa-lib-name {
+.pa-lib-main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pa-lib-name {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+}
+.pa-lib-meta {
+  font-size: 11px;
+  color: var(--hz-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pa-lib-rename {
   flex-shrink: 0;
@@ -366,9 +398,5 @@ async function importFolder(files: File[]) {
 }
 .pa-lib-rename:hover {
   color: var(--hz-color-interactive);
-}
-.pa-lib-size {
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
 }
 </style>

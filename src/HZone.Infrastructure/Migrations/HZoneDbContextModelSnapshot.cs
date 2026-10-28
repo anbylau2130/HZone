@@ -295,6 +295,12 @@ namespace HZone.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Artist")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("BitrateKbps")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ContentHash")
                         .HasColumnType("TEXT");
 
@@ -307,6 +313,9 @@ namespace HZone.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("DurationSeconds")
+                        .HasColumnType("REAL");
 
                     b.Property<int>("Kind")
                         .HasColumnType("INTEGER");

@@ -64,6 +64,28 @@ public static class MediaEndpoints
                 return Results.BadRequest(new { error = "unsupported content type" });
             }
 
+            // 音频元数据（前端上传前探测 ID3/时长/比特率随表单带上）：可选字段，
+            // 解析失败/范围外一律置 null——元数据是展示提示，不应阻断上传。
+            string? artist = null;
+            double? durationSeconds = null;
+            int? bitrateKbps = null;
+            if (kind == MediaKind.Audio)
+            {
+                var artistRaw = form["artist"].ToString();
+                if (artistRaw.Length > 0 && artistRaw.Length <= 200)
+                {
+                    artist = artistRaw;
+                }
+                if (double.TryParse(form["durationSeconds"], out var dur) && dur > 0 && dur <= 86_400)
+                {
+                    durationSeconds = dur;
+                }
+                if (int.TryParse(form["bitrateKbps"], out var kbps) && kbps > 0 && kbps <= 10_000)
+                {
+                    bitrateKbps = kbps;
+                }
+            }
+
             // 上限从 SystemConfig 读（media.maxImageBytes / media.maxVideoBytes / media.maxAudioBytes），无配置用默认值。
             var limit = await GetLimitAsync(db, kind.Value, ct);
             string storedName;
@@ -181,6 +203,9 @@ public static class MediaEndpoints
                 SizeBytes = sizeBytes,
                 ContentHash = contentHash,
                 ThumbStoredName = thumbStoredName,
+                Artist = artist,
+                DurationSeconds = durationSeconds,
+                BitrateKbps = bitrateKbps,
                 ContentId = null,
                 CreatedAt = DateTime.UtcNow,
             };
@@ -271,6 +296,9 @@ public static class MediaEndpoints
                     m.OriginalName,
                     m.StoredName,
                     m.SizeBytes,
+                    m.Artist,
+                    m.DurationSeconds,
+                    m.BitrateKbps,
                     m.CreatedAt,
                 })
                 .ToListAsync(ct);

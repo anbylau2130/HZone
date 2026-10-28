@@ -494,6 +494,13 @@ export interface PlaylistItem {
   mediaAssetId: string | null
   /** media 项的资产文件名（拼 /media/{storedName} 播放路径，前端 blob 换取用）。 */
   mediaStoredName: string | null
+  /** 上传时探测的音频元数据（media 项；老数据/外链为 null）：列表行第二行展示。 */
+  artist: string | null
+  durationSeconds: number | null
+  bitrateKbps: number | null
+  sizeBytes: number | null
+  /** 来源文件名（"文件位置"：上传原文件 / 外链为 null）。 */
+  originalFileName: string | null
   sortOrder: number
   createdAt: string
 }
@@ -503,6 +510,9 @@ export interface AudioAssetInfo {
   originalName: string
   storedName: string
   sizeBytes: number
+  artist: string | null
+  durationSeconds: number | null
+  bitrateKbps: number | null
   createdAt: string
 }
 

@@ -22,6 +22,7 @@ import {
   type PlaylistItem
 } from '../api/endpoints'
 import { loadMediaUrl } from '../api/media'
+import { getToken } from '../api/client'
 import { i18n } from '../locale'
 
 /** 播放器统一曲目：用户项（PlaylistItem）+ 服务器音乐虚拟项的并集形状。 */
@@ -33,6 +34,13 @@ export interface PlayerTrack {
   mediaStoredName: string | null
   /** server 项的文件名（配置目录顶层音频文件）。 */
   serverFile: string | null
+  /** 音频元数据（列表行第二行展示；探测不到的为 null）。 */
+  artist: string | null
+  durationSeconds: number | null
+  bitrateKbps: number | null
+  sizeBytes: number | null
+  /** 来源（文件位置）：media=上传原文件名 / server=目录文件名 / url=链接本身。 */
+  sourceLabel: string | null
   sortOrder: number
   createdAt: string
 }
@@ -69,6 +77,11 @@ const tracks = computed<PlayerTrack[]>(() => [
       url: null,
       mediaStoredName: null,
       serverFile: f.name,
+      artist: null,
+      durationSeconds: null,
+      bitrateKbps: null,
+      sizeBytes: f.sizeBytes,
+      sourceLabel: f.name,
       sortOrder: 0,
       createdAt: ''
     })
@@ -76,7 +89,8 @@ const tracks = computed<PlayerTrack[]>(() => [
   ...items.value.map(
     (it): PlayerTrack => ({
       ...it,
-      serverFile: null
+      serverFile: null,
+      sourceLabel: it.sourceKind === 'url' ? it.url : it.originalFileName
     })
   )
 ])
@@ -129,6 +143,8 @@ function ensureCtx(): UniApp.InnerAudioContext {
 /** 拉取账号播放列表 + 服务器音乐库（幂等；已拉过不重复拉）。 */
 async function load(force = false) {
   if (loaded.value && !force) return
+  // 未登录不拉：请求层对 401 会清会话踢回登录页，guest 进设置页不该被播放器踢走
+  if (!getToken()) return
   const wasId = currentId()
   try {
     const [pl, lib] = await Promise.all([listPlaylist(), getServerMusicLibrary()])
