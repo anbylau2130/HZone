@@ -71,6 +71,27 @@ public static class MediaEndpoints
             string? thumbStoredName = null;
             long sizeBytes;
 
+            // 上传幂等（同文件多次上传库中只留一条）：按原始上传字节 SHA-256 命中
+            // 本人未绑定的同类资产直接复用——不重复落盘/转码/缩略图。已绑定内容
+            // 的资产不复用（绑定规则要求 ContentId 为空），照常新建。
+            byte[] rawBytes;
+            string contentHash;
+            {
+                using var hashed = new MemoryStream();
+                await file.OpenReadStream().CopyToAsync(hashed, ct);
+                rawBytes = hashed.ToArray();
+                contentHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(rawBytes));
+                var existing = await db.MediaAssets
+                    .FirstOrDefaultAsync(m => m.OwnerUserId == CurrentUserId(principal)
+                        && m.ContentHash == contentHash
+                        && m.ContentId == null, ct);
+                if (existing is not null)
+                {
+                    return Results.Ok(MediaResponses.ToResponse(existing));
+                }
+            }
+            Stream RawStream() => new MemoryStream(rawBytes, writable: false);
+
             if (kind == MediaKind.Image)
             {
                 // 图片统一重编码：主图最长边 1920 JPEG q75 + 320px 缩略图；压缩后仍超限 → 413。
@@ -78,7 +99,7 @@ public static class MediaEndpoints
                 byte[] thumbBytes;
                 try
                 {
-                    (mainBytes, thumbBytes) = await CompressImageAsync(file.OpenReadStream(), ct);
+                    (mainBytes, thumbBytes) = await CompressImageAsync(RawStream(), ct);
                 }
                 catch (Exception ex) when (ex is SixLabors.ImageSharp.UnknownImageFormatException
                     or SixLabors.ImageSharp.InvalidImageContentException)
@@ -103,21 +124,20 @@ public static class MediaEndpoints
             else if (kind == MediaKind.File)
             {
                 // 普通附件：原样存储（无转码/无缩略图），上限 media.maxFileBytes。
-                if (file.Length > limit)
+                if (rawBytes.Length > limit)
                 {
                     return Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge,
                         title: "media too large");
                 }
 
-                await using var raw = file.OpenReadStream();
-                storedName = await storage.SaveAsync(raw, file.FileName, file.ContentType, ct);
-                sizeBytes = file.Length;
+                storedName = await storage.SaveAsync(RawStream(), file.FileName, file.ContentType, ct);
+                sizeBytes = rawBytes.Length;
             }
             else
             {
                 // 视频/音频：超限且 ffmpeg 可用 → 单次转码（crf28/1280p、aac64k）；无 ffmpeg 或产物仍超限 → 413。
                 var available = await ffmpeg.IsAvailableAsync(ct);
-                var action = FFmpegCompressDecision.Decide(kind.Value, file.Length, limit, available);
+                var action = FFmpegCompressDecision.Decide(kind.Value, rawBytes.Length, limit, available);
                 if (action == MediaCompressAction.Reject)
                 {
                     return Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge,
@@ -126,10 +146,7 @@ public static class MediaEndpoints
 
                 if (action == MediaCompressAction.FFmpegTranscode)
                 {
-                    await using var input = file.OpenReadStream();
-                    using var buffered = new MemoryStream();
-                    await input.CopyToAsync(buffered, ct);
-                    var inputBytes = buffered.ToArray();
+                    var inputBytes = rawBytes;
                     var transcoded = kind == MediaKind.Video
                         ? await ffmpeg.TranscodeVideoAsync(inputBytes, ct)
                         : await ffmpeg.TranscodeAudioAsync(inputBytes, ct);
@@ -147,9 +164,8 @@ public static class MediaEndpoints
                 }
                 else
                 {
-                    await using var raw = file.OpenReadStream();
-                    storedName = await storage.SaveAsync(raw, file.FileName, file.ContentType, ct);
-                    sizeBytes = file.Length;
+                    storedName = await storage.SaveAsync(RawStream(), file.FileName, file.ContentType, ct);
+                    sizeBytes = rawBytes.Length;
                 }
             }
 
@@ -163,6 +179,7 @@ public static class MediaEndpoints
                 Kind = kind.Value,
                 ContentType = contentType,
                 SizeBytes = sizeBytes,
+                ContentHash = contentHash,
                 ThumbStoredName = thumbStoredName,
                 ContentId = null,
                 CreatedAt = DateTime.UtcNow,

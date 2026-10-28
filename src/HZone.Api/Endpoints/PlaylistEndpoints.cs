@@ -181,6 +181,13 @@ public static class PlaylistEndpoints
                 {
                     return Results.NotFound(new { error = "audio asset not found" });
                 }
+                // 同一资产不重复入列（同一文件上传幂等后是同一资产，列表只留一条）
+                var dup = await db.PlaylistItems
+                    .AnyAsync(p => p.UserId == userId && p.MediaAssetId == assetId, ct);
+                if (dup)
+                {
+                    return Results.Conflict(new { error = "already in playlist" });
+                }
                 mediaAssetId = assetId;
                 title = string.IsNullOrWhiteSpace(request.Title) ? asset.OriginalName : request.Title.Trim();
             }

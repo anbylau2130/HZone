@@ -16,6 +16,9 @@ public class MediaAsset
 
     public long SizeBytes { get; set; }
 
+    /// <summary>原始上传字节 SHA-256 hex（上传幂等去重键；老数据为 null 不参与去重）。</summary>
+    public string? ContentHash { get; set; }
+
     public string? ThumbStoredName { get; set; }
 
     public Guid? ContentId { get; set; }

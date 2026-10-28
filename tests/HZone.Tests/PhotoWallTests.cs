@@ -20,16 +20,18 @@ public class PhotoWallTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    // 1x1 红 PNG（合法图片数据，走压缩管线生成缩略图）
-    private static readonly byte[] Png =
-    [
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-        0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-        0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, 0x00, 0x00, 0x00,
-        0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
-        0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D, 0xB0, 0x00, 0x00, 0x00,
-        0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
-    ];
+    // 不同色的 1x1 PNG（合法图片数据走压缩管线；每张字节不同——上传按内容幂等去重）
+    private static readonly byte[][] Pngs = [PngOf(0xff, 0x00, 0x00), PngOf(0x00, 0xff, 0x00), PngOf(0x00, 0x00, 0xff)];
+    private static byte[] Png => Pngs[0];
+
+    private static byte[] PngOf(byte r, byte g, byte b)
+    {
+        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(1, 1);
+        image[0, 0] = new SixLabors.ImageSharp.PixelFormats.Rgb24(r, g, b);
+        using var ms = new MemoryStream();
+        image.Save(ms, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+        return ms.ToArray();
+    }
 
     [Fact]
     public async Task Photos_page_lists_own_images_newest_first_with_thumbs()
@@ -44,7 +46,7 @@ public class PhotoWallTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         for (var i = 0; i < 3; i++)
         {
             using var form = new MultipartFormDataContent();
-            using var bytes = new ByteArrayContent(Png);
+            using var bytes = new ByteArrayContent(Pngs[i]);
             bytes.Headers.ContentType = new MediaTypeHeaderValue("image/png");
             form.Add(bytes, "file", $"p{i}.png");
             var res = await client.PostAsync("/media", form);

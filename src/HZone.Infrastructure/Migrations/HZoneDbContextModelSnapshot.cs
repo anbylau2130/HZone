@@ -295,6 +295,9 @@ namespace HZone.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ContentHash")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("ContentId")
                         .HasColumnType("TEXT");
 
@@ -328,6 +331,8 @@ namespace HZone.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ContentId");
+
+                    b.HasIndex("OwnerUserId", "ContentHash");
 
                     b.ToTable("MediaAssets");
                 });

@@ -57,13 +57,19 @@ public class RenameTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         var added = await client.PostAsJsonAsync("/me/playlist", new { sourceKind = "media", mediaAssetId = assetId });
         var itemId = (await added.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        // 资产改名后：列表项仍是旧快照（解耦），新加项取新名
+        // 资产改名后：列表项仍是旧快照（解耦），删除后重加取新名
+        //（同一资产不重复入列——直接重加会 409，先删再加以新名入列）
         await client.PutAsJsonAsync($"/me/media/{assetId}/name", new { name = "资产新名" });
         var listAfterAssetRename = await client.GetFromJsonAsync<JsonElement>("/me/playlist");
         Assert.Equal("old-name.mp3", listAfterAssetRename.GetProperty("items")[0].GetProperty("title").GetString());
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await client.PostAsJsonAsync("/me/playlist", new { sourceKind = "media", mediaAssetId = assetId })).StatusCode);
+        await client.DeleteAsync($"/me/playlist/{itemId}");
         await client.PostAsJsonAsync("/me/playlist", new { sourceKind = "media", mediaAssetId = assetId });
         var listTwo = await client.GetFromJsonAsync<JsonElement>("/me/playlist");
-        Assert.Equal("资产新名", listTwo.GetProperty("items")[1].GetProperty("title").GetString());
+        Assert.Single(listTwo.GetProperty("items").EnumerateArray());
+        Assert.Equal("资产新名", listTwo.GetProperty("items")[0].GetProperty("title").GetString());
+        itemId = listTwo.GetProperty("items")[0].GetProperty("id").GetGuid();
 
         // 列表项改名 → 显示更新
         var renamed = await client.PutAsJsonAsync($"/me/playlist/{itemId}/title", new { title = "我的深夜歌" });

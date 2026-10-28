@@ -28,22 +28,22 @@ public class AdminMediaLimitTests : IClassFixture<NoFFmpegApiFactory>
         var user = await Factory.SeedUserAsync("limit-img@test.local", "LimitImg");
         var client = Factory.CreateAuthorizedClient(user.Id, user.Nickname);
 
-        // 噪声图压缩后仍远大于 1KB。
-        var noise = CreateNoisePng(128, 128);
-
+        // 噪声图压缩后仍远大于 1KB（每张尺寸不同——上传按内容幂等去重，同字节会复用）
         // 默认 10MB → 201。
-        Assert.Equal(HttpStatusCode.Created, (await PostFileAsync(client, noise, "image/png")).StatusCode);
+        Assert.Equal(HttpStatusCode.Created,
+            (await PostFileAsync(client, CreateNoisePng(128, 128), "image/png")).StatusCode);
 
         // 上限降到 1KB → 压缩后仍超限 → 413。
         Assert.Equal(HttpStatusCode.OK, (await adminClient.PutAsJsonAsync("/admin/config",
             new { mediaLimits = new { imageBytes = 1024L } })).StatusCode);
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge,
-            (await PostFileAsync(client, noise, "image/png")).StatusCode);
+            (await PostFileAsync(client, CreateNoisePng(129, 128), "image/png")).StatusCode);
 
-        // 上限调回 10MB → 同一张图恢复 201。
+        // 上限调回 10MB → 新图恢复 201。
         Assert.Equal(HttpStatusCode.OK, (await adminClient.PutAsJsonAsync("/admin/config",
             new { mediaLimits = new { imageBytes = 10L * 1024 * 1024 } })).StatusCode);
-        Assert.Equal(HttpStatusCode.Created, (await PostFileAsync(client, noise, "image/png")).StatusCode);
+        Assert.Equal(HttpStatusCode.Created,
+            (await PostFileAsync(client, CreateNoisePng(130, 128), "image/png")).StatusCode);
     }
 
     [Fact]

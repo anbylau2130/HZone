@@ -128,6 +128,9 @@ public class HZoneDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(m => m.ContentId)
                 .OnDelete(DeleteBehavior.SetNull);
+            // 上传幂等去重键：同 owner 同内容（哈希）命中未绑定资产即复用。
+            // 过滤列（哈希可空）不能直接复合唯一——查询走 (Owner, Hash) 非唯一索引即可
+            e.HasIndex(m => new { m.OwnerUserId, m.ContentHash });
         });
 
         modelBuilder.Entity<InviteCode>(e =>

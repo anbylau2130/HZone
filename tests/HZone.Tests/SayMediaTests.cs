@@ -237,11 +237,11 @@ public class SayMediaTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         var authorClient = _factory.CreateAuthorizedClient(author.Id, author.Nickname);
         var otherClient = _factory.CreateAuthorizedClient(other.Id, other.Nickname);
 
-        // 10 张图 → 400。
+        // 10 张图 → 400（每张 variant 不同：同字节会被上传幂等去重）。
         var ids = new List<Guid>();
         for (var i = 0; i < 10; i++)
         {
-            ids.Add((await UploadImageAsync(authorClient, CreatePng(16, 16))).Id);
+            ids.Add((await UploadImageAsync(authorClient, CreatePng(16, 16, variant: i))).Id);
         }
         var create = await authorClient.PostAsJsonAsync("/contents/says", new
         {
@@ -278,9 +278,9 @@ public class SayMediaTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         });
         Assert.Equal(HttpStatusCode.BadRequest, create.StatusCode);
 
-        // 2 个视频 → 400。
+        // 2 个视频 → 400（字节不同：同字节会被上传幂等去重成同一资产，测不出"两个"）。
         var v1 = await UploadRawAsync(authorClient, new byte[] { 1 }, "video/mp4", "a.mp4");
-        var v2 = await UploadRawAsync(authorClient, new byte[] { 1 }, "video/mp4", "b.mp4");
+        var v2 = await UploadRawAsync(authorClient, new byte[] { 2 }, "video/mp4", "b.mp4");
         create = await authorClient.PostAsJsonAsync("/contents/says", new
         {
             text = "two videos",
@@ -345,7 +345,9 @@ public class SayMediaTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         HttpClient client, byte[] bytes, string contentType, string fileName)
     {
         var response = await PostFileAsync(client, bytes, contentType, fileName);
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        // 201 = 新建；200 = 上传幂等命中同字节未绑定资产（同一测试内重复传同图时复用）
+        Assert.True(response.StatusCode is HttpStatusCode.Created or HttpStatusCode.OK,
+            $"unexpected upload status {response.StatusCode}");
         var body = await ReadJson(response);
         return new MediaUpload(
             body.GetProperty("id").GetGuid(),
@@ -359,7 +361,7 @@ public class SayMediaTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         return JsonDocument.Parse(text).RootElement.Clone();
     }
 
-    private static byte[] CreatePng(int width, int height)
+    private static byte[] CreatePng(int width, int height, int variant = 0)
     {
         using var image = new Image<Rgb24>(width, height);
         image.ProcessPixelRows(accessor =>
@@ -369,7 +371,8 @@ public class SayMediaTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
                 var row = accessor.GetRowSpan(y);
                 for (var x = 0; x < row.Length; x++)
                 {
-                    row[x] = new Rgb24((byte)(x * 4), (byte)(y * 4), 128);
+                    // variant 使同尺寸图字节不同（上传按内容幂等去重，同字节会复用同一资产）
+                    row[x] = new Rgb24((byte)(x * 4 + variant), (byte)(y * 4), 128);
                 }
             }
         });
