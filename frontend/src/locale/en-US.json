@@ -253,6 +253,8 @@
     "deleted": "Deleted"
   },
   "inbox": {
+    "title": "Notifications",
+    "unreadCount": "{n} unread",
     "mentioned": "mentioned you",
     "commented": "commented on your content",
     "friendRequest": "sent you a friend request"

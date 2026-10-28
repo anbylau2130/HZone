@@ -28,6 +28,14 @@
       </view>
     </view>
 
+    <!-- 站内通知入口：tab 角标数的是这里（被评论/被@/好友请求）；未读>0 才出现 -->
+    <view v-if="inbox.unreadCount > 0" class="inbox-entry" @click="goInbox">
+      <text class="inbox-entry-ico">🔔</text>
+      <text class="inbox-entry-label">{{ $t('inbox.title') }}</text>
+      <text class="inbox-entry-count">{{ $t('inbox.unreadCount', { n: inbox.unreadCount }) }}</text>
+      <text class="inbox-entry-arrow">›</text>
+    </view>
+
     <view v-if="pagination.loading.value && !items.length" class="hint">
       <text class="hint-text">{{ $t('common.loading') }}</text>
     </view>
@@ -62,6 +70,14 @@ import MiniPlayer from '../../components/MiniPlayer.vue'
 import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import { listReceived, type ContentItem, type KindFilter } from '../../api/endpoints'
+import { useInboxStore } from '../../stores/inbox'
+
+const inbox = useInboxStore()
+
+/** 站内通知页（孤儿页修复：收到页是角标所在地，入口必须在这里）。 */
+function goInbox() {
+  uni.navigateTo({ url: '/pages/inbox/inbox' })
+}
 
 const kinds: { value: KindFilter; label: string }[] = [
   { value: '', label: 'timeline.filterAll' },
@@ -166,6 +182,36 @@ function onCardDeleted(id: string) {
   background: var(--hz-color-surface);
   color: var(--hz-color-text-secondary);
   cursor: pointer;
+}
+/* 站内通知入口：未读>0 时出现的引导行 */
+.inbox-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--hz-color-primary);
+  border-radius: var(--hz-radius-md);
+  background: var(--hz-color-surface);
+  cursor: pointer;
+}
+.inbox-entry-ico {
+  font-size: 15px;
+  line-height: 1;
+}
+.inbox-entry-label {
+  font-size: var(--hz-font-size-base);
+  font-weight: 600;
+  color: var(--hz-color-text);
+}
+.inbox-entry-count {
+  flex: 1;
+  font-size: var(--hz-font-size-sm);
+  color: var(--hz-color-primary);
+}
+.inbox-entry-arrow {
+  font-size: 18px;
+  color: var(--hz-color-text-secondary);
+  line-height: 1;
 }
 .search-inline {
   display: flex;
