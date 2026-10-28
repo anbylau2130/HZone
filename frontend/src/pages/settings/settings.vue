@@ -113,6 +113,19 @@
         </view>
       </view>
     </view>
+
+    <!-- 播放器显隐（✕ 收起后的恢复入口） -->
+    <view class="profile-card">
+      <text class="sec-title">{{ $t('player.title') }}</text>
+      <view class="seg">
+        <view class="seg-item" :class="{ active: !player.hidden }" @click="player.setHidden(false)">
+          <text class="seg-text" :class="{ active: !player.hidden }">{{ $t('player.show') }}</text>
+        </view>
+        <view class="seg-item" :class="{ active: player.hidden }" @click="player.setHidden(true)">
+          <text class="seg-text" :class="{ active: player.hidden }">{{ $t('player.collapse') }}</text>
+        </view>
+      </view>
+    </view>
     <view class="entries">
       <view class="entry" @click="go('/pages/photos/photos')">
         <text class="entry-label">{{ $t('photos.title') }}</text>
@@ -145,6 +158,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../../stores/auth'
 import { useInboxStore } from '../../stores/inbox'
 import { useThemeStore } from '../../stores/theme'
+import { usePlayerStore } from '../../stores/player'
 import { presets } from '../../theme/presets'
 import { checkContrast, TEXT_CONTRAST_MIN, PRIMARY_CONTRAST_MIN } from '../../utils/contrast'
 import AppTabBar from '../../components/AppTabBar.vue'
@@ -158,6 +172,7 @@ const { t, locale } = useI18n()
 const auth = useAuthStore()
 const inbox = useInboxStore()
 const theme = useThemeStore()
+const player = usePlayerStore()
 const busy = ref(false)
 // 签名草稿：进入页面时从 store 回填
 const signature = ref(auth.user?.signature ?? '')

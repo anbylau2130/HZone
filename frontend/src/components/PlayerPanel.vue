@@ -1,9 +1,15 @@
 <template>
-  <view class="pp">
+  <view v-if="!player.hidden" class="pp">
     <view class="pp-head">
       <text class="pp-title">{{ $t('player.title') }}</text>
-      <view class="pp-loop" :class="{ on: player.loopMode === 'one' }" @click="player.toggleLoopMode()">
-        <text class="pp-loop-text">{{ player.loopMode === 'one' ? $t('player.loopOne') : $t('player.loopList') }}</text>
+      <view class="pp-head-right">
+        <view class="pp-loop" :class="{ on: player.loopMode === 'one' }" @click="player.toggleLoopMode()">
+          <text class="pp-loop-text">{{ player.loopMode === 'one' ? $t('player.loopOne') : $t('player.loopList') }}</text>
+        </view>
+        <!-- 收起面板（设置页「播放器」开关恢复） -->
+        <view class="pp-collapse" :title="$t('player.collapse')" @click="player.setHidden(true)">
+          <text class="pp-collapse-x">✕</text>
+        </view>
       </view>
     </view>
 
@@ -151,6 +157,26 @@ function onSeek(e: MouseEvent) {
 }
 .pp-loop.on .pp-loop-text {
   color: #fff;
+}
+.pp-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pp-collapse {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hz-color-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.pp-collapse-x {
+  font-size: 11px;
+  color: var(--hz-color-text-secondary);
+  line-height: 1;
 }
 .pp-now {
   display: flex;

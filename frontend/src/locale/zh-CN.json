@@ -371,6 +371,8 @@
     "library": "音频库",
     "upload": "上传",
     "nameAudio": "给这首歌命名",
+    "collapse": "收起",
+    "show": "显示",
     "uploadAsIs": "用原名",
     "importFolder": "从文件夹导入",
     "importing": "导入中 {x}/{n}",

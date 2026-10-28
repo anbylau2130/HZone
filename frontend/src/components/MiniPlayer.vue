@@ -1,7 +1,7 @@
 <template>
   <!-- 全局 mini 桥：<1200px 常驻（≥1200 由 ToolDock 右栏 PlayerPanel 接管，CSS 隐藏本条）。
        音频本体在 player store 模块单例里，本条只是遥控器——页面切换不中断。 -->
-  <view v-if="player.tracks.length" class="mp">
+  <view v-if="player.tracks.length && !player.hidden" class="mp">
     <view class="mp-bar">
       <view class="mp-btn" @click="player.toggle()">
         <text class="mp-ico">{{ player.playing ? '⏸' : '▶' }}</text>
@@ -17,6 +17,10 @@
       </view>
       <view class="mp-btn" @click="drawerOpen = true">
         <text class="mp-ico">☰</text>
+      </view>
+      <!-- 收起播放器（设置页「播放器」开关恢复） -->
+      <view class="mp-btn collapse" :title="$t('player.collapse')" @click="player.setHidden(true)">
+        <text class="mp-ico">✕</text>
       </view>
     </view>
 
@@ -135,6 +139,15 @@ onMounted(() => {
   font-size: 13px;
   color: #fff;
   line-height: 1;
+}
+/* 收起钮弱一档（主色底半透明描边），与功能钮区分 */
+.mp-btn.collapse {
+  background: transparent;
+  border: 1px solid var(--hz-color-border);
+}
+.mp-btn.collapse .mp-ico {
+  color: var(--hz-color-text-secondary);
+  font-size: 11px;
 }
 .mp-mid {
   flex: 1;

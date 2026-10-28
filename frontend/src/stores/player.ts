@@ -49,6 +49,16 @@ const duration = ref(0) // 秒
 const loopMode = ref<'list' | 'one'>('list')
 const switching = ref(false) // 换曲中（src 异步解析），防重入
 
+// 播放器显隐（用户要求可隐藏/再显示）：✕ 收起 mini 桥与桌面面板，
+// 设置页开关恢复；记忆在 localStorage（hz-player-hidden）
+const HIDDEN_KEY = 'hz-player-hidden'
+const hidden = ref(localStorage.getItem(HIDDEN_KEY) === '1')
+
+function setHidden(v: boolean) {
+  hidden.value = v
+  localStorage.setItem(HIDDEN_KEY, v ? '1' : '0')
+}
+
 /** 合并曲目序列：服务器音乐（默认曲库，在前）+ 用户项（在后）。 */
 const tracks = computed<PlayerTrack[]>(() => [
   ...serverFiles.value.map(
@@ -294,6 +304,8 @@ export const usePlayerStore = defineStore('player', () => ({
   loopMode,
   tracks,
   current,
+  hidden,
+  setHidden,
   load,
   reloadServerLibrary,
   playIndex,
