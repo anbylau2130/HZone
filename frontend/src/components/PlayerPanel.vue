@@ -8,7 +8,7 @@
         </view>
         <!-- 收起面板（设置页「播放器」开关恢复） -->
         <view class="pp-collapse" :title="$t('player.collapse')" @click="player.setHidden(true)">
-          <text class="pp-collapse-x">✕</text>
+          <PlayerIcon name="close" :size="10" />
         </view>
       </view>
     </view>
@@ -24,11 +24,11 @@
 
     <!-- 控制：上一首 / 播放暂停 / 下一首 -->
     <view class="pp-ctrl">
-      <view class="pp-btn" @click="player.prev()"><text class="pp-btn-ico">⏮</text></view>
+      <view class="pp-btn" @click="player.prev()"><PlayerIcon name="prev" :size="16" /></view>
       <view class="pp-btn main" @click="player.toggle()">
-        <text class="pp-btn-ico">{{ player.playing ? '⏸' : '▶' }}</text>
+        <PlayerIcon :name="player.playing ? 'pause' : 'play'" :size="20" />
       </view>
-      <view class="pp-btn" @click="player.next()"><text class="pp-btn-ico">⏭</text></view>
+      <view class="pp-btn" @click="player.next()"><PlayerIcon name="next" :size="16" /></view>
     </view>
 
     <!-- 添加块（与移动端抽屉共享）：音频库+上传 / 外链 -->
@@ -67,6 +67,7 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
+import PlayerIcon from './PlayerIcon.vue'
 
 const { t } = useI18n()
 
@@ -172,11 +173,7 @@ function onSeek(e: MouseEvent) {
   border: 1px solid var(--hz-color-border);
   border-radius: 50%;
   cursor: pointer;
-}
-.pp-collapse-x {
-  font-size: 11px;
   color: var(--hz-color-text-secondary);
-  line-height: 1;
 }
 .pp-now {
   display: flex;
@@ -223,20 +220,13 @@ function onSeek(e: MouseEvent) {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  color: var(--hz-color-text-secondary);
 }
 .pp-btn.main {
   width: 44px;
   height: 44px;
   background: var(--hz-color-primary);
   border-color: var(--hz-color-primary);
-}
-.pp-btn-ico {
-  font-size: 16px;
-  color: var(--hz-color-text-secondary);
-  line-height: 1;
-}
-.pp-btn.main .pp-btn-ico {
-  font-size: 18px;
   color: #fff;
 }
 .pp-list {

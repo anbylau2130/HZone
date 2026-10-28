@@ -4,7 +4,7 @@
   <view v-if="player.tracks.length && !player.hidden" class="mp">
     <view class="mp-bar">
       <view class="mp-btn" @click="player.toggle()">
-        <text class="mp-ico">{{ player.playing ? '⏸' : '▶' }}</text>
+        <PlayerIcon :name="player.playing ? 'pause' : 'play'" :size="14" />
       </view>
       <view class="mp-mid" @click="drawerOpen = true">
         <text class="mp-title">{{ player.current ? player.current.title : $t('player.idle') }}</text>
@@ -13,14 +13,14 @@
         </view>
       </view>
       <view class="mp-btn" @click="player.next()">
-        <text class="mp-ico">⏭</text>
+        <PlayerIcon name="next" :size="14" />
       </view>
       <view class="mp-btn" @click="drawerOpen = true">
-        <text class="mp-ico">☰</text>
+        <PlayerIcon name="list" :size="14" />
       </view>
       <!-- 收起播放器（设置页「播放器」开关恢复） -->
       <view class="mp-btn collapse" :title="$t('player.collapse')" @click="player.setHidden(true)">
-        <text class="mp-ico">✕</text>
+        <PlayerIcon name="close" :size="11" />
       </view>
     </view>
 
@@ -64,6 +64,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '../stores/player'
 import PlayerAdd from './PlayerAdd.vue'
+import PlayerIcon from './PlayerIcon.vue'
 const { t } = useI18n()
 const player = usePlayerStore()
 const drawerOpen = ref(false)
@@ -144,19 +145,16 @@ onMounted(() => {
   flex-shrink: 0;
   cursor: pointer;
 }
-.mp-ico {
-  font-size: 13px;
+.mp-btn .pi {
   color: #fff;
-  line-height: 1;
 }
 /* 收起钮弱一档（主色底半透明描边），与功能钮区分 */
 .mp-btn.collapse {
   background: transparent;
   border: 1px solid var(--hz-color-border);
 }
-.mp-btn.collapse .mp-ico {
+.mp-btn.collapse .pi {
   color: var(--hz-color-text-secondary);
-  font-size: 11px;
 }
 .mp-mid {
   flex: 1;
