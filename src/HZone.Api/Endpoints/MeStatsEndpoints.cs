@@ -12,6 +12,71 @@ public static class MeStatsEndpoints
 {
     public static void MapMeStatsEndpoints(this IEndpointRouteBuilder app)
     {
+        // 心情趋势（心情追踪×天气）：带心情标记的随记按中国区自然日聚合——
+        // 日均值序列（含当日主导天气）+ 按天气分组均值 + 交叉洞察（最好/最差天气与差距）。
+        app.MapGet("/me/moods", [Authorize] async (
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            int? days,
+            CancellationToken ct) =>
+        {
+            var me = CurrentUserId(principal);
+            var window = Math.Clamp(days ?? 90, 7, 365);
+            var zone = ChinaZone();
+            var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).Date);
+            var from = today.AddDays(-(window - 1));
+            var fromUtc = TimeZoneInfo.ConvertTimeToUtc(from.ToDateTime(TimeOnly.MinValue), zone);
+
+            var rows = await db.Says.AsNoTracking()
+                .Where(s => s.AuthorId == me && s.MoodLevel != null && s.CreatedAt >= fromUtc)
+                .Select(s => new { s.MoodLevel, s.WeatherCondition, s.CreatedAt })
+                .ToListAsync(ct);
+
+            var byDay = rows
+                .GroupBy(r => DateOnly.FromDateTime(
+                    TimeZoneInfo.ConvertTime(new DateTimeOffset(r.CreatedAt, TimeSpan.Zero), zone).Date))
+                .Select(g => new
+                {
+                    Date = g.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    Avg = Math.Round(g.Average(r => r.MoodLevel!.Value), 2),
+                    // 当日主导天气（同日多条取众数，并列取字典序稳定）
+                    Condition = g.Where(r => !string.IsNullOrEmpty(r.WeatherCondition))
+                        .GroupBy(r => r.WeatherCondition!)
+                        .OrderByDescending(w => w.Count()).ThenBy(w => w.Key)
+                        .Select(w => w.Key)
+                        .FirstOrDefault(),
+                })
+                .OrderBy(d => d.Date)
+                .ToList();
+
+            var byWeather = rows
+                .Where(r => !string.IsNullOrEmpty(r.WeatherCondition))
+                .GroupBy(r => r.WeatherCondition!)
+                .Select(g => new
+                {
+                    Condition = g.Key,
+                    Avg = Math.Round(g.Average(r => r.MoodLevel!.Value), 2),
+                    Count = g.Count(),
+                })
+                .OrderByDescending(w => w.Avg)
+                .ToList();
+
+            // 洞察：至少两种天气、各自 ≥2 条才可信，否则 null
+            var eligible = byWeather.Where(w => w.Count >= 2).ToList();
+            object? insight = eligible.Count >= 2
+                ? new
+                {
+                    Best = eligible[0].Condition,
+                    BestAvg = eligible[0].Avg,
+                    Worst = eligible[^1].Condition,
+                    WorstAvg = eligible[^1].Avg,
+                    Gap = Math.Round(eligible[0].Avg - eligible[^1].Avg, 2),
+                }
+                : null;
+
+            return Results.Ok(new { days = window, totalMarked = rows.Count, byDay, byWeather, insight });
+        }).AddEndpointFilter(ContentEndpoints.RequireInitialized);
+
         // 首页统计（homepage-v2 ticket 04）：四卡数字 + 连续记录天数 + 今日农历。
         app.MapGet("/me/stats", [Authorize] async (
             ClaimsPrincipal principal,

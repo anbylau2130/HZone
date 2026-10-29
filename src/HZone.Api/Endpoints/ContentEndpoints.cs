@@ -43,6 +43,10 @@ public static class ContentEndpoints
             {
                 return Results.BadRequest(new { error = tagError });
             }
+            if (request.MoodLevel is < 1 or > 5)
+            {
+                return Results.BadRequest(new { error = "moodLevel must be 1-5" });
+            }
 
             var now = DateTime.UtcNow;
             var say = new Say
@@ -50,6 +54,7 @@ public static class ContentEndpoints
                 Id = Guid.NewGuid(),
                 AuthorId = authorId,
                 Text = request.Text,
+                MoodLevel = request.MoodLevel,
                 CreatedAt = now,
                 UpdatedAt = now,
             };
@@ -231,6 +236,17 @@ public static class ContentEndpoints
             if (content is Say say && request.Text is not null)
             {
                 say.Text = request.Text;
+                changed = true;
+            }
+
+            // 心情：null = 不修改；0 = 清除；1~5 = 设置（仅随记响应）
+            if (content is Say sayMood && request.MoodLevel is not null)
+            {
+                if (request.MoodLevel is < 0 or > 5)
+                {
+                    return Results.BadRequest(new { error = "moodLevel must be 0-5" });
+                }
+                sayMood.MoodLevel = request.MoodLevel == 0 ? null : request.MoodLevel;
                 changed = true;
             }
 
@@ -602,7 +618,7 @@ public static class ContentEndpoints
             Say s => new ContentResponse(
                 s.Id, "say", author, s.Text, null, null,
                 recipients, s.CreatedAt, s.UpdatedAt, commentCount, media,
-                WeatherOf(s), LunarOf(s), tags ?? new()),
+                WeatherOf(s), LunarOf(s), tags ?? new(), 0, false, s.MoodLevel),
             Journal j => new ContentResponse(
                 j.Id, "journal", author, null, j.Title, j.MarkdownBody,
                 recipients, j.CreatedAt, j.UpdatedAt, commentCount, media,
@@ -792,7 +808,8 @@ public static class ContentEndpoints
             LunarOf(c),
             tagsByContent.GetValueOrDefault(c.Id) ?? new(),
             likeByContent.GetValueOrDefault(c.Id),
-            myLikes.Contains(c.Id))).ToList();
+            myLikes.Contains(c.Id),
+            c is Say sm ? sm.MoodLevel : null)).ToList();
     }
 
     /// <summary>kind 查询参数校验：say/journal/null 之外 → 错误消息。</summary>

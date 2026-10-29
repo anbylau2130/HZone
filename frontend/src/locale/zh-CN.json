@@ -446,5 +446,11 @@
     "highlightTitle": "年度高光",
     "untitled": "未命名",
     "empty": "还没有可以回顾的记录，先去写点什么吧"
+  },
+  "mood": {
+    "label": "此刻心情",
+    "trendTitle": "心情趋势",
+    "trendSub": "近 {n} 天",
+    "insight": "{best}天心情最好（均值 {bestAvg}），{worst}天偏低（均值 {worstAvg}），相差 {gap} 档。"
   }
 }

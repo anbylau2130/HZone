@@ -45,6 +45,8 @@
       <view v-if="pickedFriends.length" class="chips-row">
         <text v-for="r in pickedFriends" :key="r.id" class="chip">{{ r.nickname }}</text>
       </view>
+      <!-- 心情（随记可选标记，再点取消）：心情追踪×天气分析的数据源 -->
+      <MoodPicker v-if="mode === 'say'" v-model="mood" />
       <!-- 标签行：回车/确认添加，chip × 删除；上限 10、单条 ≤32 字符 -->
       <view class="tags-row">
         <text class="tags-label">#</text>
@@ -211,6 +213,7 @@ import { useI18n } from 'vue-i18n'
 import FriendPicker from '../../components/FriendPicker.vue'
 import EmojiPicker from '../../components/EmojiPicker.vue'
 import WeatherPicker from '../../components/WeatherPicker.vue'
+import MoodPicker from '../../components/MoodPicker.vue'
 // #ifdef H5
 import CherryEditor from '../../components/CherryEditor.vue'
 // #endif
@@ -344,6 +347,7 @@ async function loadForEdit() {
     }
     pickedFriends.value = c.recipients.map((r) => ({ id: r.userId, nickname: r.nickname, email: '' }))
     tags.value = c.tags ?? []
+    mood.value = c.moodLevel ?? null
     for (const m of c.media ?? []) {
       // 语音随记：audio 也回填（上传时绑定，MediaGrid 内点播）
       mediaItems.value.push({
@@ -511,6 +515,8 @@ function onFriendsConfirmed(friends: FriendInfo[]) {
 
 // ---------- 标签（跨时间主题检索）：回车/失焦添加，chip × 删除，上限 10 ----------
 const tags = ref<string[]>([])
+// 心情（随记可选标记）：1~5，null = 未标；编辑回填、提交随 say 走
+const mood = ref<number | null>(null)
 // uni-input H5 深坑（实测两轮）：v-model 快速输入+回车滞后丢字；受控清空后
 // 内部 buffer 异步回写旧文本——彻底绕开：keydown.enter 原生处理 + 直接读
 // DOM 值（keydown 时刻无竞态窗口），不用 v-model/confirm
@@ -801,10 +807,11 @@ async function submit() {
           mediaIds,
           recipientIds,
           weather: toSnapshot(),
-          tags: tags.value
+          tags: tags.value,
+          moodLevel: mood.value ?? 0
         })
       } else {
-        await createSay(sayText.value, recipientIds, mediaIds, toSnapshot(), tags.value)
+        await createSay(sayText.value, recipientIds, mediaIds, toSnapshot(), tags.value, mood.value ?? undefined)
       }
     } else {
       if (!title.value.trim() || !markdown.value.trim()) {

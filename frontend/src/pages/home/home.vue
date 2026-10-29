@@ -53,6 +53,11 @@
       <Heatmap :cells="stats.heatmap" />
     </view>
 
+    <!-- 心情趋势：标记过心情的随记才显示（无数据静默隐藏） -->
+    <view v-if="moods && moods.totalMarked > 0" class="heatmap-section">
+      <MoodTrend :data="moods" />
+    </view>
+
     <!-- 月度回顾（06）：中国区本月一句式小卡（篇数/城市/最常天气） -->
     <view v-if="stats?.monthly" class="monthly-card">
       <text class="section-title">{{ $t('home.monthlyTitle') }}</text>
@@ -135,6 +140,7 @@ import { useInboxStore } from '../../stores/inbox'
 import {
   getSetupStatus,
   getMyStats,
+  getMyMoods,
   getOnThisDay,
   getInteractionSummary,
   listMyContents,
@@ -143,6 +149,7 @@ import {
   type FeedCursor,
   type KindFilter,
   type MeStats,
+  type MoodReport,
   type OnThisDayItem,
   type InteractionSummary
 } from '../../api/endpoints'
@@ -153,6 +160,7 @@ import MiniPlayer from '../../components/MiniPlayer.vue'
 import ContentCard from '../../components/ContentCard.vue'
 import SegmentedFilter from '../../components/SegmentedFilter.vue'
 import Heatmap from '../../components/Heatmap.vue'
+import MoodTrend from '../../components/MoodTrend.vue'
 import Footprints from '../../components/Footprints.vue'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import { getWeather, CONDITION_ICONS, type WeatherSnapshot } from '../../utils/weather'
@@ -162,6 +170,8 @@ import { i18n } from '../../locale'
 const auth = useAuthStore()
 const inbox = useInboxStore()
 const stats = ref<MeStats | null>(null)
+// 心情趋势（心情追踪×天气）：无标记数据整卡隐藏
+const moods = ref<MoodReport | null>(null)
 const weather = ref<WeatherSnapshot | null>(null)
 const otd = ref<OnThisDayItem[]>([])
 
@@ -392,6 +402,10 @@ async function loadStats() {
   } catch {
     // 统计失败保持上次值/空值，不阻断首页
   }
+  // 心情趋势独立拉取：失败静默隐藏整卡
+  getMyMoods()
+    .then((m) => (moods.value = m))
+    .catch(() => {})
 }
 
 // 那年今天：请求失败或空数组都静默隐藏整块（设计纪律：无数据静默）。

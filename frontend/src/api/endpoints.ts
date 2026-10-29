@@ -68,6 +68,8 @@ export interface ContentItem {
   /** 点赞数与「我是否已赞」（观察者视角）。 */
   likeCount?: number
   likedByMe?: boolean
+  /** 心情档位 1~5（随记；未标/笔记为 null）。 */
+  moodLevel?: number | null
 }
 
 export interface ContentPage {
@@ -95,11 +97,12 @@ export function createSay(
   recipientIds: string[],
   mediaIds?: string[],
   weather?: WeatherSnapshotInput,
-  tags?: string[]
+  tags?: string[],
+  moodLevel?: number
 ) {
   return request<ContentItem>('/api/contents/says', {
     method: 'POST',
-    data: { text, recipientIds, mediaIds: mediaIds ?? [], weather, tags }
+    data: { text, recipientIds, mediaIds: mediaIds ?? [], weather, tags, moodLevel }
   })
 }
 
@@ -120,7 +123,7 @@ export function getContent(id: string) {
   return request<ContentItem>(`/api/contents/${id}`)
 }
 
-/** 只传显式要改的字段（null/undefined = 不修改）；mediaIds/recipientIds/weather 传了即整体替换。 */
+/** 只传显式要改的字段（null/undefined = 不修改）；mediaIds/recipientIds/weather 传了即整体替换。moodLevel 0=清除。 */
 export function updateContent(
   id: string,
   payload: {
@@ -131,6 +134,7 @@ export function updateContent(
     recipientIds?: string[]
     weather?: WeatherSnapshotInput
     tags?: string[]
+    moodLevel?: number
   }
 ) {
   return request<ContentItem>(`/api/contents/${id}`, { method: 'PUT', data: { ...payload } })
@@ -332,6 +336,20 @@ export interface YearlyReport {
 
 export function getMyReport(year?: number) {
   return request<YearlyReport>(`/api/me/report${qs({ year })}`)
+}
+
+// ---------- 心情追踪×天气 ----------
+
+export interface MoodReport {
+  days: number
+  totalMarked: number
+  byDay: { date: string; avg: number; condition: string | null }[]
+  byWeather: { condition: string; avg: number; count: number }[]
+  insight: { best: string; bestAvg: number; worst: string; worstAvg: number; gap: number } | null
+}
+
+export function getMyMoods(days?: number) {
+  return request<MoodReport>(`/api/me/moods${qs({ days })}`)
 }
 
 // ---------- 那年今天 / 互动摘要（homepage-v2 ticket 06） ----------

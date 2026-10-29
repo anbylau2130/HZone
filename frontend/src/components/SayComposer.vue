@@ -33,6 +33,8 @@
       auto-height
     />
     <EmojiPicker v-if="emojiOpen" @select="onEmoji" />
+    <!-- 心情（可选标记，再点取消）：心情追踪×天气分析的数据源 -->
+    <MoodPicker v-model="mood" />
     <!-- 标签行（与发布页同款交互：# 前缀 chips + 非受控输入 :key 重建） -->
     <view class="c-tags">
       <text class="c-tags-label">#</text>
@@ -98,6 +100,7 @@
 import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from 'vue'
 import EmojiPicker from './EmojiPicker.vue'
 import WeatherPicker from './WeatherPicker.vue'
+import MoodPicker from './MoodPicker.vue'
 import { createSay, updateContent, getMyStats, type ContentItem } from '../api/endpoints'
 import { uploadFile } from '../api/client'
 import { loadMediaUrl } from '../api/media'
@@ -141,6 +144,9 @@ onMounted(() => {
     .then((s) => (lunarLine.value = formatLunar(s.today)))
     .catch(() => {})
 })
+
+// ---------- 心情（随记可选标记） ----------
+const mood = ref<number | null>(null)
 
 // ---------- 标签（与发布页同款：非受控 uni-input + :key 重建清框） ----------
 const tags = ref<string[]>([])
@@ -197,13 +203,14 @@ const voice = useVoiceRecorder((r) => {
 const canSend = computed(() => text.value.trim().length > 0 || mediaItems.value.length > 0)
 const isEdit = computed(() => !!props.edit)
 
-// 编辑回填：文本 + 标签 + 已有媒体（带 mediaId 重提交；预览换授权 blob）
+// 编辑回填：文本 + 标签 + 心情 + 已有媒体（带 mediaId 重提交；预览换授权 blob）
 watch(
   () => props.edit,
   (c) => {
     if (!c) return
     text.value = c.text ?? ''
     tags.value = [...(c.tags ?? [])]
+    mood.value = c.moodLevel ?? null
     mediaItems.value = []
     for (const m of c.media ?? []) {
       // 语音随记：audio 也回填（占格不可预览，发送重绑保留）
@@ -314,18 +321,19 @@ async function send() {
     const mediaIds = mediaItems.value.map((m) => m.mediaId).filter((id): id is string => !!id)
 
     if (props.edit) {
-      // 原地保存：媒体整体重绑（移除格子=解绑）；标签跟随更新；recipientIds/weather 不传，后端保持原值
+      // 原地保存：媒体整体重绑（移除格子=解绑）；标签/心情跟随更新；recipientIds/weather 不传，后端保持原值
       const updated = await updateContent(props.edit.id, {
         text: text.value,
         mediaIds,
-        tags: tags.value
+        tags: tags.value,
+        moodLevel: mood.value ?? 0
       })
       uni.showToast({ title: t('publish.saved'), icon: 'success' })
       emit('updated', updated)
       return
     }
 
-    // 新建随记附上自动采集的天气快照（采集失败不带，与发布页同口径）+ 标签
+    // 新建随记附上自动采集的天气快照（采集失败不带，与发布页同口径）+ 标签 + 心情
     const created = await createSay(
       text.value,
       [],
@@ -333,11 +341,13 @@ async function send() {
       weather.value
         ? { city: weather.value.city, condition: weather.value.condition, tempC: weather.value.tempC }
         : undefined,
-      tags.value
+      tags.value,
+      mood.value ?? undefined
     )
     // 成功即清空，准备下一条
     text.value = ''
     tags.value = []
+    mood.value = null
     for (const m of mediaItems.value) {
       // #ifdef H5
       if (m.preview.startsWith('blob:')) URL.revokeObjectURL(m.preview)

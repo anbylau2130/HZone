@@ -668,6 +668,9 @@ namespace HZone.Infrastructure.Migrations
                 {
                     b.HasBaseType("HZone.Core.Entities.Content");
 
+                    b.Property<int?>("MoodLevel")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasColumnType("TEXT");

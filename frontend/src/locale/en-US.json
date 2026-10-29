@@ -446,5 +446,11 @@
     "highlightTitle": "Highlight of the Year",
     "untitled": "Untitled",
     "empty": "Nothing to review yet — go write something first"
+  },
+  "mood": {
+    "label": "Mood",
+    "trendTitle": "Mood Trend",
+    "trendSub": "Last {n} days",
+    "insight": "You feel best on {best} days (avg {bestAvg}), lower on {worst} days (avg {worstAvg}) — a {gap} point gap."
   }
 }

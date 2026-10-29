@@ -16,7 +16,9 @@ public record CreateSayRequest(
     List<Guid> RecipientIds,
     List<Guid>? MediaIds = null,
     WeatherSnapshotRequest? Weather = null,
-    List<string>? Tags = null);
+    List<string>? Tags = null,
+    /// 心情档位 1~5（可选；随记心情追踪）。
+    int? MoodLevel = null);
 
 public record CreateJournalRequest(
     string Title,
@@ -37,7 +39,9 @@ public record UpdateContentRequest(
     List<Guid>? MediaIds = null,
     List<Guid>? RecipientIds = null,
     WeatherSnapshotRequest? Weather = null,
-    List<string>? Tags = null);
+    List<string>? Tags = null,
+    /// 心情档位：null = 不修改；0 = 清除标记；1~5 = 设置（随记）。
+    int? MoodLevel = null);
 
 public record RecipientResponse(Guid UserId, string Nickname);
 
@@ -79,7 +83,9 @@ public record ContentResponse(
     LunarResponse? Lunar = null,
     List<string>? Tags = null,
     int LikeCount = 0,
-    bool LikedByMe = false);
+    bool LikedByMe = false,
+    /// 心情档位 1~5（随记；未标/笔记为 null）。
+    int? MoodLevel = null);
 
 /// <summary>
 /// 列表/搜索分页响应：total 为过滤后（分页前）总数。

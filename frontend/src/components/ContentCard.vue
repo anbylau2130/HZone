@@ -5,7 +5,11 @@
       <AvatarCircle :nickname="content.author.nickname" :avatar-url="content.author.avatarUrl" :size="44" />
       <view class="head-mid">
         <text class="author">{{ content.author.nickname }}</text>
-        <text class="kind">{{ kindLabel }}</text>
+        <view class="kind-row">
+          <text class="kind">{{ kindLabel }}</text>
+          <!-- 心情（随记标记了才有）：跟在类型后面 -->
+          <text v-if="moodEmoji" class="kind-mood">{{ moodEmoji }}</text>
+        </view>
       </view>
       <view class="head-spacer" />
       <!-- 右上角两行：日期时间 + 天气·位置（右对齐；任一缺失只显存在的部分） -->
@@ -166,6 +170,11 @@ const isAuthor = computed(() => props.content.author.id === auth.user?.id)
 const kindLabel = computed(() =>
   props.content.kind === 'journal' ? t('timeline.kindJournal') : t('timeline.kindSay')
 )
+/** 心情档位 → emoji（未标/笔记为 null 不渲染）。 */
+const moodEmoji = computed(() =>
+  props.content.moodLevel ? MOOD_EMOJI[props.content.moodLevel] ?? null : null
+)
+const MOOD_EMOJI: Record<number, string> = { 1: '😢', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' }
 // ---------- 内联评论（①A）：点击「评论 n」展开/收起，收起即卸载 CardComments ----------
 const showComments = ref(false)
 // 本地维护评论数显示：列表数据 + 发送成功后 CardComments 上抛的新值
@@ -356,6 +365,15 @@ title: t('common.delete'),
 .kind {
   font-size: var(--hz-font-size-sm);
   color: var(--hz-color-primary);
+}
+.kind-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.kind-mood {
+  font-size: var(--hz-font-size-sm);
+  line-height: 1;
 }
 .title {
   font-size: 17px;
