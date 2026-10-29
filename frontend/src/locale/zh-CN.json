@@ -363,7 +363,8 @@
     "title": "照片墙",
     "empty": "还没有照片，发随记配图后自动收集在这里"
   },
-  "player": {    "title": "播放器",
+  "player": {
+    "title": "播放器",
     "idle": "未选曲",
     "loopList": "列表循环",
     "loopOne": "单曲循环",
@@ -425,5 +426,25 @@
       "bonus": "红包",
       "otherIncome": "其他"
     }
+  },
+  "report": {
+    "title": "年度报告",
+    "coverTitle": "你的这一年",
+    "piecesWritten": "篇记录",
+    "says": "随记",
+    "journals": "笔记",
+    "daysLine": "你在 {d} 个日夜留下了痕迹",
+    "streakLine": "最长连续记录 {n} 天",
+    "citiesLine": "足迹到过 {n} 座城市",
+    "weatherLine": "写得最多的是「{w}」的日子",
+    "nightLine": "深夜（22 点后）写下 {n} 篇",
+    "latestLine": "最晚一条停在 {t}",
+    "tagsLine": "你最常写下这些标签",
+    "longestLine": "最长的一篇笔记写了 {n} 字",
+    "mediaLine": "留下 {i} 张图片 · {v} 段声音",
+    "interactionLine": "收到 {c} 条评论 · {l} 个赞",
+    "highlightTitle": "年度高光",
+    "untitled": "未命名",
+    "empty": "还没有可以回顾的记录，先去写点什么吧"
   }
 }

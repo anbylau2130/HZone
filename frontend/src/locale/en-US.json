@@ -426,5 +426,25 @@
       "bonus": "Bonus",
       "otherIncome": "Other"
     }
+  },
+  "report": {
+    "title": "Yearly Report",
+    "coverTitle": "Your Year",
+    "piecesWritten": "entries",
+    "says": "Says",
+    "journals": "Journals",
+    "daysLine": "You left traces on {d} days",
+    "streakLine": "Longest streak: {n} days",
+    "citiesLine": "Footprints in {n} cities",
+    "weatherLine": "Most written on \"{w}\" days",
+    "nightLine": "{n} pieces written after 10 pm",
+    "latestLine": "The latest one was at {t}",
+    "tagsLine": "Tags you wrote the most",
+    "longestLine": "Longest journal: {n} characters",
+    "mediaLine": "{i} photos · {v} voice notes",
+    "interactionLine": "Received {c} comments · {l} likes",
+    "highlightTitle": "Highlight of the Year",
+    "untitled": "Untitled",
+    "empty": "Nothing to review yet — go write something first"
   }
 }

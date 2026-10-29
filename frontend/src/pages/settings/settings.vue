@@ -118,6 +118,9 @@
       <view class="entry" @click="go('/pages/ledger/ledger')">
         <text class="entry-label">{{ $t('ledger.title') }}</text>
       </view>
+      <view class="entry" @click="go('/pages/report/report')">
+        <text class="entry-label">{{ $t('report.title') }}</text>
+      </view>
       <view class="entry" @click="go('/pages/photos/photos')">
         <text class="entry-label">{{ $t('photos.title') }}</text>
       </view>

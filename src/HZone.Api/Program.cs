@@ -160,6 +160,7 @@ app.MapAuthEndpoints();
 app.MapPatEndpoints();
 app.MapPlaylistEndpoints();
 app.MapLedgerEndpoints();
+app.MapReportEndpoints();
 app.MapShareLinkEndpoints();
 
 app.Run();

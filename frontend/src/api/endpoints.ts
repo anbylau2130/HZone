@@ -307,6 +307,33 @@ export function getMyStats() {
   return request<MeStats>('/api/me/stats')
 }
 
+// ---------- 年度报告（"你的这一年"数据故事） ----------
+
+export interface YearlyReport {
+  years: number[]
+  year: number
+  empty?: boolean
+  sayCount: number
+  journalCount: number
+  recordedDays: number
+  longestStreak: number
+  cities: { city: string; count: number }[]
+  weather: { condition: string; count: number }[]
+  nightCount: number
+  latestAt: string | null
+  tags: { tag: string; count: number }[]
+  imageCount: number
+  voiceCount: number
+  commentsReceived: number
+  likesReceived: number
+  longestJournal: { id: string; title: string | null; chars: number; createdAt: string } | null
+  highlight: { id: string; snippet: string | null; likes: number; createdAt: string } | null
+}
+
+export function getMyReport(year?: number) {
+  return request<YearlyReport>(`/api/me/report${qs({ year })}`)
+}
+
 // ---------- 那年今天 / 互动摘要（homepage-v2 ticket 06） ----------
 
 export interface OnThisDayItem {
