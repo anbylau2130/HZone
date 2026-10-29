@@ -28,6 +28,11 @@ public class HZoneDbContext : DbContext
     public DbSet<Ledger> Ledgers => Set<Ledger>();
     public DbSet<LedgerMember> LedgerMembers => Set<LedgerMember>();
     public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
+    public DbSet<AiConversation> AiConversations => Set<AiConversation>();
+    public DbSet<AiMessage> AiMessages => Set<AiMessage>();
+    public DbSet<AiProviderSetting> AiProviderSettings => Set<AiProviderSetting>();
+    public DbSet<AiSkill> AiSkills => Set<AiSkill>();
+    public DbSet<AiMcpServer> AiMcpServers => Set<AiMcpServer>();
     public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
     public DbSet<EmailToken> EmailTokens => Set<EmailToken>();
 
@@ -215,6 +220,50 @@ public class HZoneDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
             e.Property(x => x.Category).HasMaxLength(32);
             e.Property(x => x.Note).HasMaxLength(200);
+        });
+
+        // ---------- AI 对话 / 技能 / MCP ----------
+        modelBuilder.Entity<AiConversation>(e =>
+        {
+            e.HasIndex(c => new { c.UserId, c.UpdatedAt });
+            e.HasMany(c => c.Messages)
+                .WithOne(m => m.Conversation)
+                .HasForeignKey(m => m.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.Property(c => c.Title).HasMaxLength(120);
+        });
+
+        modelBuilder.Entity<AiMessage>(e =>
+        {
+            // 会话内时间正序取历史
+            e.HasIndex(m => new { m.ConversationId, m.CreatedAt });
+            e.Property(m => m.Content).HasMaxLength(200_000);
+            e.Property(m => m.ToolCallsJson).HasMaxLength(20_000);
+        });
+
+        modelBuilder.Entity<AiProviderSetting>(e =>
+        {
+            // 每用户一条：UserId 做主键
+            e.HasKey(p => p.UserId);
+            e.Property(p => p.BaseUrl).HasMaxLength(500);
+            e.Property(p => p.ApiKey).HasMaxLength(500);
+            e.Property(p => p.Model).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<AiSkill>(e =>
+        {
+            e.HasIndex(s => s.UserId);
+            e.Property(s => s.Name).HasMaxLength(50);
+            e.Property(s => s.Icon).HasMaxLength(8);
+            e.Property(s => s.Prompt).HasMaxLength(10_000);
+        });
+
+        modelBuilder.Entity<AiMcpServer>(e =>
+        {
+            e.HasIndex(s => s.UserId);
+            e.Property(s => s.Name).HasMaxLength(50);
+            e.Property(s => s.Url).HasMaxLength(1000);
+            e.Property(s => s.AuthHeader).HasMaxLength(1000);
         });
     }
 }

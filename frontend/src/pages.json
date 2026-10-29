@@ -133,6 +133,12 @@
       }
     },
     {
+      "path": "pages/ai/chat",
+      "style": {
+        "navigationBarTitleText": "AI 对话"
+      }
+    },
+    {
       "path": "pages/photos/photos",
       "style": {
         "navigationBarTitleText": "照片墙"

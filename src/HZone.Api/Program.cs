@@ -29,6 +29,10 @@ builder.Services.AddDbContext<HZoneDbContext>(options =>
     options.UseSqlite(connectionString);
     options.AddInterceptors(new HZone.Api.Data.SqlitePragmaInterceptor());
 });
+// AI 对话（OpenAI 兼容上游）与外部 MCP server 出站：长超时（流式/远端工具）
+builder.Services.AddHttpClient("ai", c => c.Timeout = TimeSpan.FromMinutes(5));
+builder.Services.AddHttpClient("mcp", c => c.Timeout = TimeSpan.FromSeconds(60));
+builder.Services.AddScoped<McpRemote>();
 // 时间戳统一 UTC 序列化（带 Z）：EF SQLite 读回 Kind=Unspecified 默认丢 Z，
 // 前端按本地时间解析导致显示偏移时区差（详见 .scratch/reviews/frontend-medium-batch.md 新发现节）
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -162,6 +166,8 @@ app.MapPlaylistEndpoints();
 app.MapLedgerEndpoints();
 app.MapReportEndpoints();
 app.MapSearchAllEndpoints();
+app.MapAiEndpoints();
+app.MapMcpHostEndpoints();
 app.MapShareLinkEndpoints();
 
 app.Run();

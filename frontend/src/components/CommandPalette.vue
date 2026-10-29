@@ -83,6 +83,7 @@ const commands = computed<Command[]>(() => {
       action: () => uni.navigateTo({ url: '/pages/publish/publish?kind=journal' })
     },
     nav('🔍', 'hub.search', '/pages/search/search'),
+    nav('💬', 'ai.title', '/pages/ai/chat'),
     nav('🧾', 'ledger.title', '/pages/ledger/ledger'),
     nav('📊', 'report.title', '/pages/report/report'),
     nav('🖼️', 'photos.title', '/pages/photos/photos'),
