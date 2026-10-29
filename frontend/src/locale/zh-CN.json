@@ -452,5 +452,15 @@
     "trendTitle": "心情趋势",
     "trendSub": "近 {n} 天",
     "insight": "{best}天心情最好（均值 {bestAvg}），{worst}天偏低（均值 {worstAvg}），相差 {gap} 档。"
+  },
+  "search2": {
+    "placeholder": "搜随记、笔记、评论…",
+    "hint": "输入关键词，检索你的和收到的一切",
+    "noResults": "没有找到相关内容",
+    "all": "全部",
+    "comment": "评论",
+    "anyTime": "不限时间",
+    "last30d": "近 30 天",
+    "last1y": "近一年"
   }
 }

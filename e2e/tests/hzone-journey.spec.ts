@@ -143,10 +143,11 @@ test('journey 3: journal publish visible on friend profile', async ({ browser })
 test('journey 4: search hits own content', async ({ browser }) => {
   const page = await newSession(browser, alice)
   await openEntry(page, '搜索')
-  await fillUniInput(page, '搜索我的内容', 'UI 旅程')
-  await uniButton(page, '搜索').click()
-  await expect(page.getByText(SAY_TEXT).first()).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText(JOURNAL_TITLE).first()).toBeVisible()
+  // 全局搜索页：跨随记/笔记/评论；命中以片段行呈现（自己的内容排在前）
+  await fillUniInput(page, '搜随记、笔记、评论', 'UI 旅程')
+  await page.locator('.gs-btn').click()
+  await expect(page.locator('.gs-hit', { hasText: SAY_TEXT }).first()).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.gs-hit', { hasText: JOURNAL_TITLE }).first()).toBeVisible()
 })
 
 // ---------- 旅程 5：主题/语言切换并跨刷新保持 ----------

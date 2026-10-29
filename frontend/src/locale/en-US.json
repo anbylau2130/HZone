@@ -452,5 +452,15 @@
     "trendTitle": "Mood Trend",
     "trendSub": "Last {n} days",
     "insight": "You feel best on {best} days (avg {bestAvg}), lower on {worst} days (avg {worstAvg}) — a {gap} point gap."
+  },
+  "search2": {
+    "placeholder": "Search says, journals, comments…",
+    "hint": "Type a keyword to search everything of yours and shared to you",
+    "noResults": "No results found",
+    "all": "All",
+    "comment": "Comments",
+    "anyTime": "Any time",
+    "last30d": "Last 30 days",
+    "last1y": "Last year"
   }
 }

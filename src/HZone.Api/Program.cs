@@ -161,6 +161,7 @@ app.MapPatEndpoints();
 app.MapPlaylistEndpoints();
 app.MapLedgerEndpoints();
 app.MapReportEndpoints();
+app.MapSearchAllEndpoints();
 app.MapShareLinkEndpoints();
 
 app.Run();

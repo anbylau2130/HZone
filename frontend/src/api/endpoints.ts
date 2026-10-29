@@ -352,6 +352,37 @@ export function getMyMoods(days?: number) {
   return request<MoodReport>(`/api/me/moods${qs({ days })}`)
 }
 
+// ---------- 全局搜索（随记/笔记/评论 + 组合筛选） ----------
+
+export interface SearchAllHit {
+  id: string
+  type: 'say' | 'journal' | 'comment'
+  contentId: string
+  title: string | null
+  snippet: string
+  author: string
+  createdAt: string
+  isMine: boolean
+  /** 跳转目标内容类型（评论命中 = 其内容类型）。 */
+  targetKind: 'say' | 'journal'
+}
+
+export interface SearchAllFilters {
+  q: string
+  kind?: '' | 'say' | 'journal' | 'comment'
+  tag?: string
+  from?: string
+  to?: string
+  offset?: number
+  limit?: number
+}
+
+export function searchAll(f: SearchAllFilters) {
+  return request<{ items: SearchAllHit[]; total: number; offset: number; limit: number }>(
+    `/api/me/search-all${qs({ q: f.q, kind: f.kind || undefined, tag: f.tag, from: f.from, to: f.to, offset: f.offset, limit: f.limit })}`
+  )
+}
+
 // ---------- 那年今天 / 互动摘要（homepage-v2 ticket 06） ----------
 
 export interface OnThisDayItem {
