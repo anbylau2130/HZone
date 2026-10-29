@@ -89,6 +89,7 @@
     <AppSidebar current="moments" />
     <ToolDock />
     <MiniPlayer />
+    <CommandPalette />
     <AppTabBar current="moments" />
     <view class="fab" @click="focusComposer">＋</view>
   </view>
@@ -104,6 +105,7 @@ import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
 import MiniPlayer from '../../components/MiniPlayer.vue'
+import CommandPalette from '../../components/CommandPalette.vue'
 import ProfileHeader from '../../components/ProfileHeader.vue'
 import SayComposer from '../../components/SayComposer.vue'
 import { usePagination } from '../../composables/usePagination'

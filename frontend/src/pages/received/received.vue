@@ -53,6 +53,7 @@
     <AppSidebar current="received" />
     <ToolDock />
     <MiniPlayer />
+    <CommandPalette />
     <AppTabBar current="received" />
   </view>
 </template>
@@ -67,6 +68,7 @@ import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ToolDock from '../../components/ToolDock.vue'
 import MiniPlayer from '../../components/MiniPlayer.vue'
+import CommandPalette from '../../components/CommandPalette.vue'
 import { usePagination } from '../../composables/usePagination'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
 import { listReceived, type ContentItem, type KindFilter } from '../../api/endpoints'

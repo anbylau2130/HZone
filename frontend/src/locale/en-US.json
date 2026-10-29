@@ -462,5 +462,17 @@
     "anyTime": "Any time",
     "last30d": "Last 30 days",
     "last1y": "Last year"
+  },
+  "cmd": {
+    "placeholder": "Type a command or page…",
+    "none": "No matching command",
+    "navigate": "Select",
+    "run": "Run",
+    "close": "Close",
+    "publishSay": "Write a say",
+    "publishJournal": "Write a journal",
+    "theme": "Theme: {name}",
+    "current": "current",
+    "searchFor": "Search “{q}” globally"
   }
 }

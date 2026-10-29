@@ -144,6 +144,7 @@
 
     <AppSidebar current="settings" />
     <MiniPlayer />
+    <CommandPalette />
     <AppTabBar current="settings" />
   </view>
 </template>
@@ -160,6 +161,7 @@ import { checkContrast, TEXT_CONTRAST_MIN, PRIMARY_CONTRAST_MIN } from '../../ut
 import AppTabBar from '../../components/AppTabBar.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 import MiniPlayer from '../../components/MiniPlayer.vue'
+import CommandPalette from '../../components/CommandPalette.vue'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 import NativeColorInput from '../../components/NativeColorInput.vue'
 import { uploadAvatar, clearAvatar, updateMyProfile, uploadCover, clearCover } from '../../api/endpoints'

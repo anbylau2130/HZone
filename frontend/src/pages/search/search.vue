@@ -110,6 +110,14 @@ const ranges = [
 
 onShow(() => {
   setNavTitle('hub.search')
+  // 命令面板/外部入口传词：URL ?q= 一次性消费（H5 直接 hash 进入 onLoad 不触发，onShow 稳定）
+  const pages = getCurrentPages()
+  const opts = (pages[pages.length - 1] as { options?: Record<string, string> })?.options ?? {}
+  const prefill = opts.q
+  if (prefill && prefill !== keyword.value) {
+    keyword.value = prefill
+    void fetchPage(0)
+  }
   // 标签云只拉一次
   if (!tags.value.length) {
     listMyTags()

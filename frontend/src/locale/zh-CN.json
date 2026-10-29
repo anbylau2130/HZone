@@ -462,5 +462,17 @@
     "anyTime": "不限时间",
     "last30d": "近 30 天",
     "last1y": "近一年"
+  },
+  "cmd": {
+    "placeholder": "搜索命令或页面…",
+    "none": "没有匹配的命令",
+    "navigate": "选择",
+    "run": "执行",
+    "close": "关闭",
+    "publishSay": "发布随记",
+    "publishJournal": "写笔记",
+    "theme": "切换主题：{name}",
+    "current": "当前",
+    "searchFor": "在全局搜索中查「{q}」"
   }
 }
