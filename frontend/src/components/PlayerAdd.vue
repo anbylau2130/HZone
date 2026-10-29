@@ -91,9 +91,10 @@ function toggleLib() {
   else void openLib()
 }
 
-/** 库行元信息：艺术家 · 时长 · 大小（探测到的才显示）。 */
+/** 库行元信息：艺术家 · 时长 · 大小（探测到的才显示）；共享曲带 🌐 标。 */
 function libMeta(a: AudioAssetInfo): string {
-  return [a.artist, fmtDuration(a.durationSeconds), fmtSize(a.sizeBytes)].filter(Boolean).join(' · ')
+  const parts = [a.artist, fmtDuration(a.durationSeconds), fmtSize(a.sizeBytes)].filter(Boolean)
+  return (a.isShared ? '🌐 ' : '') + parts.join(' · ')
 }
 
 /** 上传附加字段：探测到的音频元数据（空值不上送，服务端存 null）。 */
@@ -169,7 +170,8 @@ function pickAudio() {
   // #endif
 }
 
-/** 命名后上传：预填原名去扩展名；确认→改名上传；取消/空→原名直传（不阻断）。 */
+/** 命名后上传：预填原名去扩展名；确认→改名上传；取消/空→原名直传（不阻断）。
+    命名后再选共享/私有（音乐目录体系：私有 → music/{我}/，共享 → music/ 根）。 */
 async function nameThenUpload(file: File) {
   const baseName = file.name.replace(/\.[^.]+$/, '')
   const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
@@ -185,14 +187,22 @@ async function nameThenUpload(file: File) {
       fail: () => resolve(null)
     })
   })
+  const shared = await new Promise<boolean>((resolve) => {
+    uni.showActionSheet({
+      itemList: [t('musiclib.privateScope'), t('musiclib.sharedScope')],
+      success: (res) => resolve(res.tapIndex === 1),
+      fail: () => resolve(false)
+    })
+  })
   const finalFile = named ? new File([file], named + ext, { type: file.type }) : file
-  await uploadAndAdd(finalFile)
+  await uploadAndAdd(finalFile, shared)
 }
 
-async function uploadAndAdd(file: File) {
+async function uploadAndAdd(file: File, shared = false) {
   uploading.value = true
   try {
     const fields = await metaFields(file)
+    fields.shared = shared ? 'true' : 'false'
     const asset = await uploadFile<{ id: string }>('/api/media', file, fields)
     await player.addMedia(asset.id)
     libItems.value = (await listMyAudioAssets()).items

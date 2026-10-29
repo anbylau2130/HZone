@@ -90,6 +90,8 @@ public static class MediaEndpoints
             var limit = await GetLimitAsync(db, kind.Value, ct);
             string storedName;
             string contentType = file.ContentType;
+            string? audioSubdirForAsset = null;
+            bool audioSharedForAsset = false;
             string? thumbStoredName = null;
             long sizeBytes;
 
@@ -166,6 +168,24 @@ public static class MediaEndpoints
                         title: "media too large");
                 }
 
+                // 音频统一落音乐目录体系（用户需求）：共享 → music 根；私有 → music/{昵称}/。
+                // 视频保持老位置。ffmpeg 转码产物同样落音乐目录（都是音频）。
+                string? audioSubdir = null;
+                string? audioDir = null;
+                if (kind == MediaKind.Audio)
+                {
+                    var uploader = await db.Users.AsNoTracking()
+                        .Where(u => u.Id == CurrentUserId(principal))
+                        .Select(u => u.Nickname)
+                        .FirstAsync(ct);
+                    var sharedFlag = form["shared"].ToString();
+                    audioSubdir = sharedFlag == "true" || sharedFlag == "1"
+                        ? Services.MusicDir.SharedMarker
+                        : Services.MusicDir.PrivateMarker(uploader);
+                    audioDir = Services.MusicDir.ToAbsolute(audioSubdir,
+                        await Services.MusicDir.ResolveRootAsync(db, ct))!;
+                }
+
                 if (action == MediaCompressAction.FFmpegTranscode)
                 {
                     var inputBytes = rawBytes;
@@ -180,15 +200,31 @@ public static class MediaEndpoints
                     }
 
                     await using var transcodedStream = new MemoryStream(transcoded);
-                    storedName = await storage.SaveAsync(transcodedStream, file.FileName, transcodedContentType, ct);
+                    if (audioDir is not null)
+                    {
+                        storedName = await storage.SaveToDirAsync(transcodedStream, transcodedContentType, audioDir, ct);
+                    }
+                    else
+                    {
+                        storedName = await storage.SaveAsync(transcodedStream, file.FileName, transcodedContentType, ct);
+                    }
                     contentType = transcodedContentType;
                     sizeBytes = transcoded.Length;
                 }
                 else
                 {
-                    storedName = await storage.SaveAsync(RawStream(), file.FileName, file.ContentType, ct);
+                    if (audioDir is not null)
+                    {
+                        storedName = await storage.SaveToDirAsync(RawStream(), file.ContentType, audioDir, ct);
+                    }
+                    else
+                    {
+                        storedName = await storage.SaveAsync(RawStream(), file.FileName, file.ContentType, ct);
+                    }
                     sizeBytes = rawBytes.Length;
                 }
+                audioSubdirForAsset = audioSubdir;
+                audioSharedForAsset = audioSubdir == Services.MusicDir.SharedMarker;
             }
 
             // MediaAsset.ContentId 留空 = 临时媒体；被内容绑定后设置。
@@ -203,6 +239,8 @@ public static class MediaEndpoints
                 SizeBytes = sizeBytes,
                 ContentHash = contentHash,
                 ThumbStoredName = thumbStoredName,
+                IsShared = audioSharedForAsset,
+                Subdir = audioSubdirForAsset,
                 Artist = artist,
                 DurationSeconds = durationSeconds,
                 BitrateKbps = bitrateKbps,
@@ -239,7 +277,14 @@ public static class MediaEndpoints
                 // 渲染（尤其 html/svg）会成为同域存储型 XSS 载体。
                 try
                 {
-                    var stream = await storage.OpenAsync(storedName);
+                    // 音乐目录体系的资产按 Subdir 解析绝对路径；null = 老位置 data/media
+                    var dir = asset.Subdir is null
+                        ? null
+                        : Services.MusicDir.ToAbsolute(asset.Subdir,
+                            await Services.MusicDir.ResolveRootAsync(db, ct));
+                    var stream = dir is null
+                        ? await storage.OpenAsync(storedName)
+                        : await storage.OpenFromDirAsync(storedName, dir);
                     return asset.Kind == MediaKind.File
                         ? Results.File(stream, contentType, asset.OriginalName)
                         : Results.File(stream, contentType);
@@ -287,8 +332,10 @@ public static class MediaEndpoints
             CancellationToken ct) =>
         {
             var userId = CurrentUserId(principal);
+            // 音频库 = 我的上传 + 全部共享音频（共享的标注，别人的也可加入播放列表）
             var items = await db.MediaAssets
-                .Where(m => m.OwnerUserId == userId && m.Kind == MediaKind.Audio)
+                .Where(m => m.Kind == MediaKind.Audio
+                    && (m.OwnerUserId == userId || m.IsShared))
                 .OrderByDescending(m => m.CreatedAt)
                 .Select(m => new
                 {
@@ -299,10 +346,65 @@ public static class MediaEndpoints
                     m.Artist,
                     m.DurationSeconds,
                     m.BitrateKbps,
+                    m.IsShared,
+                    m.Subdir,
+                    Mine = m.OwnerUserId == userId,
                     m.CreatedAt,
                 })
                 .ToListAsync(ct);
             return Results.Ok(new { items, total = items.Count });
+        }).AddEndpointFilter(SetupState.RequireInitialized);
+
+        // 删除音频资产（仅本人，共享的也只有上传者可删）：级联清理所有引用它的
+        // 播放列表项 + 物理文件（音乐目录体系按 Subdir 解析路径）。
+        // 已绑定内容（语音随记等）的资产拒绝删——先解绑内容再删。
+        app.MapDelete("/me/media/{id:guid}", [Authorize] async (
+            Guid id,
+            ClaimsPrincipal principal,
+            HZoneDbContext db,
+            IFileStorage storage,
+            CancellationToken ct) =>
+        {
+            var userId = CurrentUserId(principal);
+            var asset = await db.MediaAssets
+                .FirstOrDefaultAsync(m => m.Id == id && m.OwnerUserId == userId && m.Kind == MediaKind.Audio, ct);
+            if (asset is null)
+            {
+                return Results.NotFound(new { error = "audio asset not found" });
+            }
+            if (asset.ContentId is not null)
+            {
+                return Results.Conflict(new { error = "asset is bound to a content" });
+            }
+
+            // 级联：所有用户引用此资产的播放列表项随删（文件没了列表项就是死链）
+            var refs = db.PlaylistItems.Where(p => p.MediaAssetId == id);
+            db.PlaylistItems.RemoveRange(refs);
+            db.MediaAssets.Remove(asset);
+            await db.SaveChangesAsync(ct);
+
+            // 物理文件删除（尽力而为：文件丢失不阻断资产删除）
+            try
+            {
+                if (asset.Subdir is null)
+                {
+                    await storage.DeleteAsync(asset.StoredName, ct);
+                }
+                else
+                {
+                    var dir = Services.MusicDir.ToAbsolute(asset.Subdir,
+                        await Services.MusicDir.ResolveRootAsync(db, ct));
+                    if (dir is not null)
+                    {
+                        await storage.DeleteFromDirAsync(asset.StoredName, dir, ct);
+                    }
+                }
+            }
+            catch
+            {
+                // 文件系统异常不回滚资产删除（资产已清，文件残骸由备份任务兜底）
+            }
+            return Results.Ok(new { ok = true });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
         // 资产重命名（仅本人；只改显示名 OriginalName，不动物理 StoredName）：

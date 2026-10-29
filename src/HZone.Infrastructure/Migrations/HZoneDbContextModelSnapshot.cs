@@ -577,6 +577,9 @@ namespace HZone.Infrastructure.Migrations
                     b.Property<double?>("DurationSeconds")
                         .HasColumnType("REAL");
 
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Kind")
                         .HasColumnType("INTEGER");
 
@@ -592,6 +595,9 @@ namespace HZone.Infrastructure.Migrations
 
                     b.Property<string>("StoredName")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Subdir")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ThumbStoredName")

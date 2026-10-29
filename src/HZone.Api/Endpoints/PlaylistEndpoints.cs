@@ -29,15 +29,11 @@ public static class PlaylistEndpoints
             HZoneDbContext db,
             CancellationToken ct) =>
         {
-            var dir = await db.SystemConfigs.AsNoTracking()
-                .Where(c => c.Key == MusicDirKey)
-                .Select(c => c.Value)
-                .FirstOrDefaultAsync(ct);
-            var lib = ListServerAudio(dir);
+            var lib = await ListServerAudioForViewAsync(db, ct);
             return Results.Ok(new
             {
-                musicDir = lib is null ? null : dir,
-                files = lib?.Files.ToList() ?? [],
+                musicDir = lib?.Dir,
+                files = lib?.Files ?? [],
             });
         }).AddEndpointFilter(SetupState.RequireInitialized);
 
@@ -88,11 +84,7 @@ public static class PlaylistEndpoints
             {
                 return Results.BadRequest(new { error = "invalid file name" });
             }
-            var dir = await db.SystemConfigs.AsNoTracking()
-                .Where(c => c.Key == MusicDirKey)
-                .Select(c => c.Value)
-                .FirstOrDefaultAsync(ct);
-            var files = ListServerAudio(dir);
+            var files = await ListServerAudioForViewAsync(db, ct);
             if (files is null || !files.Value.Files.Any(f => f.Name == name))
             {
                 return Results.NotFound(new { error = "file not found" });
@@ -299,8 +291,10 @@ public static class PlaylistEndpoints
                         ["mediaAssetId"] = new[] { "mediaAssetId is required for media items" },
                     });
                 }
+                // 本人上传或他人共享的音频均可入列（共享音乐目录体系）
                 var asset = await db.MediaAssets
-                    .FirstOrDefaultAsync(m => m.Id == assetId && m.OwnerUserId == userId
+                    .FirstOrDefaultAsync(m => m.Id == assetId
+                        && (m.OwnerUserId == userId || m.IsShared)
                         && m.Kind == MediaKind.Audio, ct);
                 if (asset is null)
                 {
@@ -536,6 +530,28 @@ public static class PlaylistEndpoints
             .Select(p => new ServerAudioFile(Path.GetFileName(p), new FileInfo(p).Length))
             .ToList();
         return (dir, files);
+    }
+
+    /// <summary>
+    /// server-library 视图：枚举根目录文件后剔除"已登记为 MediaAsset 的上传产物"
+    ///（它们在音频库里带元数据/歌词，双入口会重复）；根目录 = musicDir 解析
+    ///（未配置默认 data/music，与上传落盘同源）。
+    /// </summary>
+    private static async Task<(string Dir, List<ServerAudioFile> Files)?> ListServerAudioForViewAsync(
+        HZoneDbContext db, CancellationToken ct)
+    {
+        var root = await Services.MusicDir.ResolveRootAsync(db, ct);
+        var lib = ListServerAudio(root);
+        if (lib is null)
+        {
+            return null;
+        }
+        var names = lib.Value.Files.Select(f => f.Name).ToList();
+        var registered = (await db.MediaAssets.AsNoTracking()
+            .Where(m => m.StoredName != null && names.Contains(m.StoredName))
+            .Select(m => m.StoredName!)
+            .ToListAsync(ct)).ToHashSet();
+        return (lib.Value.Dir, lib.Value.Files.Where(f => !registered.Contains(f.Name)).ToList());
     }
 
     private static string ContentTypeFor(string name) => Path.GetExtension(name).ToLowerInvariant() switch

@@ -634,6 +634,10 @@ export interface AudioAssetInfo {
   artist: string | null
   durationSeconds: number | null
   bitrateKbps: number | null
+  /** 共享音频（music 根目录，所有人可见可加列表）。 */
+  isShared: boolean
+  /** 是否本人上传（共享库里区分自己的和别人共享的）。 */
+  mine: boolean
   createdAt: string
 }
 
@@ -783,6 +787,11 @@ export function addPlaylistItem(payload: {
 /** 整体重排：完整 id 序列（与现集合一致），服务端按下标重编顺序。 */
 export function reorderPlaylist(ids: string[]) {
   return request<{ ok: boolean }>('/api/me/playlist/reorder', { method: 'PUT', data: { ids } })
+}
+
+/** 删除音频资产（连物理文件；级联清理所有播放列表引用；仅本人）。 */
+export function deleteMediaAsset(id: string) {
+  return request<{ ok: boolean }>(`/api/me/media/${id}`, { method: 'DELETE' })
 }
 
 export function removePlaylistItem(id: string) {

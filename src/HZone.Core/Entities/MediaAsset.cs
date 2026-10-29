@@ -28,6 +28,18 @@ public class MediaAsset
     /// <summary>平均比特率 kbps（体积/时长估算）；探测失败为 null。</summary>
     public int? BitrateKbps { get; set; }
 
+    /// <summary>
+    /// 音频共享标记：私有（默认，仅本人）= false；共享 = 所有人可在音频库见到并入列表。
+    /// 仅音频有意义，其它类型恒 false。
+    /// </summary>
+    public bool IsShared { get; set; }
+
+    /// <summary>
+    /// 物理子目录标记：null = 老位置 data/media；"@music" = 音乐根目录（共享）；
+    /// "@music/{昵称}" = 音乐根下的用户私有目录。运行时按 musicDir 配置解析。
+    /// </summary>
+    public string? Subdir { get; set; }
+
     public string? ThumbStoredName { get; set; }
 
     public Guid? ContentId { get; set; }

@@ -510,5 +510,14 @@
     "me": "Me",
     "saveAll": "Save all {n} messages",
     "saveLast5": "Save last 5 messages"
+  },
+  "musiclib": {
+    "chooseScope": "Share this music with everyone?",
+    "sharedScope": "Shared (music root)",
+    "privateScope": "Private (my folder)",
+    "sharedBadge": "Shared",
+    "deleteFileToo": "Also delete the file on the server?",
+    "deleteFile": "Delete file",
+    "removeOnly": "Remove only"
   }
 }

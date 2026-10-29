@@ -38,12 +38,24 @@ public sealed class LocalFileStorage : IFileStorage
         _mediaDirectory = Path.Combine(dataDirectory, "media");
     }
 
+    /// <summary>音乐根目录默认值：{data}/music（SystemConfig player.musicDir 未配置时）。</summary>
+    public static string DefaultMusicDir(string dataDirectory) => Path.Combine(dataDirectory, "music");
+
     public async Task<string> SaveAsync(Stream content, string originalFileName, string contentType, CancellationToken ct = default)
     {
         Directory.CreateDirectory(_mediaDirectory);
         var storedName = $"{Guid.NewGuid():N}{ResolveExtension(contentType)}";
         var path = ResolvePath(storedName);
         await using var target = File.Create(path);
+        await content.CopyToAsync(target, ct);
+        return storedName;
+    }
+
+    public async Task<string> SaveToDirAsync(Stream content, string contentType, string absoluteDir, CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(absoluteDir);
+        var storedName = $"{Guid.NewGuid():N}{ResolveExtension(contentType)}";
+        await using var target = File.Create(Path.Combine(absoluteDir, storedName));
         await content.CopyToAsync(target, ct);
         return storedName;
     }
@@ -57,6 +69,31 @@ public sealed class LocalFileStorage : IFileStorage
         }
 
         return Task.CompletedTask;
+    }
+
+    public Task DeleteFromDirAsync(string storedName, string absoluteDir, CancellationToken ct = default)
+    {
+        var path = Path.Combine(absoluteDir, Validate(storedName));
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<Stream> OpenFromDirAsync(string storedName, string absoluteDir)
+    {
+        return Task.FromResult<Stream>(File.OpenRead(Path.Combine(absoluteDir, Validate(storedName))));
+    }
+
+    private static string Validate(string storedName)
+    {
+        if (!ValidStoredName.IsMatch(storedName) || storedName.Contains(".."))
+        {
+            throw new ArgumentException("invalid stored name", nameof(storedName));
+        }
+        return storedName;
     }
 
     public Task<Stream> OpenAsync(string storedName)

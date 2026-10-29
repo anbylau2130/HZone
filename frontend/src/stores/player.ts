@@ -21,6 +21,7 @@ import {
   addPlaylistItem,
   reorderPlaylist,
   removePlaylistItem,
+  deleteMediaAsset,
   renamePlaylistItem,
   setPlaylistItemLyrics,
   getServerMusicLibrary,
@@ -336,11 +337,49 @@ function bumpListCount(playlistId: string | null, delta: number) {
   if (target) target.itemCount = Math.max(0, target.itemCount + delta)
 }
 
-/** 删除用户列表项（服务器音乐为虚拟项，不可删——不响应）。 */
+/**
+ * 删除用户列表项（服务器音乐为虚拟项，不可删——不响应）。
+ * media 项先弹「是否同时删除服务器上的音乐文件」：确认 → 删资产（级联清所有
+ * 引用它的列表项）+物理文件；取消 → 仅移出本列表。
+ */
 async function removeAndSync(id: string) {
   if (id.startsWith('srv:')) return
   const removed = items.value.find((x) => x.id === id)
+  let deleteAssetId: string | null = null
+  if (removed?.mediaAssetId) {
+    const alsoDelete = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: i18n.global.t('musiclib.deleteFileToo'),
+        confirmText: i18n.global.t('musiclib.deleteFile'),
+        cancelText: i18n.global.t('musiclib.removeOnly'),
+        success: (res) => resolve(res.confirm),
+        fail: () => resolve(false)
+      })
+    })
+    if (alsoDelete) deleteAssetId = removed.mediaAssetId
+  }
   try {
+    if (deleteAssetId) {
+      // 删资产：后端级联清所有引用它的列表项；本地全量同步移除
+      await deleteMediaAsset(deleteAssetId)
+      const goneIds = new Set(
+        items.value.filter((x) => x.mediaAssetId === deleteAssetId).map((x) => x.id)
+      )
+      const wasCurrent = goneIds.has(currentId() ?? '')
+      const i = currentIndex.value
+      items.value = items.value.filter((x) => !goneIds.has(x.id))
+      if (wasCurrent) {
+        // 删的是当前曲：停播并接播原位置（与单删同款）
+        ctx?.stop()
+        playing.value = false
+        currentIndex.value = -1
+        if (i < tracks.value.length) void playIndex(i)
+      } else {
+        restoreIndexById(currentId())
+      }
+      bumpListCount(removed?.playlistId ?? null, -goneIds.size)
+      return
+    }
     await removePlaylistItem(id)
   } catch {
     return // 请求层已 toast

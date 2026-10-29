@@ -125,9 +125,9 @@ public class PlaylistTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         var adminClient = _factory.CreateAuthorizedClient(admin.Id, admin.Nickname);
         var userClient = _factory.CreateAuthorizedClient(user.Id, user.Nickname);
 
-        // 未配置：库停用（musicDir null、files 空）。
+        // 未配置：回落默认音乐根（data/music，上传音频的落盘目录），files 视目录内容。
         var empty = await userClient.GetFromJsonAsync<JsonElement>("/me/player/server-library");
-        Assert.Null(empty.GetProperty("musicDir").GetString());
+        Assert.NotNull(empty.GetProperty("musicDir").GetString());
 
         // 非 admin 配置 → 403。
         var denied = await userClient.PutAsJsonAsync("/player/music-dir", new { musicDir = "/tmp" });
@@ -164,11 +164,11 @@ public class PlaylistTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
             var badDir = await adminClient.PutAsJsonAsync("/player/music-dir", new { musicDir = "/definitely/not/here" });
             Assert.Equal(HttpStatusCode.BadRequest, badDir.StatusCode);
 
-            // 空串清除：库回到停用态。
+            // 空串清除：回落默认音乐根（data/music）。
             var clear = await adminClient.PutAsJsonAsync("/player/music-dir", new { musicDir = "" });
             Assert.Equal(HttpStatusCode.OK, clear.StatusCode);
             var after = await userClient.GetFromJsonAsync<JsonElement>("/me/player/server-library");
-            Assert.Null(after.GetProperty("musicDir").GetString());
+            Assert.NotEqual(dir, after.GetProperty("musicDir").GetString());
         }
         finally
         {

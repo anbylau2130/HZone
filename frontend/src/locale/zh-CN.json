@@ -510,5 +510,14 @@
     "me": "我",
     "saveAll": "保存全部 {n} 条消息",
     "saveLast5": "只保存最近 5 条"
+  },
+  "musiclib": {
+    "chooseScope": "这首音乐共享给所有人吗？",
+    "sharedScope": "共享（存 music 目录）",
+    "privateScope": "私有（存我的目录）",
+    "sharedBadge": "共享",
+    "deleteFileToo": "是否同时删除服务器上的音乐文件？",
+    "deleteFile": "删文件",
+    "removeOnly": "仅移出列表"
   }
 }

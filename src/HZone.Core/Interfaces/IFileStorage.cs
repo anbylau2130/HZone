@@ -6,12 +6,21 @@ namespace HZone.Core.Interfaces;
 /// </summary>
 public interface IFileStorage
 {
-    /// <summary>保存文件，返回生成的 storedName。</summary>
+    /// <summary>保存文件（默认目录 data/media），返回生成的 storedName。</summary>
     Task<string> SaveAsync(Stream content, string originalFileName, string contentType, CancellationToken ct = default);
 
-    /// <summary>删除文件；文件不存在时静默成功。</summary>
+    /// <summary>保存到指定绝对目录（音乐目录体系），返回生成的 storedName（不含目录）。</summary>
+    Task<string> SaveToDirAsync(Stream content, string contentType, string absoluteDir, CancellationToken ct = default);
+
+    /// <summary>删除文件（默认目录）；文件不存在时静默成功。</summary>
     Task DeleteAsync(string storedName, CancellationToken ct = default);
 
-    /// <summary>打开文件读取流；文件不存在时抛 FileNotFoundException。</summary>
+    /// <summary>删除指定绝对目录下的文件；文件不存在时静默成功。</summary>
+    Task DeleteFromDirAsync(string storedName, string absoluteDir, CancellationToken ct = default);
+
+    /// <summary>打开文件读取流（默认目录）；文件不存在时抛 FileNotFoundException。</summary>
     Task<Stream> OpenAsync(string storedName);
+
+    /// <summary>打开指定绝对目录下的文件读取流。</summary>
+    Task<Stream> OpenFromDirAsync(string storedName, string absoluteDir);
 }
