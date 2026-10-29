@@ -508,7 +508,13 @@ public static class PlaylistEndpoints
     {
         if (playlistId is { } id)
         {
-            return await db.Playlists.FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId, ct);
+            var found = await db.Playlists.FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId, ct);
+            if (found is not null)
+            {
+                return found;
+            }
+            // 显式 id 失效（歌单被删/换端残留 localStorage）：回落默认歌单而非 404——
+            // 取曲/加曲是用户操作，不应因 stale id 硬失败（曾致前端 toast「playlist not found」）
         }
         await EnsureDefaultPlaylistAsync(db, userId, ct);
         return await db.Playlists

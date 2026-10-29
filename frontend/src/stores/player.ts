@@ -194,7 +194,12 @@ async function switchPlaylist(id: string) {
     // 竞态守卫：返回时仍是该歌单才落
     if (activePlaylistId.value === id) items.value = pl.items
   } catch {
-    // 请求层已 toast
+    // 失效 id（歌单被删）：回落第一张，避免卡死在坏 id 上反复报错
+    const fallback = playlists.value[0]?.id
+    if (fallback && fallback !== id) {
+      playlists.value = playlists.value.filter((p) => p.id !== id)
+      await switchPlaylist(fallback)
+    }
   }
 }
 

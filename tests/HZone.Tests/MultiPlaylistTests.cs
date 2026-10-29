@@ -80,11 +80,14 @@ public class MultiPlaylistTests : IClassFixture<HZoneApiFactory>, IAsyncLifetime
         var client = _factory.CreateAuthorizedClient(user.Id, user.Nickname);
         var otherClient = _factory.CreateAuthorizedClient(other.Id, other.Nickname);
 
-        // 他人歌单：GET 条目/改名/删除统一 404
+        // 他人歌单：GET 条目回落到自己默认歌单（防 stale id 硬失败 + 不泄露存在性）；
+        // 改名/删除仍统一 404
         var otherLists = await otherClient.GetFromJsonAsync<JsonElement>("/me/playlists");
         var otherId = otherLists.GetProperty("items")[0].GetProperty("id").GetGuid();
-        Assert.Equal(HttpStatusCode.NotFound,
-            (await client.GetAsync($"/me/playlist?playlistId={otherId}")).StatusCode);
+        var fallback = await client.GetAsync($"/me/playlist?playlistId={otherId}");
+        Assert.Equal(HttpStatusCode.OK, fallback.StatusCode);
+        var fallbackBody = await fallback.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.NotEqual(otherId, fallbackBody.GetProperty("playlistId").GetGuid()); // 落回自己的
         Assert.Equal(HttpStatusCode.NotFound,
             (await client.PutAsJsonAsync($"/me/playlists/{otherId}", new { name = "偷改" })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,
