@@ -115,6 +115,9 @@
     </view>
 
     <view class="entries">
+      <view class="entry" @click="go('/pages/ai/chat')">
+        <text class="entry-label">💬 {{ $t('ai.title') }}</text>
+      </view>
       <view class="entry" @click="go('/pages/search/search')">
         <text class="entry-label">{{ $t('hub.search') }}</text>
       </view>
