@@ -25,6 +25,11 @@
       </view>
     </view>
     <view class="sb-bottom">
+      <!-- AI 对话常驻菜单（与退出登录同区，不藏设置页） -->
+      <view class="sb-item" @click="goAi">
+        <text class="sb-icon">💬</text>
+        <text class="sb-label">{{ $t('ai.title') }}</text>
+      </view>
       <view class="sb-item" @click="logout">
         <text class="sb-icon">↩</text>
         <text class="sb-label">{{ $t('home.logout') }}</text>
@@ -72,6 +77,10 @@ function go(t: TabItem) {
 
 function goTimeline() {
   uni.navigateTo({ url: '/pages/timeline/timeline' })
+}
+
+function goAi() {
+  uni.navigateTo({ url: '/pages/ai/chat' })
 }
 
 function logout() {
