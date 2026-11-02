@@ -118,7 +118,8 @@
     "pats": "PAT 管理",
     "importExport": "导入导出",
     "admin": "管理后台",
-    "edit": "编辑内容"
+    "edit": "编辑内容",
+    "mcp": "MCP 接入"
   },
   "tabs": {
     "index": "首页",
@@ -509,7 +510,29 @@
     "chatNoteMeta": "来自 AI 对话 · 模型 {model} · {n} 轮",
     "me": "我",
     "saveAll": "保存全部 {n} 条消息",
-    "saveLast5": "只保存最近 5 条"
+    "saveLast5": "只保存最近 5 条",
+    "manage": "管理",
+    "hideBall": "隐藏悬浮球",
+    "hideBallHint": "隐藏后可在 设置 → AI 对话 重新开启",
+    "ball": "对话悬浮球",
+    "show": "显示",
+    "hide": "隐藏"
+  },
+  "mcp": {
+    "intro": "让 Claude Code、Cursor、ZCode、Claude Desktop 等 agent 通过 MCP 读写你的 HZone。权限等同你本人，可见名单规则同样生效：agent 只能看到你能看到的内容。",
+    "tokenTitle": "第一步：访问令牌（PAT）",
+    "tokenHint": "agent 用个人访问令牌（PAT）代表你访问。点下方按钮生成一枚，会自动填入下面的配置；不再使用时可在「管理令牌」中吊销。",
+    "generate": "生成令牌并填入配置",
+    "regenerate": "重新生成",
+    "managePats": "管理令牌",
+    "patName": "MCP 接入 {time}",
+    "httpTitle": "方式一：远程 HTTP",
+    "recommended": "推荐",
+    "httpHint": "适用于 Claude Code、Cursor、ZCode 等支持远程 MCP 的 agent：复制后粘贴到它的 MCP 配置（mcpServers）即可，无需安装任何东西。",
+    "stdioTitle": "方式二：本地 stdio",
+    "stdioHint": "适用于只支持本地进程的客户端（如 Claude Desktop）。需先在本仓库 mcp 目录执行 pnpm install && pnpm build，并把 {path} 换成仓库的实际路径。",
+    "repoPath": "<仓库路径>",
+    "copiedNeedToken": "已复制，记得把 hz_xxx 换成真实令牌"
   },
   "musiclib": {
     "chooseScope": "这首音乐共享给所有人吗？",

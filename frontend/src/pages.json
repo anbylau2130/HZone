@@ -109,6 +109,12 @@
       }
     },
     {
+      "path": "pages/mcp/mcp",
+      "style": {
+        "navigationBarTitleText": "MCP 接入"
+      }
+    },
+    {
       "path": "pages/admin/admin",
       "style": {
         "navigationBarTitleText": "管理后台"
@@ -130,12 +136,6 @@
       "path": "pages/report/report",
       "style": {
         "navigationBarTitleText": "年度报告"
-      }
-    },
-    {
-      "path": "pages/ai/chat",
-      "style": {
-        "navigationBarTitleText": "AI 对话"
       }
     },
     {

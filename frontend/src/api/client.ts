@@ -39,14 +39,21 @@ export function getStoredUser(): HZUser | null {
   }
 }
 
+// 会话变化通知：AI 悬浮球等独立 Vue 岛拿不到主应用 pinia，靠此事件感知登录/登出
+function notifyAuthChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('hz-auth'))
+}
+
 export function saveSession(token: string, user: HZUser) {
   uni.setStorageSync(TOKEN_KEY, token)
   uni.setStorageSync(USER_KEY, JSON.stringify(user))
+  notifyAuthChanged()
 }
 
 export function clearSession() {
   uni.removeStorageSync(TOKEN_KEY)
   uni.removeStorageSync(USER_KEY)
+  notifyAuthChanged()
 }
 
 export function saveUser(user: HZUser) {

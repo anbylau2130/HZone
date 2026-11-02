@@ -1,5 +1,12 @@
 <script setup lang="ts">
 // 主题与语言在 main.ts createApp 时恢复（initTheme/restoreLocale），无需 onLaunch
+import { onLaunch } from '@dcloudio/uni-app'
+import { mountAiChatWidget } from './boot/ai-chat-widget'
+
+// AI 对话悬浮球为独立 Vue 岛（App.vue 无模板），延迟到首帧后挂载
+onLaunch(() => {
+  setTimeout(mountAiChatWidget, 100)
+})
 </script>
 
 <style>

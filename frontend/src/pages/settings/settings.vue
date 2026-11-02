@@ -114,9 +114,43 @@
       </view>
     </view>
 
+    <!-- AI 对话：悬浮球开关 + 模型配置（原 AI 对话页迁入） -->
+    <view class="profile-card">
+      <text class="sec-title">💬 {{ $t('ai.title') }}</text>
+      <view class="form-row">
+        <text class="form-label">{{ $t('ai.ball') }}</text>
+        <view class="seg grow">
+          <view class="seg-item" :class="{ active: ballShown }" @click="setBall(true)">
+            <text class="seg-text" :class="{ active: ballShown }">{{ $t('ai.show') }}</text>
+          </view>
+          <view class="seg-item" :class="{ active: !ballShown }" @click="setBall(false)">
+            <text class="seg-text" :class="{ active: !ballShown }">{{ $t('ai.hide') }}</text>
+          </view>
+        </view>
+      </view>
+      <text class="profile-hint">{{ $t('ai.hideBallHint') }}</text>
+      <text class="sub-title">{{ $t('ai.providerTitle') }}</text>
+      <text class="form-label">Base URL</text>
+      <input v-model="providerForm.baseUrl" class="field" placeholder="https://api.xxx.com/v4" placeholder-class="ph" />
+      <text class="form-label">API Key{{ provider.hasKey ? `（${$t('ai.keySaved')}）` : '' }}</text>
+      <input
+        v-model="providerForm.apiKey"
+        class="field"
+        :placeholder="provider.hasKey ? '********' : 'sk-...'"
+        placeholder-class="ph"
+      />
+      <text class="form-label">{{ $t('ai.model') }}</text>
+      <input v-model="providerForm.model" class="field" placeholder="glm-4.7 / deepseek-chat / gpt-4o-mini" placeholder-class="ph" />
+      <view class="btn-row">
+        <button class="theme-btn ghost" :disabled="testing" @click="testProvider">{{ testing ? '…' : $t('ai.testConn') }}</button>
+        <button class="theme-btn primary" :disabled="testing" @click="saveProvider">{{ $t('common.save') }}</button>
+      </view>
+      <text v-if="testResult" class="ai-test-result" :class="{ ok: testResult.ok }">{{ testResult.text }}</text>
+    </view>
+
     <view class="entries">
-      <view class="entry" @click="go('/pages/ai/chat')">
-        <text class="entry-label">💬 {{ $t('ai.title') }}</text>
+      <view class="entry" @click="go('/pages/mcp/mcp')">
+        <text class="entry-label">🔌 {{ $t('hub.mcp') }}</text>
       </view>
       <view class="entry" @click="go('/pages/search/search')">
         <text class="entry-label">{{ $t('hub.search') }}</text>
@@ -168,6 +202,8 @@ import CommandPalette from '../../components/CommandPalette.vue'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 import NativeColorInput from '../../components/NativeColorInput.vue'
 import { uploadAvatar, clearAvatar, updateMyProfile, uploadCover, clearCover } from '../../api/endpoints'
+import { getAiProvider, saveAiProvider, testAiProvider } from '../../api/ai'
+import { getToken } from '../../api/client'
 import { setLocale, setNavTitle, type AppLocale } from '../../locale'
 
 const { t, locale } = useI18n()
@@ -190,6 +226,65 @@ const colorFields = [
 ]
 
 const hasIssues = computed(() => issues.text || issues.primary)
+
+// ---------- AI 对话：悬浮球开关 + 模型配置（原 AI 对话页迁入） ----------
+const ballShown = ref(true)
+const provider = ref({ baseUrl: '', model: '', hasKey: false })
+const providerForm = ref({ baseUrl: '', apiKey: '', model: '' })
+const testing = ref(false)
+const testResult = ref<{ ok: boolean; text: string } | null>(null)
+
+function setBall(v: boolean) {
+  ballShown.value = v
+  uni.setStorageSync('hz_ai_ball_hidden', v ? '' : '1')
+  // 悬浮球是独立 Vue 岛，经全局事件同步显示状态
+  uni.$emit('hz-ai-ball', v)
+}
+
+async function loadProvider() {
+  try {
+    provider.value = await getAiProvider()
+    providerForm.value.baseUrl = provider.value.baseUrl
+    providerForm.value.model = provider.value.model
+    providerForm.value.apiKey = ''
+  } catch {
+    /* 未配置 */
+  }
+}
+
+async function saveProvider() {
+  try {
+    await saveAiProvider({
+      baseUrl: providerForm.value.baseUrl.trim(),
+      apiKey: providerForm.value.apiKey.trim() || undefined,
+      model: providerForm.value.model.trim()
+    })
+    uni.showToast({ title: t('common.saved'), icon: 'success' })
+    await loadProvider()
+  } catch {
+    // 请求层已 toast
+  }
+}
+
+async function testProvider() {
+  testing.value = true
+  testResult.value = null
+  try {
+    // 先保存当前表单再测（体验直觉）
+    await saveAiProvider({
+      baseUrl: providerForm.value.baseUrl.trim(),
+      apiKey: providerForm.value.apiKey.trim() || undefined,
+      model: providerForm.value.model.trim()
+    })
+    const res = await testAiProvider()
+    testResult.value = res.ok
+      ? { ok: true, text: t('ai.testOk', { n: (res.tools ?? []).length }) }
+      : { ok: false, text: `${t('ai.testFail')}：${res.error ?? res.body ?? res.status}` }
+    await loadProvider()
+  } finally {
+    testing.value = false
+  }
+}
 
 function syncDraft() {
   draft.primary = theme.colors.primary
@@ -252,6 +347,9 @@ onShow(() => {
   signature.value = auth.user?.signature ?? ''
   // 自主题页迁入：回填配色草稿
   syncDraft()
+  // AI：悬浮球开关态 + 模型配置回填（游客无 token 不拉——请求层 401 会强制回登录页）
+  ballShown.value = uni.getStorageSync('hz_ai_ball_hidden') !== '1'
+  if (getToken()) void loadProvider()
 })
 
 // H5 走原生 input[type=file]（与发布页 openH5FilePicker 同模式），App 走 uni.chooseImage。
@@ -443,6 +541,25 @@ function logout() {
   font-size: var(--hz-font-size-base);
   font-weight: 600;
   color: var(--hz-color-text);
+}
+/* AI 卡片：分组小标题 + 测试结果 */
+.sub-title {
+  font-size: var(--hz-font-size-sm);
+  font-weight: 600;
+  color: var(--hz-color-text-secondary);
+  margin-top: 4px;
+}
+.seg.grow {
+  flex: 1;
+}
+.ai-test-result {
+  font-size: var(--hz-font-size-sm);
+  color: #e54d42;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.ai-test-result.ok {
+  color: var(--hz-color-primary);
 }
 .form-row {
   display: flex;

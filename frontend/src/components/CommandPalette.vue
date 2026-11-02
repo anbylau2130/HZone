@@ -83,7 +83,13 @@ const commands = computed<Command[]>(() => {
       action: () => uni.navigateTo({ url: '/pages/publish/publish?kind=journal' })
     },
     nav('🔍', 'hub.search', '/pages/search/search'),
-    nav('💬', 'ai.title', '/pages/ai/chat'),
+    // AI 对话已改为全局悬浮球（无独立页面）：唤起悬浮球面板
+    {
+      key: 'open-ai',
+      icon: '💬',
+      label: t('ai.title'),
+      action: () => uni.$emit('hz-ai-open')
+    },
     nav('🧾', 'ledger.title', '/pages/ledger/ledger'),
     nav('📊', 'report.title', '/pages/report/report'),
     nav('🖼️', 'photos.title', '/pages/photos/photos'),

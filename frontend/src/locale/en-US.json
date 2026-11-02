@@ -118,7 +118,8 @@
     "pats": "PATs",
     "importExport": "Import / Export",
     "admin": "Admin",
-    "edit": "Edit Content"
+    "edit": "Edit Content",
+    "mcp": "MCP Access"
   },
   "tabs": {
     "index": "Home",
@@ -509,7 +510,29 @@
     "chatNoteMeta": "From AI chat · model {model} · {n} messages",
     "me": "Me",
     "saveAll": "Save all {n} messages",
-    "saveLast5": "Save last 5 messages"
+    "saveLast5": "Save last 5 messages",
+    "manage": "Manage",
+    "hideBall": "Hide launcher",
+    "hideBallHint": "Hidden — re-enable it in Settings → AI Chat",
+    "ball": "Chat launcher",
+    "show": "Show",
+    "hide": "Hide"
+  },
+  "mcp": {
+    "intro": "Let agents such as Claude Code, Cursor, ZCode or Claude Desktop read and write your HZone over MCP. They act as you, and visibility rules still apply: an agent only sees what you can see.",
+    "tokenTitle": "Step 1: Access token (PAT)",
+    "tokenHint": "Agents act on your behalf with a personal access token (PAT). Generate one below and it is filled into the configs automatically; revoke it under Manage tokens when no longer needed.",
+    "generate": "Generate token and fill in",
+    "regenerate": "Regenerate",
+    "managePats": "Manage tokens",
+    "patName": "MCP access {time}",
+    "httpTitle": "Option 1: Remote HTTP",
+    "recommended": "Recommended",
+    "httpHint": "For agents that support remote MCP (Claude Code, Cursor, ZCode…): paste into their MCP config (mcpServers). Nothing to install.",
+    "stdioTitle": "Option 2: Local stdio",
+    "stdioHint": "For clients that only run local processes (e.g. Claude Desktop). First run pnpm install && pnpm build in this repo's mcp folder, then replace {path} with the actual repo path.",
+    "repoPath": "<repo-path>",
+    "copiedNeedToken": "Copied — remember to replace hz_xxx with a real token"
   },
   "musiclib": {
     "chooseScope": "Share this music with everyone?",
