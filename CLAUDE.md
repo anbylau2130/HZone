@@ -76,7 +76,10 @@ cd e2e && npx playwright test            # UI e2e（6 旅程，自动起 API :50
 cd src/HZone.Api && dotnet run           # API :5000；首次访问 /setup/status 走初始化向导
 cd frontend && pnpm dev:h5               # H5 :5173（/api 代理 :5000）
 cd frontend && pnpm build:h5             # H5 构建校验
+git tag v1.0.0 && git push origin v1.0.0 # 发布：触发 release.yml（测试 + 打包 API/H5/MCP → GitHub Release）
 ```
+
+CI：任意分支推送自动跑 `.github/workflows/ci.yml`（后端测试 / H5 构建 / MCP 构建 / UI e2e，东八区时区）。
 
 ## Architecture
 
