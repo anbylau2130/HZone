@@ -27,7 +27,7 @@ var jwtAudience = builder.Configuration["HZone:Auth:Audience"] ?? "HZone";
 builder.Services.AddDbContext<HZoneDbContext>(options =>
 {
     options.UseSqlite(connectionString);
-    options.AddInterceptors(new HZone.Api.Data.SqlitePragmaInterceptor());
+    options.AddInterceptors(new HZone.Api.SqlitePragmaInterceptor());
 });
 // AI 对话（OpenAI 兼容上游）与外部 MCP server 出站：长超时（流式/远端工具）
 builder.Services.AddHttpClient("ai", c => c.Timeout = TimeSpan.FromMinutes(5));
