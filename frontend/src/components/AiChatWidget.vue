@@ -1,13 +1,20 @@
 <template>
-  <!-- 全局 AI 对话悬浮球：独立 Vue 岛挂 body（见 boot/ai-chat-widget.ts），登录且未隐藏时显示。
-       拖动松手吸附左右边缘；原地点击 = 开关对话面板 -->
-  <div v-if="loggedIn && !hidden" ref="ballRef" class="aiw-ball" :style="ballStyle">
-    <span class="aiw-ball-ico">💬</span>
+  <!-- 全局 AI 对话停靠标签：独立 Vue 岛挂 body（见 boot/ai-chat-widget.ts），登录即常驻、不可隐藏。
+       贴左/右边缘停靠，可拖动换位、松手吸附最近一侧；原地点击 = 开关对话面板 -->
+  <div
+    v-if="loggedIn"
+    ref="dockRef"
+    class="aiw-dock"
+    :class="dragPos ? 'dragging' : dock.side"
+    :style="dockStyle"
+    :title="t('ai.title')"
+  >
+    <span class="aiw-dock-ico">💬</span>
   </div>
 
-  <!-- 对话面板 -->
-  <div v-if="panelOpen" class="aiw-overlay" @click="panelOpen = false">
-    <div class="aiw-panel" @click.stop>
+  <!-- 对话面板：停靠在标签同侧的整高侧栏，非模态——点页面其他位置不会关闭，只能 ✕ 收起 -->
+  <Transition :name="`aiw-slide-${dock.side}`">
+    <div v-if="panelOpen" class="aiw-panel" :class="dock.side">
       <div class="aiw-head">
         <div class="aiw-head-title" @click="convListOpen = !convListOpen">
           <span class="aiw-title-text">{{ activeConversation?.title ?? t('ai.title') }}</span>
@@ -81,9 +88,9 @@
         </div>
       </div>
     </div>
-  </div>
+  </Transition>
 
-  <!-- 管理弹层：技能 / MCP / 隐藏悬浮球 -->
+  <!-- 管理弹层：技能 / MCP -->
   <div v-if="manageOpen" class="aiw-overlay sheet" @click="manageOpen = false">
     <div class="aiw-sheet" @click.stop>
       <div class="aiw-sheet-head">
@@ -116,8 +123,6 @@
         <div v-if="!mcpServers.length" class="aiw-conv-empty">{{ t('ai.noMcp') }}</div>
       </div>
       <button class="aiw-mini" @click="editMcp">＋ {{ t('ai.newMcp') }}</button>
-      <div class="aiw-hide-row" @click="hideBall">🚫 {{ t('ai.hideBall') }}</div>
-      <div class="aiw-hint">{{ t('ai.hideBallHint') }}</div>
     </div>
   </div>
 
@@ -178,35 +183,49 @@ import { getToken } from '../api/client'
 
 const { t } = useI18n()
 
-// ---------- 登录态与隐藏开关 ----------
+// ---------- 登录态 ----------
 // 独立 Vue 岛拿不到主应用 pinia：登录/登出靠 client.ts 派发的 hz-auth 事件刷新
 const loggedIn = ref(!!getToken())
-const hidden = ref(uni.getStorageSync('hz_ai_ball_hidden') === '1')
 function refreshAuth() {
   loggedIn.value = !!getToken()
 }
 
-// ---------- 悬浮球：拖动 + 吸边 ----------
-const POS_KEY = 'hz_ai_ball_pos'
-const ballRef = ref<HTMLElement | null>(null)
-const pos = ref(loadPos())
+// ---------- 停靠标签：贴边停靠 + 拖动换位吸附 ----------
+type DockSide = 'left' | 'right'
+const DOCK_KEY = 'hz_ai_dock'
+const TAB_W = 44
+const TAB_H = 52
+const dockRef = ref<HTMLElement | null>(null)
+const dock = ref<{ side: DockSide; y: number }>(loadDock())
+// 拖动中跟随指针的绝对坐标；非拖动时为 null，按 dock.side 贴边（窗口缩放后依然贴边）
+const dragPos = ref<{ x: number; y: number } | null>(null)
+const viewportH = ref(window.innerHeight)
 
-function loadPos(): { x: number; y: number } {
+function loadDock(): { side: DockSide; y: number } {
   try {
-    const raw = uni.getStorageSync(POS_KEY) as string
-    if (raw) return JSON.parse(raw) as { x: number; y: number }
+    const raw = uni.getStorageSync(DOCK_KEY) as string
+    if (raw) return JSON.parse(raw) as { side: DockSide; y: number }
   } catch {
     /* 用默认位置 */
   }
-  return { x: window.innerWidth - 66, y: Math.round(window.innerHeight * 0.55) }
+  return { side: 'right', y: Math.round(window.innerHeight * 0.55) }
 }
 
-const ballStyle = computed(() => ({ left: `${pos.value.x}px`, top: `${pos.value.y}px` }))
+function clampY(y: number) {
+  return Math.min(Math.max(y, 8), viewportH.value - TAB_H - 8)
+}
+
+const dockStyle = computed(() =>
+  dragPos.value
+    ? { left: `${dragPos.value.x}px`, top: `${dragPos.value.y}px` }
+    : { [dock.value.side]: '0px', top: `${clampY(dock.value.y)}px` }
+)
 
 let drag: { sx: number; sy: number; ox: number; oy: number; moved: boolean } | null = null
 
 function onDown(e: PointerEvent) {
-  drag = { sx: e.clientX, sy: e.clientY, ox: pos.value.x, oy: pos.value.y, moved: false }
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  drag = { sx: e.clientX, sy: e.clientY, ox: rect.left, oy: rect.top, moved: false }
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
 }
@@ -214,28 +233,35 @@ function onMove(e: PointerEvent) {
   if (!drag) return
   const dx = e.clientX - drag.sx
   const dy = e.clientY - drag.sy
-  if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true
-  pos.value = {
-    x: Math.min(Math.max(drag.ox + dx, 8), window.innerWidth - 60),
-    y: Math.min(Math.max(drag.oy + dy, 8), window.innerHeight - 60)
+  if (!drag.moved && Math.abs(dx) + Math.abs(dy) <= 6) return
+  drag.moved = true
+  dragPos.value = {
+    x: Math.min(Math.max(drag.ox + dx, 0), window.innerWidth - TAB_W),
+    y: clampY(drag.oy + dy)
   }
 }
 function onUp() {
   window.removeEventListener('pointermove', onMove)
   window.removeEventListener('pointerup', onUp)
   if (!drag) return
-  if (drag.moved) {
+  if (drag.moved && dragPos.value) {
     // 吸附到较近的左右边缘
-    pos.value.x = pos.value.x + 30 < window.innerWidth / 2 ? 12 : window.innerWidth - 62
-    uni.setStorageSync(POS_KEY, JSON.stringify(pos.value))
+    const side: DockSide = dragPos.value.x + TAB_W / 2 < window.innerWidth / 2 ? 'left' : 'right'
+    dock.value = { side, y: dragPos.value.y }
+    uni.setStorageSync(DOCK_KEY, JSON.stringify(dock.value))
   } else {
     panelOpen.value = !panelOpen.value
   }
+  dragPos.value = null
   drag = null
 }
 
-function bindBall() {
-  const el = ballRef.value
+function onResize() {
+  viewportH.value = window.innerHeight
+}
+
+function bindDock() {
+  const el = dockRef.value
   if (!el || el.dataset.aiwBound) return
   el.dataset.aiwBound = '1'
   el.addEventListener('pointerdown', onDown)
@@ -264,28 +290,14 @@ async function loadAll() {
 }
 
 function openFromOutside() {
-  // 命令面板「AI 对话」：唤起面板并确保悬浮球可见
+  // 命令面板「AI 对话」：唤起面板
   if (!getToken()) return
-  hidden.value = false
-  uni.removeStorageSync('hz_ai_ball_hidden')
   panelOpen.value = true
-}
-
-function onBallToggle(v: boolean) {
-  hidden.value = !v
 }
 
 function goSettings() {
   panelOpen.value = false
   uni.navigateTo({ url: '/pages/settings/settings' })
-}
-
-function hideBall() {
-  hidden.value = true
-  uni.setStorageSync('hz_ai_ball_hidden', '1')
-  manageOpen.value = false
-  panelOpen.value = false
-  uni.showToast({ title: t('ai.hideBallHint'), icon: 'none' })
 }
 
 // ---------- Provider（只读，用于空态引导；配置在设置页） ----------
@@ -592,34 +604,34 @@ function saveAsJournal() {
 }
 
 // ---------- 生命周期（独立岛：无页面 onShow，首开面板时懒加载） ----------
-watch([loggedIn, hidden], () => {
-  void nextTick(bindBall)
+watch(loggedIn, () => {
+  void nextTick(bindDock)
 })
 
 onMounted(() => {
   window.addEventListener('hz-auth', refreshAuth)
+  window.addEventListener('resize', onResize)
   uni.$on('hz-ai-open', openFromOutside)
-  uni.$on('hz-ai-ball', onBallToggle)
-  void nextTick(bindBall)
+  void nextTick(bindDock)
 })
 
 onUnmounted(() => {
   window.removeEventListener('hz-auth', refreshAuth)
+  window.removeEventListener('resize', onResize)
   uni.$off('hz-ai-open', openFromOutside)
-  uni.$off('hz-ai-ball', onBallToggle)
   aborter?.abort()
 })
 </script>
 
 <style scoped>
-/* 悬浮球 */
-.aiw-ball {
+/* 停靠标签：贴边半胶囊，空闲时略收进边缘，悬停/拖动时完整滑出 */
+.aiw-dock {
   position: fixed;
-  width: 52px;
+  width: 44px;
   height: 52px;
-  border-radius: 50%;
+  box-sizing: border-box;
   background: var(--hz-color-primary);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -628,9 +640,30 @@ onUnmounted(() => {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  opacity: 0.88;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
-.aiw-ball-ico {
-  font-size: 22px;
+.aiw-dock.right {
+  border-radius: 26px 0 0 26px;
+  padding-right: 10px;
+  transform: translateX(10px);
+}
+.aiw-dock.left {
+  border-radius: 0 26px 26px 0;
+  padding-left: 10px;
+  transform: translateX(-10px);
+}
+.aiw-dock:hover,
+.aiw-dock.dragging {
+  transform: translateX(0);
+  opacity: 1;
+}
+.aiw-dock.dragging {
+  border-radius: 26px;
+  transition: none;
+}
+.aiw-dock-ico {
+  font-size: 20px;
   line-height: 1;
 }
 /* 弹层通用 */
@@ -646,18 +679,41 @@ onUnmounted(() => {
 .aiw-overlay.sheet {
   z-index: 1600;
 }
-/* 对话面板 */
+/* 对话面板：停靠侧整高侧栏（非模态，不挡页面其余区域） */
 .aiw-panel {
-  position: relative;
-  width: 94%;
-  max-width: 420px;
-  height: min(72vh, 640px);
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: min(400px, 100vw);
+  box-sizing: border-box;
   background: var(--hz-color-surface);
-  border-radius: var(--hz-radius-lg);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.2);
+  z-index: 1500;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+.aiw-panel.right {
+  right: 0;
+  border-left: 1px solid var(--hz-color-border);
+}
+.aiw-panel.left {
+  left: 0;
+  border-right: 1px solid var(--hz-color-border);
+}
+.aiw-slide-right-enter-active,
+.aiw-slide-right-leave-active,
+.aiw-slide-left-enter-active,
+.aiw-slide-left-leave-active {
+  transition: transform 0.22s ease;
+}
+.aiw-slide-right-enter-from,
+.aiw-slide-right-leave-to {
+  transform: translateX(100%);
+}
+.aiw-slide-left-enter-from,
+.aiw-slide-left-leave-to {
+  transform: translateX(-100%);
 }
 .aiw-head {
   display: flex;
@@ -1012,19 +1068,6 @@ onUnmounted(() => {
 .aiw-item-op.danger {
   color: #e54d42;
 }
-.aiw-hide-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  margin-top: 4px;
-  border: 1px solid var(--hz-color-border);
-  border-radius: var(--hz-radius-md);
-  font-size: var(--hz-font-size-sm);
-  color: var(--hz-color-text-secondary);
-  cursor: pointer;
-}
 .aiw-btn-row {
   display: flex;
   gap: 8px;
@@ -1074,17 +1117,5 @@ onUnmounted(() => {
 .aiw-edit-row {
   display: flex;
   gap: 8px;
-}
-/* 移动端：面板改为底部抽屉 */
-@media (max-width: 767px) {
-  .aiw-overlay {
-    align-items: flex-end;
-  }
-  .aiw-panel {
-    width: 100%;
-    max-width: none;
-    height: 78vh;
-    border-radius: var(--hz-radius-lg) var(--hz-radius-lg) 0 0;
-  }
 }
 </style>

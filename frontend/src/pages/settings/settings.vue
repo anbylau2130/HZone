@@ -114,21 +114,9 @@
       </view>
     </view>
 
-    <!-- AI 对话：悬浮球开关 + 模型配置（原 AI 对话页迁入） -->
+    <!-- AI 对话：模型配置（原 AI 对话页迁入） -->
     <view class="profile-card">
       <text class="sec-title">💬 {{ $t('ai.title') }}</text>
-      <view class="form-row">
-        <text class="form-label">{{ $t('ai.ball') }}</text>
-        <view class="seg grow">
-          <view class="seg-item" :class="{ active: ballShown }" @click="setBall(true)">
-            <text class="seg-text" :class="{ active: ballShown }">{{ $t('ai.show') }}</text>
-          </view>
-          <view class="seg-item" :class="{ active: !ballShown }" @click="setBall(false)">
-            <text class="seg-text" :class="{ active: !ballShown }">{{ $t('ai.hide') }}</text>
-          </view>
-        </view>
-      </view>
-      <text class="profile-hint">{{ $t('ai.hideBallHint') }}</text>
       <text class="sub-title">{{ $t('ai.providerTitle') }}</text>
       <text class="form-label">Base URL</text>
       <input v-model="providerForm.baseUrl" class="field" placeholder="https://api.xxx.com/v4" placeholder-class="ph" />
@@ -227,19 +215,11 @@ const colorFields = [
 
 const hasIssues = computed(() => issues.text || issues.primary)
 
-// ---------- AI 对话：悬浮球开关 + 模型配置（原 AI 对话页迁入） ----------
-const ballShown = ref(true)
+// ---------- AI 模型配置（原 AI 对话页迁入） ----------
 const provider = ref({ baseUrl: '', model: '', hasKey: false })
 const providerForm = ref({ baseUrl: '', apiKey: '', model: '' })
 const testing = ref(false)
 const testResult = ref<{ ok: boolean; text: string } | null>(null)
-
-function setBall(v: boolean) {
-  ballShown.value = v
-  uni.setStorageSync('hz_ai_ball_hidden', v ? '' : '1')
-  // 悬浮球是独立 Vue 岛，经全局事件同步显示状态
-  uni.$emit('hz-ai-ball', v)
-}
 
 async function loadProvider() {
   try {
@@ -347,8 +327,7 @@ onShow(() => {
   signature.value = auth.user?.signature ?? ''
   // 自主题页迁入：回填配色草稿
   syncDraft()
-  // AI：悬浮球开关态 + 模型配置回填（游客无 token 不拉——请求层 401 会强制回登录页）
-  ballShown.value = uni.getStorageSync('hz_ai_ball_hidden') !== '1'
+  // AI：模型配置回填（游客无 token 不拉——请求层 401 会强制回登录页）
   if (getToken()) void loadProvider()
 })
 
@@ -548,9 +527,6 @@ function logout() {
   font-weight: 600;
   color: var(--hz-color-text-secondary);
   margin-top: 4px;
-}
-.seg.grow {
-  flex: 1;
 }
 .ai-test-result {
   font-size: var(--hz-font-size-sm);

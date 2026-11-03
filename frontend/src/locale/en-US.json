@@ -511,12 +511,7 @@
     "me": "Me",
     "saveAll": "Save all {n} messages",
     "saveLast5": "Save last 5 messages",
-    "manage": "Manage",
-    "hideBall": "Hide launcher",
-    "hideBallHint": "Hidden — re-enable it in Settings → AI Chat",
-    "ball": "Chat launcher",
-    "show": "Show",
-    "hide": "Hide"
+    "manage": "Manage"
   },
   "mcp": {
     "intro": "Let agents such as Claude Code, Cursor, ZCode or Claude Desktop read and write your HZone over MCP. They act as you, and visibility rules still apply: an agent only sees what you can see.",

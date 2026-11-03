@@ -511,12 +511,7 @@
     "me": "我",
     "saveAll": "保存全部 {n} 条消息",
     "saveLast5": "只保存最近 5 条",
-    "manage": "管理",
-    "hideBall": "隐藏悬浮球",
-    "hideBallHint": "隐藏后可在 设置 → AI 对话 重新开启",
-    "ball": "对话悬浮球",
-    "show": "显示",
-    "hide": "隐藏"
+    "manage": "管理"
   },
   "mcp": {
     "intro": "让 Claude Code、Cursor、ZCode、Claude Desktop 等 agent 通过 MCP 读写你的 HZone。权限等同你本人，可见名单规则同样生效：agent 只能看到你能看到的内容。",
